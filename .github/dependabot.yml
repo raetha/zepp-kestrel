@@ -1,0 +1,19 @@
+# Keeps the CI actions and the tooling's dependencies up to date (weekly pull requests
+# into dev, so they ship with the next release).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directory: /tools
+    target-branch: dev
+    schedule:
+      interval: weekly

@@ -1,0 +1,20 @@
+{
+  "name": "zepp-wristwand",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Wristwand: point at a smart-home device with an Amazfit / Zepp OS watch and trigger it",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test watch/test/*.test.mjs",
+    "build": "cd watch && zeus build",
+    "emu": "node tools/emu/emu.mjs",
+    "qr": "python3 tools/make_qr.py"
+  },
+  "dependencies": {
+    "@zeppos/zml": "0.0.43"
+  },
+  "devDependencies": {
+    "@zeppos/device-types": "4.0.0",
+    "ws": "8.22.0"
+  }
+}

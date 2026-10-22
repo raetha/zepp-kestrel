@@ -1,0 +1,60 @@
+{
+  "configVersion": "v3",
+  "app": {
+    "appId": 1132466,
+    "appName": "WristWand",
+    "appType": "app",
+    "version": {
+      "code": 1,
+      "name": "0.1.0"
+    },
+    "icon": "icon.png",
+    "vender": "wristwand",
+    "description": "Point your watch at a smart-home device and trigger it, with Home Assistant."
+  },
+  "permissions": [
+    "device:os.accelerometer",
+    "device:os.gyroscope",
+    "device:os.compass",
+    "device:os.ble"
+  ],
+  "runtime": {
+    "apiVersion": {
+      "compatible": "3.6",
+      "target": "4.0",
+      "minVersion": "3.6"
+    }
+  },
+  "targets": {
+    "default": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/menu",
+            "page/test"
+          ]
+        },
+        "app-side": {
+          "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
+        }
+      },
+      "platforms": [
+        {
+          "st": "r",
+          "dw": 480
+        }
+      ],
+      "designWidth": 480
+    }
+  },
+  "i18n": {
+    "en-US": {
+      "appName": "WristWand"
+    }
+  },
+  "defaultLanguage": "en-US",
+  "debug": false
+}

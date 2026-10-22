@@ -1,0 +1,223 @@
+name: Build and publish
+
+# Branches (docs/development.md -> "Branches and releases"): work lands on `dev`, and
+# each release is one squash-merged pull request from `dev` into `main`.
+# Every push and pull request: changelog check, unit tests, Zeus build of the watch app.
+# Push to main: any component whose version has no `<component>-v<version>` tag yet is
+# released (tag + GitHub release with that version's changelog section).
+# Push to main or dev (and manual runs): builds a "DEV" test build of the watch app from
+# the tip of `dev` (own app ID, installs next to the release) and redeploys the Pages site:
+# the install site from the latest release, plus the unlisted test-build page
+# https://raetha.github.io/zepp-wristwand/dev/.
+#
+# Adapted from raetha/zepp-watch-faces.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:      # manual run: rebuild the install site and test build
+
+permissions:
+  contents: read
+
+# Actions are pinned to exact commits (version in the comment); Dependabot
+# (.github/dependabot.yml) proposes updates weekly.
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_OPTIONS: --no-deprecation
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    outputs:
+      releases: ${{ steps.plan.outputs.releases }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0          # tags are needed to know what is already released
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: |
+          pip install -r tools/requirements.txt
+          npm ci
+          npm install -g @zeppos/zeus-cli@1.9.3
+
+      - name: Check changelogs and plan releases
+        id: plan
+        run: python3 tools/release_plan.py --github
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build the watch app with Zeus
+        run: |
+          set -e
+          version=$(python3 -c "import json;print(json.load(open('watch/app.json'))['app']['version']['name'])")
+          (cd watch && zeus build)
+          mkdir -p out/watch
+          python3 tools/extract_zpk.py watch/dist "out/watch/wristwand-$version.zpk"
+          cp watch/dist/*.zab "out/watch/wristwand-$version.zab"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wristwand
+          path: out/
+
+      - name: Build the DEV test build (from the tip of dev)
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+        run: |
+          set -e
+          out="$PWD/out-dev"
+          # a push to main still publishes dev's test build, so the page never goes backwards
+          if [ "$GITHUB_REF" != refs/heads/dev ] && git rev-parse -q --verify origin/dev >/dev/null; then
+            git worktree add -q ../dev-tree origin/dev
+            cd ../dev-tree
+            npm ci
+          fi
+          short=$(git rev-parse --short HEAD)
+          mkdir -p "$out/watch" && echo "$short" > "$out/SOURCE_SHA"
+          python3 tools/make_dev_variant.py "$GITHUB_RUN_NUMBER" "$short"
+          (cd watch-dev && zeus build)
+          python3 tools/extract_zpk.py watch-dev/dist "$out/watch/wristwand.zpk"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+        with:
+          name: wristwand-dev
+          path: out-dev/
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.releases != '[]'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wristwand
+          path: out
+
+      - name: Create a GitHub release per changed component
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASES: ${{ needs.build.outputs.releases }}
+        run: |
+          set -e
+          echo "$RELEASES" | python3 -c "import json,sys; [print(r['component'], r['version'], r['tag'], r['title'], sep='\t') for r in json.load(sys.stdin)]" |
+          while IFS=$'\t' read -r component version tag title; do
+            python3 tools/release_notes.py "$component" "$version" > notes.md
+            if [ "$component" = watch ]; then
+              assets="out/watch/wristwand-$version.zpk out/watch/wristwand-$version.zab"
+            else
+              assets=""
+            fi
+            gh release create "$tag" --target "$GITHUB_SHA" --title "$title" --notes-file notes.md $assets
+          done
+
+  pages:
+    needs: [build, release]
+    if: >-
+      always() && github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
+      needs.build.result == 'success' &&
+      (needs.release.result == 'success' || needs.release.result == 'skipped')
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: pages          # main and dev both deploy the one site: one at a time
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Collect the latest watch release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          pip install -r tools/requirements.txt
+          mkdir -p site/watch
+          tag=$(gh release list --limit 200 --json tagName --jq '.[].tagName' | grep -E '^watch-v[0-9]' | sed 's/^watch-v//' | sort -V | tail -1 || true)
+          if [ -n "$tag" ]; then
+            gh release download "watch-v$tag" --pattern "*.zpk" --dir site/watch
+            mv "site/watch/wristwand-$tag.zpk" site/watch/wristwand.zpk
+            echo "$tag" > site/watch/version.txt
+            echo "watch: publishing $tag"
+          else
+            echo "watch: no release yet"
+          fi
+          python3 tools/build_site.py site
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wristwand-dev
+          path: site/dev
+
+      - name: Add the unlisted test-build page
+        run: |
+          sha=$(cat site/dev/SOURCE_SHA) && rm site/dev/SOURCE_SHA
+          python3 tools/dev_site.py site "$sha" "$GITHUB_RUN_NUMBER"
+          {
+            echo "### Test build (run $GITHUB_RUN_NUMBER)"
+            echo ""
+            echo "Scan from: https://raetha.github.io/zepp-wristwand/dev/"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  # After a release pull request is merged, dev holds the same files as main but different
+  # commits; reset it to main so the next cycle starts clean. Skipped if dev has new work.
+  sync-dev:
+    needs: [build, release]
+    if: >-
+      always() && github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.build.result == 'success' &&
+      (needs.release.result == 'success' || needs.release.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Reset dev to main if they match
+        run: |
+          set -e
+          git rev-parse -q --verify origin/dev >/dev/null || { echo "no dev branch"; exit 0; }
+          if git diff --quiet origin/main origin/dev; then
+            git push --force origin origin/main:refs/heads/dev
+            echo "dev reset to main"
+          else
+            echo "dev has changes that aren't on main: left as it is"
+          fi
