@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Wristwand: point at a smart-home device with an Amazfit / Zepp OS watch and trigger it",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "test": "node --test watch/test/*.test.mjs",
     "build": "cd watch && zeus build",

@@ -52,4 +52,8 @@ If you find this useful, you can [sponsor the project](https://github.com/sponso
 
 ## License
 
-[MIT](LICENSE). WristWand is an independent project and is not affiliated with Zepp Health, Amazfit or Home Assistant.
+- **The WristWand app** (`watch/`, and the Home Assistant component when it arrives): [CC BY-NC-SA 4.0](LICENSES/CC-BY-NC-SA-4.0.txt). Share and remix it non-commercially with credit, but don't sell it or its derivatives.
+- **Shared helper code and tooling** (`watch/lib/`, `tools/`, CI): [MIT](LICENSES/MIT.txt).
+- **The name "WristWand"** and its icon aren't licensed for reuse.
+
+Details are in [LICENSE](LICENSE). WristWand is an independent project and is not affiliated with Zepp Health, Amazfit or Home Assistant.

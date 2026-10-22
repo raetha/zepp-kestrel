@@ -9,7 +9,7 @@ WristWand: point an Amazfit / Zepp OS watch at a smart-home device and trigger i
 - Record each adopted change under `## [Unreleased]` in the component's `CHANGELOG.md` (`watch/CHANGELOG.md`, later `ha/CHANGELOG.md`), written for people installing it. Never bump a version or date a changelog without being asked: that's the release pull request (`dev` → `main`), which the owner squash-merges. CI then resets `dev` to `main` (when nothing new landed on `dev` meanwhile).
 - `watch/DRAFT` keeps the watch app from being released until the owner says the first release is ready.
 - Name: **WristWand** (store name; "Wristwand" in prose is fine). It is inspired by commercial point-and-snap apps for other watches but must never use their names, code, assets or branding.
-- Licence: MIT for everything.
+- Licences (`LICENSE`): `watch/lib/`, `tools/` and CI are MIT. The app itself (`watch/` apart from `watch/lib/`, and later `ha/`) is CC BY-NC-SA 4.0: open, but nobody else may sell it. Code that is generic and reusable belongs in `watch/lib/` (MIT); app-specific code goes elsewhere in `watch/`.
 
 ## Validate on the real firmware
 

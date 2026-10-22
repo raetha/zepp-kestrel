@@ -105,6 +105,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 Repository settings (owner, one time):
 
 - **Settings → Pages → Source: GitHub Actions.** Without this the deploy step fails and no test build is published.
+- **Settings → Environments → github-pages → Deployment branches and tags**: add `dev` next to `main`. By default only `main` may deploy, so test builds from `dev` fail with "Branch "dev" is not allowed to deploy to github-pages due to environment protection rules".
 - **Settings → Branches**: add a rule for `main` requiring a pull request before merging.
 - **Settings → General → Pull Requests**: allow only squash merging.
 
@@ -128,7 +129,13 @@ The release QR code (`watch/docs/install-qr.png`) encodes `zpkd1://raetha.github
 
 ## Licensing
 
-Everything in this repository is MIT.
+Following [raetha/zepp-watch-faces](https://github.com/raetha/zepp-watch-faces): open source, but only the author may sell the app.
+
+- **Shared helper code and tooling** (`watch/lib/`, `tools/`, `.github/`, repo docs and config) is MIT (`LICENSES/MIT.txt`). Put generic, reusable code in `watch/lib/`.
+- **The app** (`watch/` apart from `watch/lib/`, and `ha/` when it's added) is CC BY-NC-SA 4.0 (`LICENSES/CC-BY-NC-SA-4.0.txt`), with its own `watch/LICENSE`.
+- **The name "WristWand"** and its icon aren't licensed for reuse.
+
+See the root `LICENSE`.
 
 ## Packaging for delivery
 
