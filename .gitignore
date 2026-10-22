@@ -1,0 +1,12 @@
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+.idea/
+site/
+out/
+out-dev/
+watch-dev/
+tools/.emu*/
