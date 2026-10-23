@@ -50,7 +50,12 @@ Direct mode filters entities with an HA label `wristwand` (all supported entitie
 
 ## Triggers
 
-Pluggable: `start()`, `stop()`, `onFire(cb)`. Snap (accelerometer spike), wrist flick (gyro burst), physical button, screen tap. M0 decides the default from measured sensor rates and recordings. With motion sensors at 25 Hz (see below), a snap is recognised by the wrist movement that comes with it, not by its click, so gesture triggers are calibrated per person on the watch: record your gesture a few times and some ordinary movement, and the watch sets its own thresholds.
+Physical button, screen tap and wrist flick (built), snap (later, if at all). With motion sensors at 25 Hz (see below), gestures are recognised by the wrist movement, not a click, and calibrated per person on the watch: record the gesture a few times and some ordinary movement, and the watch sets its own threshold (`watch/lib/flick.js`).
+
+- **Wrist flick**: a gyro burst above the threshold (600°/s until calibrated) that rises within 400 ms, then 1.2 s of quiet. The flick moves the arm, so it acts on the device the aim had in mind when the burst began (within 800 ms), and only if there was one.
+- **Corrections**: after a trigger, "Not it?" offers the runner-up for 5 s. It toggles the first device back where that undoes it (lights, switches, fans, input booleans, media players, covers), toggles the runner-up, and adds a small correction spot where the arm was. A device keeps at most two correction spots apart from its painted ones.
+- **Aim traces**: each trigger sends the aim of the seconds before it (heading, pitch, roll, state, best guess) to Home Assistant as a `point` probe result, for replaying the classifier offline.
+- **Paint backup**: paints go to Home Assistant after each paint and correction (`/api/wristwand/paints`, per watch); Sync restores them on a watch that has none.
 
 ## What the real watch measured (M0, Balance 3)
 
@@ -64,8 +69,8 @@ Pluggable: `start()`, `stop()`, `onFire(cb)`. Snap (accelerometer spike), wrist 
 
 ## Milestones
 
-1. **M0 Spike**: measurement probes (this build).
-2. **M1 One lamp**: settings, side service, entity sync, paint one device, button trigger, haptic acknowledgement.
-3. **M2 Whole room**: classifier, aim states, corrections, the optional HA component, recorder and replay tests.
-4. **M3 Whole house**: room fingerprints, snap and flick, lock confirmation, dimming, away mode.
+1. **M0 Spike**: measurement probes. Done.
+2. **M1 One lamp**: pairing, side service, entity sync, paint, button trigger, haptic acknowledgement. Built; home test pending.
+3. **M2 Whole room**: classifier, aim states, corrections, the HA component, paint backup, aim traces (replay tests to come with real traces). Built.
+4. **M3 Whole house**: room fingerprints, flick (built) and maybe snap, lock confirmation (built), dimming, away mode.
 5. **M4 Ship it**: polish, battery, other round Zepp watches, first release.

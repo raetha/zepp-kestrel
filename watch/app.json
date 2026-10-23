@@ -37,7 +37,9 @@
             "page/paint",
             "page/point",
             "page/probes",
-            "page/test"
+            "page/test",
+            "page/more",
+            "page/flick"
           ]
         },
         "app-side": {

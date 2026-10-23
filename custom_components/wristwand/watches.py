@@ -21,12 +21,18 @@ from .const import (
     PAIR_WINDOW,
     PAIRING_MAX_ATTEMPTS,
     PAIRING_TTL,
+    PAINTS_MAX_DEVICES,
+    PAINTS_MAX_SPOTS,
     PROBES_KEPT,
     PROBES_SAVE_DELAY,
     PROBES_STORAGE_KEY,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
 def _hash(token: str) -> str:
@@ -145,6 +151,24 @@ class Watches:
             self.probes.extend(kept)
             self._save_probes()
         await self._async_save()
+
+    # ------------------------------------------------------------ paints
+    def paints(self, watch_id: str) -> dict[str, list[dict[str, Any]]]:
+        """The watch's painted spots, backed up so a reset or new watch can restore them."""
+        return self.watches.get(watch_id, {}).get("paints", {})
+
+    async def async_save_paints(self, watch_id: str, paints: dict[str, Any]) -> int:
+        """Replace a watch's paints with a cleaned copy; returns the number of devices kept."""
+        clean: dict[str, list[dict[str, Any]]] = {}
+        for target, spots in list(paints.items())[:PAINTS_MAX_DEVICES]:
+            if not isinstance(target, str) or "." not in target or not isinstance(spots, list):
+                continue
+            kept = [s for s in spots if isinstance(s, dict) and _is_number(s.get("heading")) and _is_number(s.get("pitch"))]
+            if kept:
+                clean[target[:255]] = kept[-PAINTS_MAX_SPOTS:]
+        self.watches[watch_id]["paints"] = clean
+        await self._async_save()
+        return len(clean)
 
     # ------------------------------------------------------------ probe results
     def add_probe(self, watch: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:

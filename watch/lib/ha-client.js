@@ -259,6 +259,20 @@ export class HaClient {
       })
   }
 
+  /** Back up the watch's paints in Home Assistant (needs the component). */
+  async savePaints(paints) {
+    if (this.status().mode !== 'component') return { ok: false, error: 'Needs the WristWand integration' }
+    const b = await this.component('/api/wristwand/paints', { method: 'POST', body: { paints } })
+    return { ok: true, devices: (b && b.devices) || 0 }
+  }
+
+  /** The paints backed up in Home Assistant, or {} without the component. */
+  async loadPaints() {
+    if (this.status().mode !== 'component') return {}
+    const b = await this.component('/api/wristwand/paints')
+    return (b && b.paints) || {}
+  }
+
   /** Run an action on a target. Returns { ok, state, needsConfirm, error } */
   async fire({ target, action = 'toggle', value, seq, confirmed = false }) {
     if (this.status().mode === 'component') {

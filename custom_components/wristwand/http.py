@@ -163,6 +163,35 @@ class TargetsView(_WatchView):
         return web.json_response({"targets": list_targets(hass)})
 
 
+class PaintsView(_WatchView):
+    """The calling watch's painted spots: saved after painting, fetched to restore."""
+
+    url = "/api/wristwand/paints"
+    name = "api:wristwand:paints"
+
+    async def get(self, request: web.Request) -> web.Response:
+        auth = self._authorize(request)
+        if isinstance(auth, web.Response):
+            return auth
+        _, watches, watch = auth
+        return web.json_response({"paints": watches.paints(watch["id"])})
+
+    async def post(self, request: web.Request) -> web.Response:
+        auth = self._authorize(request)
+        if isinstance(auth, web.Response):
+            return auth
+        _, watches, watch = auth
+        try:
+            body = await request.json()
+        except ValueError:
+            return _error("Bad request", HTTPStatus.BAD_REQUEST)
+        paints = body.get("paints") if isinstance(body, dict) else None
+        if not isinstance(paints, dict):
+            return _error("Bad request", HTTPStatus.BAD_REQUEST)
+        kept = await watches.async_save_paints(watch["id"], paints)
+        return web.json_response({"ok": True, "devices": kept})
+
+
 class FireView(_WatchView):
     url = "/api/wristwand/fire"
     name = "api:wristwand:fire"
@@ -223,4 +252,4 @@ class ProbeView(_WatchView):
         return web.json_response({"ok": True})
 
 
-VIEWS = (InfoView, PairView, PairConfirmView, TargetsView, FireView, ProbeView)
+VIEWS = (InfoView, PairView, PairConfirmView, TargetsView, PaintsView, FireView, ProbeView)

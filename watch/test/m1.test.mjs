@@ -212,3 +212,43 @@ test('discovery tries port 80 and 8123, and typed addresses', async () => {
   const found = await new HaClient({ fetch, store: memStore() }).discover(['192.168.1.20:9000'])
   assert.deepEqual(found, [{ url: 'http://192.168.1.20:9000', haName: 'Lab', version: undefined }])
 })
+
+test('corrections add small spots without pushing painted ones out', async () => {
+  const { correctionSpot, addCorrection, MAX_CORRECTIONS, MAX_SPOTS: max } = await import('../lib/paint.js')
+  assert.equal(correctionSpot(NaN, 3), null)
+  const painted = Array.from({ length: max }, (_, i) => ({ heading: i, headingSpread: 5, pitch: 0, pitchSpread: 3, n: 30 }))
+  let spots = painted
+  for (let i = 0; i < 4; i++) spots = addCorrection(spots, correctionSpot(100 + i, 5, i))
+  assert.equal(spots.filter((s) => s.kind === 'correction').length, MAX_CORRECTIONS)
+  assert.deepEqual(spots.slice(0, max), painted)
+  assert.deepEqual(spots.slice(max).map((s) => s.heading), [102, 103])
+  assert.deepEqual(addCorrection(undefined, null), [])
+  // a correction spot ranks its device first where the user aimed
+  const devices = [
+    { id: 'light.a', spots: [{ heading: 100, headingSpread: 10, pitch: 5, pitchSpread: 5 }] },
+    { id: 'light.b', spots: addCorrection([{ heading: 120, headingSpread: 10, pitch: 5, pitchSpread: 5 }], correctionSpot(104, 5)) },
+  ]
+  assert.equal(rank(devices, 104, 5)[0].id, 'light.b')
+})
+
+test('paints are backed up to and restored from the component', async () => {
+  const url = 'http://homeassistant.local'
+  const store = memStore({ 'ww.pairing': JSON.stringify({ token: 'tok', urls: [url] }) })
+  const saved = {}
+  const fetch = fakeFetch({
+    [`POST ${url}/api/wristwand/paints`]: async (r) => {
+      Object.assign(saved, JSON.parse(r.body).paints)
+      return { status: 200, body: { ok: true, devices: Object.keys(saved).length } }
+    },
+    [`GET ${url}/api/wristwand/paints`]: async () => ({ status: 200, body: { paints: saved } }),
+  })
+  const ha = new HaClient({ fetch, store })
+  const paints = { 'light.desk': [{ heading: 10, pitch: 2 }] }
+  assert.deepEqual(await ha.savePaints(paints), { ok: true, devices: 1 })
+  assert.deepEqual(await ha.loadPaints(), paints)
+
+  // direct mode has nowhere to keep them
+  const direct = new HaClient({ fetch, store: memStore({ haUrl: 'https://ha.example/', haToken: 'llt' }) })
+  assert.equal((await direct.savePaints(paints)).ok, false)
+  assert.deepEqual(await direct.loadPaints(), {})
+})

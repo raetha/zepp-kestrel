@@ -74,6 +74,11 @@ AppSideService(
             if (p.seq !== undefined && !dedupe.accept(p.seq)) return { ok: true, duplicate: true }
             return this.ha.fire(p)
 
+          case METHOD.SAVE_PAINTS:
+            return this.ha.savePaints(p.paints || {})
+          case METHOD.LOAD_PAINTS:
+            return { paints: await this.ha.loadPaints() }
+
           case METHOD.HA_PING:
             return this.haPing()
           case METHOD.PROBE_LOG:

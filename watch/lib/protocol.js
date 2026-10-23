@@ -12,6 +12,8 @@ export const METHOD = {
   UNPAIR: 'ww.unpair',
   SYNC: 'ww.sync', // -> { targets: [{ id, name, domain, area, dimmable, confirm }] }
   FIRE: 'ww.fire', // { seq, target, action, value, confirmed } -> { ok, state, needsConfirm, error }
+  SAVE_PAINTS: 'ww.savePaints', // { paints } -> { ok, devices } backed up in Home Assistant (component only)
+  LOAD_PAINTS: 'ww.loadPaints', // -> { paints } the backup, to restore a reset or new watch
 }
 
 /**

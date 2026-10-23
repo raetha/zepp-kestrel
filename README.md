@@ -2,7 +2,7 @@
 
 Point your Amazfit watch at a smart-home device and trigger it. An open-source pointing remote for Zepp OS watches, built around [Home Assistant](https://www.home-assistant.io/).
 
-> **Status: M1, first working version.** Pair the watch with Home Assistant, paint a device, point at it and press the select button to toggle it. The M0 probes (sensor rates, gestures, compass, Bluetooth, latency) are still on the watch under Probes. There is no release yet.
+> **Status: M2, test builds.** Pair the watch with Home Assistant, paint a device, point at it, and press the select button or flick your wrist to toggle it. A wrong guess can be corrected, which teaches the watch. Paints are backed up in Home Assistant. The M0 probes (sensor rates, gestures, compass, Bluetooth, latency) are under More → Probes. There is no release yet.
 
 <p align="center">
   <img src="watch/docs/screenshot-menu.png" width="240" alt="WristWand probe menu on the watch">
@@ -29,7 +29,13 @@ Test builds are for development and change often.
 
 **3. Pair.** With your phone on the home Wi-Fi, open WristWand DEV on the watch → Pair with HA. Pick your Home Assistant, then type the 6-digit code from the notification Home Assistant shows. The watch then fetches your devices. (If the Zepp app asks for Local Network access, allow it: that's how the phone finds `homeassistant.local`.)
 
-**4. Paint and point.** Paint a device: pick it, stand where you'd use it, press Start, and sweep your arm slowly across it for 15 s. Then Point: hold your arm out at it. The circle turns green when the watch has it in mind; press the select button (or tap the circle) to toggle it. Locks ask for a confirming tap.
+**4. Paint and point.** Paint a device: pick it, stand where you'd use it, press Start, and sweep your arm slowly across it for 15 s, palm down. Then Point: hold your arm out at it, palm down. The circle turns green when the watch has it in mind; press the select button, tap the circle, or flick your wrist to toggle it. Locks ask for a confirming tap. If the watch picked the wrong device, tap **Not it?** within 5 s: it undoes the first (lights, switches, fans and the like), toggles the right one, and remembers where you aimed. Dropping your wrist and raising it again brings Point back.
+
+To test without your own devices nearby (at work, say), create a helper in Home Assistant (Settings → Devices & services → Helpers → Toggle), Sync, and paint something in the room, like a door frame, as that helper.
+
+**5. Fit the flick to you.** More → Flick → Calibrate: five flicks after the buzzes, then ten seconds of ordinary movement. The watch sets its threshold between them. Flick can be turned off there too.
+
+Paints are backed up in Home Assistant after each paint; on a reset or new watch, Sync restores them.
 
 To offer the watch only some devices, add the label `wristwand` to those entities or devices in Home Assistant, then Sync on the watch. Each paired watch appears in Home Assistant as a device under the WristWand integration; delete the device to unpair it.
 
@@ -37,7 +43,7 @@ If your phone can't find Home Assistant (another port, or a name other than `hom
 
 ### Running the M0 probes
 
-Under **Probes** on the watch. Results show on the watch, and once the watch is paired each one (raw sensor traces included) also goes to Home Assistant; the probe screen says whether it got there. To hand results over, download them in one file: Settings → Devices & services → WristWand → your watch's device → ⋮ → **Download diagnostics**. Home Assistant keeps the newest 200 results. Each also fires a `wristwand_probe` event, for watching live in Developer tools → Events. The select button presses the main button on every probe screen; back returns to the list.
+Under **More → Probes** on the watch. Results show on the watch, and once the watch is paired each one (raw sensor traces included) also goes to Home Assistant; the probe screen says whether it got there. To hand results over, download them in one file: Settings → Devices & services → WristWand → your watch's device → ⋮ → **Download diagnostics**. Home Assistant keeps the newest 200 results. Each also fires a `wristwand_probe` event, for watching live in Developer tools → Events. The select button presses the main button on every probe screen; back returns to the list.
 
 | Probe | What to do | What it answers |
 | --- | --- | --- |

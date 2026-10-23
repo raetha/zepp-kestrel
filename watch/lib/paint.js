@@ -30,9 +30,10 @@ export function makeSpot(samples, at = Date.now()) {
   }
 }
 
-/** Add a spot to a device's list, keeping the newest MAX_SPOTS. Returns a new array. */
+/** Add a painted spot, keeping the newest MAX_SPOTS painted ones (and any corrections). Returns a new array. */
 export function addSpot(spots, spot) {
-  return [...(spots || []), spot].slice(-MAX_SPOTS)
+  const painted = [...(spots || []).filter((s) => s.kind !== 'correction'), spot].slice(-MAX_SPOTS)
+  return [...painted, ...(spots || []).filter((s) => s.kind === 'correction')]
 }
 
 /** Why a spot shouldn't be saved, or null if it's fine. */
@@ -40,4 +41,34 @@ export function spotProblem(spot) {
   if (!spot) return 'few'
   if (spot.headingSpread > MAX_HEADING_SPREAD) return 'unsteady'
   return null
+}
+
+// Corrections: when the watch picked the wrong device and the user chose
+// the runner-up instead, a small spot where they actually aimed teaches the
+// right device. Each device keeps at most MAX_CORRECTIONS of these, apart
+// from its painted spots, so corrections never push painted spots out.
+export const MAX_CORRECTIONS = 2
+const CORRECTION_HEADING_SPREAD = 4
+const CORRECTION_PITCH_SPREAD = 3
+
+export function correctionSpot(heading, pitch, at = Date.now()) {
+  if (!Number.isFinite(heading) || !Number.isFinite(pitch)) return null
+  const r = (v) => Math.round(v * 10) / 10
+  return {
+    heading: r(heading),
+    headingSpread: CORRECTION_HEADING_SPREAD,
+    pitch: r(pitch),
+    pitchSpread: CORRECTION_PITCH_SPREAD,
+    n: 1,
+    at,
+    kind: 'correction',
+  }
+}
+
+/** Add a correction spot, keeping painted spots and the newest MAX_CORRECTIONS corrections. */
+export function addCorrection(spots, spot) {
+  if (!spot) return spots || []
+  const painted = (spots || []).filter((s) => s.kind !== 'correction')
+  const corrections = [...(spots || []).filter((s) => s.kind === 'correction'), spot].slice(-MAX_CORRECTIONS)
+  return [...painted, ...corrections]
 }

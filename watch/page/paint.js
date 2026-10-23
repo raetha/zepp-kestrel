@@ -4,9 +4,9 @@
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
-import { text, setText, button, clear, fit, listenKeys, COLOR } from './ui.js'
+import { text, setText, button, clear, fit, ask, listenKeys, COLOR } from './ui.js'
 import { startAim } from './aim.js'
-import { targets, paints, savePaints } from './store.js'
+import { targets, paints, savePaints, backupPaints } from './store.js'
 import { makeSpot, addSpot, spotProblem, MAX_SPOTS } from '../lib/paint.js'
 import * as haptics from './haptics.js'
 
@@ -147,6 +147,7 @@ Page(
           const p = paints()
           p[t.id] = addSpot(p[t.id], spot)
           savePaints(p)
+          backupPaints((m, params) => ask(this, m, params, 15000))
           const n = p[t.id].length
           setText(
             this.msgW,

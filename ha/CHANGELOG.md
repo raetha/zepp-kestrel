@@ -14,5 +14,6 @@ All notable changes to the WristWand Home Assistant component. The format is bas
 - Running an action from the watch: toggle, dim, play/pause, run a scene or script, press a button. Locks need a confirming tap on the watch. Repeated commands from Bluetooth retries are ignored.
 - A `wristwand_fired` event for every action, with the watch and target, for automations.
 - Each paired watch appears as a device; deleting the device unpairs the watch.
+- Keeps a backup of each watch's painted devices, so a reset or new watch can restore them.
 - Diagnostics download (tokens redacted), for the integration or for one watch from its device page. It includes the watch's recent probe results.
 - Measurement results from the watch's Probes arrive as `wristwand_probe` events. The newest 200 are kept for the diagnostics download; unpairing a watch deletes its results.

@@ -5,7 +5,12 @@ import { accel, gyro, compass } from './sensors.js'
 import { attitude, mag, AimGate } from '../lib/aim.js'
 import { safe } from './trail.js'
 
-export function startAim(onAim, { mode = 'NORMAL', gate = {} } = {}) {
+/**
+ * @param onAim  called every 100 ms with the current aim
+ * @param opts.onGyro  called with (t, deg/s) for every gyro reading (25 Hz),
+ *                     for triggers such as the wrist flick
+ */
+export function startAim(onAim, { mode = 'NORMAL', gate = {}, onGyro = null } = {}) {
   const a = accel()
   const g = gyro()
   const c = compass()
@@ -16,8 +21,10 @@ export function startAim(onAim, { mode = 'NORMAL', gate = {} } = {}) {
   a.start(mode, (s) => {
     lastA = s
   })
+  const gyroCb = onGyro ? safe('gyro', onGyro) : null
   g.start(mode, (s) => {
     gyroDps = mag(s.x, s.y, s.z)
+    if (gyroCb) gyroCb(s.t, gyroDps)
   })
   c.start('NORMAL', () => {})
 

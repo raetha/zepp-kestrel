@@ -1,6 +1,7 @@
 // What the watch keeps between runs: the synced target list and painted spots.
 
 import { LocalStorage } from '@zos/storage'
+import { METHOD } from '../lib/protocol.js'
 
 const ls = new LocalStorage()
 
@@ -42,4 +43,18 @@ export function forgetPaints(id) {
   const p = paints()
   delete p[id]
   savePaints(p)
+}
+
+/** Flick-to-trigger: { enabled, threshold (deg/s), calibrated }. On by default. */
+export const flickSettings = () => ({ enabled: true, threshold: 600, calibrated: false, ...read('ww.flick', {}) })
+export const saveFlickSettings = (f) => write('ww.flick', { ...flickSettings(), ...f })
+
+/** Send the paints to Home Assistant for safe keeping. Fire and forget. */
+export function backupPaints(ask) {
+  try {
+    const p = paints()
+    if (Object.keys(p).length) ask(METHOD.SAVE_PAINTS, { paints: p }).catch(() => null)
+  } catch (e) {
+    // a backup is best effort
+  }
 }

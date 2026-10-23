@@ -5,7 +5,7 @@ import { tracked, previousRuns, forgetPreviousRuns, noteLaunch } from './trail.j
 import { push } from '@zos/router'
 import { text, setText, button, clear, ask, COLOR } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
-import { targets, paintedDevices, saveTargets } from './store.js'
+import { targets, paintedDevices, saveTargets, paints, savePaints } from './store.js'
 
 // Before the page's own 'open' entry, so a run's trail starts with its launch.
 noteLaunch()
@@ -52,8 +52,7 @@ Page(
         btn(0, 'Point', go('page/point'), true)
         btn(1, 'Paint a device', go('page/paint'))
         btn(2, `Sync (${targets().length})`, () => this.sync())
-        btn(3, 'Probes', go('page/probes'))
-        if (!st.offline) btn(4, 'Unpair', () => this.unpair())
+        btn(3, 'More', go('page/more'))
       },
 
       // What happened in earlier runs (screens, buttons, errors) goes to Home
@@ -69,20 +68,24 @@ Page(
       sync() {
         setText(this.statusW, 'Syncing devices…')
         ask(this, METHOD.SYNC, undefined, 15000)
-          .then((r) => {
-            if (r && r.targets) {
-              saveTargets(r.targets)
-              setText(this.statusW, `${r.targets.length} devices synced`)
-            } else {
+          .then(async (r) => {
+            if (!(r && r.targets)) {
               setText(this.statusW, (r && r.error) || 'Sync failed')
+              return
             }
+            saveTargets(r.targets)
+            let msg = `${r.targets.length} devices synced`
+            // a reset or new watch gets its paints back from Home Assistant
+            if (!Object.keys(paints()).length) {
+              const b = await ask(this, METHOD.LOAD_PAINTS, undefined, 15000).catch(() => null)
+              const restored = (b && b.paints) || {}
+              if (Object.keys(restored).length) {
+                savePaints(restored)
+                msg += `, ${Object.keys(restored).length} paints restored`
+              }
+            }
+            setText(this.statusW, msg)
           })
-          .catch(() => setText(this.statusW, 'Phone not reachable'))
-      },
-
-      unpair() {
-        ask(this, METHOD.UNPAIR)
-          .then(() => this.render({ paired: false }))
           .catch(() => setText(this.statusW, 'Phone not reachable'))
       },
     }),
