@@ -13,7 +13,8 @@ secrets (see docs/development.md -> "Preview installs"):
   python3 tools/zepp_preview.py <dist dir with one .zab> <out dir> [--device-source N]
 
 Like `zeus preview`, it uploads a bundle holding only the chosen watch's package
-(default: Amazfit Balance 3, 11141376) and no intermediate products.
+(default: Amazfit Balance 3, 11141376). The intermediate products (.ip-package) stay:
+Zepp's upload service rejects a bundle without them.
 
 Writes <out>/preview-url.txt (the zpkd1:// style URL Zepp returns), <out>/preview-qr.png
 and <out>/preview-expires.txt. Zepp keeps preview packages for 7 days, so CI uploads a
@@ -72,6 +73,8 @@ def single_device_zab(zab_path, source):
     """The .zab with only the package for one watch, as zeus preview builds it."""
     with zipfile.ZipFile(zab_path) as zab:
         manifest = json.loads(zab.read("manifest.json"))
+        names = zab.namelist()
+        ip = zab.read(".ip-package") if ".ip-package" in names else None
         keep = None
         for entry in manifest["zpks"]:
             zpk = zab.read(entry["name"])
@@ -86,6 +89,8 @@ def single_device_zab(zab_path, source):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr(keep[0]["name"], keep[1])
+        if ".ip-package" in names:    # Zepp's upload service requires it (HTTP 500 without)
+            z.writestr(".ip-package", ip)
         z.writestr("manifest.json", json.dumps(manifest, separators=(",", ":")))
     return buf.getvalue()
 
