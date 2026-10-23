@@ -24,10 +24,19 @@ cards = []
 if (dev / "watch" / WATCH_ZPK).exists():
     make(dev / "watch" / "install-qr.png", f"zpkd1://{PAGES}/dev/watch/{WATCH_ZPK}")
     meta = watch_meta()
+    bundle = ""
+    if (dev / "watch" / "wristwand.zab").exists():
+        # Experiment: the full .zab, as `zeus preview` uploads it. Does the Zepp app then
+        # show the app's settings page (it doesn't for a bare .zpk)?
+        make(dev / "watch" / "install-qr-zab.png", f"zpkd1://{PAGES}/dev/watch/wristwand.zab")
+        bundle = '''<h3>Experiment: full bundle (.zab)</h3>
+<p>Same build as the whole bundle. Try this if the settings page doesn't show up.</p>
+<img class="qr" src="watch/install-qr-zab.png" alt="QR code for the full bundle">
+<p><a href="watch/wristwand.zab">wristwand.zab</a></p>'''
     cards.append(f'''<section><h2>{html.escape(meta["appName"])} DEV</h2>
 <p>based on {html.escape(meta["version"]["name"])} · build {html.escape(build)} · {html.escape(sha)}</p>
 <img class="qr" src="watch/install-qr.png" alt="QR code for the WristWand test build">
-<p><a href="watch/{WATCH_ZPK}">{WATCH_ZPK}</a></p></section>''')
+<p><a href="watch/{WATCH_ZPK}">{WATCH_ZPK}</a></p>{bundle}</section>''')
 stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 dev.mkdir(parents=True, exist_ok=True)
 (dev / "index.html").write_text(f'''<!doctype html>

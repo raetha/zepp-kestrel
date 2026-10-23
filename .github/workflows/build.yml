@@ -92,6 +92,9 @@ jobs:
           python3 tools/make_dev_variant.py "$GITHUB_RUN_NUMBER" "$short"
           (cd watch-dev && zeus build)
           python3 tools/extract_zpk.py watch-dev/dist "$out/watch/wristwand.zpk"
+          # experiment: the whole bundle, as `zeus preview` uploads it (does the Zepp app then
+          # register the settings page and side service?)
+          cp watch-dev/dist/*.zab "$out/watch/wristwand.zab"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
