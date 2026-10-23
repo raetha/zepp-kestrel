@@ -66,7 +66,7 @@ test('attitude: pitch and roll across poses; heading follows the compass', () =>
   }
 })
 
-test('AimGate needs stillness, a sane pose and calibration', () => {
+test('AimGate needs stillness, a sane pose, a settled compass and calibration', () => {
   const gate = new AimGate()
   assert.equal(gate.update(0, 5, 10, 0, true), false) // not still long enough
   assert.equal(gate.update(350, 5, 10, 0, true), true)
@@ -74,9 +74,14 @@ test('AimGate needs stillness, a sane pose and calibration', () => {
   assert.equal(gate.update(700, 5, 10, 0, true), false) // stillness restarted at 700
   assert.equal(gate.update(1100, 5, 85, 0, true), false) // pointing at the ceiling
   assert.equal(gate.update(1110, 5, -75, 0, true), false) // or the floor
-  assert.equal(gate.update(1150, 5, 10, 85, true), false) // wrist turned too far
-  assert.equal(gate.update(1200, 5, 10, 0, false), false) // compass not calibrated
-  assert.equal(gate.update(1300, 5, 10, -30, true), true)
+  assert.equal(gate.update(2700, 5, 10, 0, true), true)
+  assert.equal(gate.update(2710, 5, 10, 60, true), false) // wrist turned too far
+  assert.equal(gate.update(3000, 5, 10, 20, true), false) // back, but the compass is still settling
+  assert.equal(gate.update(4300, 5, 10, -30, true), true)
+  assert.equal(gate.update(4400, 5, 10, 0, false), false) // compass not calibrated
+  gate.reset()
+  assert.equal(gate.update(5000, 5, 10, 0, true), false)
+  assert.equal(gate.update(5300, 5, 10, 0, true), true)
 })
 
 test('analyzeSpike finds a short spike in a quiet window', () => {

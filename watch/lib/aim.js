@@ -9,11 +9,12 @@
 // and turns the heading by 180 degrees, the same way for painting and
 // pointing, so spots still match; the aim gate's limits are symmetric.
 //
-// The compass (getDirectionAngle()) is already tilt-compensated: on a
-// Balance 3 it held steady while the arm was raised and lowered along one
-// line, and while the wrist rolled about 70 degrees about the forearm (M0
-// tilt probe). It reads 90 degrees clockwise of where the forearm points, so
-// the forearm's heading is that minus 90.
+// The compass (getDirectionAngle()) is tilt-compensated for pitch: on a
+// Balance 3 it held within about 2 degrees while the arm was raised and
+// lowered along one line. Turning the wrist shifts it (10-25 degrees at thumb up, 25-45 at palm
+// up) and it settles back over a few seconds: it is heavily smoothed. It reads
+// 90 degrees clockwise of where the forearm points, so the forearm's heading
+// is that minus 90.
 
 import { wrap360 } from '../../lib/circular.js'
 
@@ -47,7 +48,8 @@ export const AIM_DEFAULTS = {
   maxGyroDps: 30, // arm counts as still below this angular rate
   stillMs: 300, // ...for at least this long
   maxAbsPitch: 70, // not pointing at the ceiling or the floor
-  maxAbsRoll: 80, // not palm up (untested); the compass held through about 70 degrees of roll
+  maxAbsRoll: 45, // palm roughly down: the compass heading shifted 10-25 degrees at thumb up
+  settleMs: 1500, // after the pose leaves those limits, the smoothed compass needs time to catch up
 }
 
 /**
@@ -58,6 +60,7 @@ export class AimGate {
   constructor(opts = {}) {
     this.o = { ...AIM_DEFAULTS, ...opts }
     this.stillSince = null
+    this.badPoseAt = null
   }
 
   /**
@@ -75,7 +78,9 @@ export class AimGate {
     }
     const still = this.stillSince !== null && t - this.stillSince >= this.o.stillMs
     const poseOk = Math.abs(pitch) <= this.o.maxAbsPitch && Math.abs(roll) <= this.o.maxAbsRoll
-    return still && poseOk && !!calibrated
+    if (!poseOk) this.badPoseAt = t
+    const settled = this.badPoseAt === null || t - this.badPoseAt >= this.o.settleMs
+    return still && poseOk && settled && !!calibrated
   }
 
   /** Was the arm still for the window ending at t? (used by triggers) */
@@ -85,5 +90,6 @@ export class AimGate {
 
   reset() {
     this.stillSince = null
+    this.badPoseAt = null
   }
 }

@@ -102,7 +102,7 @@ Page(
         let calibrated = true
         this.aim = startAim((a) => {
           calibrated = a.calibrated
-          if (this.recording && a.calibrated && a.heading !== null && Math.abs(a.pitch) <= 75 && Math.abs(a.roll) <= 80) {
+          if (this.recording && a.calibrated && a.heading !== null && Math.abs(a.pitch) <= 75 && Math.abs(a.roll) <= 45) {
             samples.push({ heading: a.heading, pitch: a.pitch })
           }
         })

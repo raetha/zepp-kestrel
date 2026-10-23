@@ -4,7 +4,7 @@
 
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
-import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
+import { setWakeUpRelaunch } from '@zos/display'
 import { event as uiEvent } from '@zos/ui'
 import { text, setText, button, clear, circle, setColor, fit, ask, listenKeys, COLOR } from './ui.js'
 import { startAim } from './aim.js'
@@ -37,7 +37,13 @@ Page(
         this.aimer = new Aimer()
         this.last = { state: null, best: null }
         this.busy = false
-        pauseDropWristScreenOff({ duration: 0 })
+        // Raising the wrist again brings Point back. (By default Zepp OS closes
+        // an app about 10 s after the screen goes off and wakes to the watch face.)
+        try {
+          setWakeUpRelaunch({ relaunch: true })
+        } catch (e) {
+          // older firmware
+        }
       },
 
       build() {
@@ -131,7 +137,11 @@ Page(
       onDestroy() {
         if (this.aim) this.aim.stop()
         this.unkeys && this.unkeys()
-        resetDropWristScreenOff()
+        try {
+          setWakeUpRelaunch({ relaunch: false })
+        } catch (e) {
+          // older firmware
+        }
       },
     }),
   ),
