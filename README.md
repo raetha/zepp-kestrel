@@ -52,7 +52,7 @@ If your phone can't find Home Assistant (another port, or a name other than `hom
 
 ### Running the M0 probes
 
-Under **More → Probes** on the watch. Results show on the watch, and once the watch is paired each one (raw sensor traces included) also goes to Home Assistant; the probe screen says whether it got there. To hand results over, download them in one file: Settings → Devices & services → WristWand → your watch's device → ⋮ → **Download diagnostics**. Home Assistant keeps the newest 200 results. Each also fires a `wristwand_probe` event, for watching live in Developer tools → Events. The select button presses the main button on every probe screen; back returns to the list.
+Under **More → Probes** on the watch. Results show on the watch, and once the watch is paired each one (raw sensor traces included) also goes to Home Assistant; the probe screen says whether it got there. To hand results over, download them in one file: Settings → Devices & services → WristWand → your watch's device → ⋮ → **Download diagnostics**. Home Assistant keeps the newest 500 results. Each also fires a `wristwand_probe` event, for watching live in Developer tools → Events. The select button presses the main button on every probe screen; back returns to the list.
 
 | Probe | What to do | What it answers |
 | --- | --- | --- |

@@ -20,4 +20,4 @@ All notable changes to the WristWand Home Assistant component. The format is bas
 - Can use a sensor whose state is an area (for example from Bermuda) as the watch's current room.
 - Dimming from the watch reports the light's new brightness.
 - Diagnostics download (tokens redacted), for the integration or for one watch from its device page. It includes the watch's recent probe results.
-- Measurement results from the watch's Probes arrive as `wristwand_probe` events. The newest 200 are kept for the diagnostics download; unpairing a watch deletes its results.
+- Measurement results from the watch's Probes arrive as `wristwand_probe` events. The newest 500 are kept for the diagnostics download; unpairing a watch deletes its results.
