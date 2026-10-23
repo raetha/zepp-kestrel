@@ -29,33 +29,49 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from make_qr import make  # noqa: E402
 
+
+def fail(msg):
+    # ::error:: shows as a run annotation (readable without the log); GitHub masks secrets in it
+    print(f"::error title=Zepp preview upload::{msg}")
+    sys.exit(1)
+
+
 dist, out = Path(sys.argv[1]), Path(sys.argv[2])
 token = os.environ.get("ZEPP_APPTOKEN", "").strip()
 userid = os.environ.get("ZEPP_USERID", "").strip()
 host = os.environ.get("ZEPP_CNAME", "").strip()
 if not (token and userid and host):
-    sys.exit("ZEPP_APPTOKEN, ZEPP_USERID and ZEPP_CNAME must all be set")
+    fail("ZEPP_APPTOKEN, ZEPP_USERID and ZEPP_CNAME must all be set")
+host = host.removeprefix("https://").removeprefix("http://").strip("/")
 
 zabs = sorted(dist.glob("*.zab"))
 if len(zabs) != 1:
-    sys.exit(f"expected exactly one .zab in {dist}, found {len(zabs)}")
+    fail(f"expected exactly one .zab in {dist}, found {len(zabs)}")
 
-with zabs[0].open("rb") as f:
-    res = requests.post(
-        f"https://{host}/custom/tools/app-dial/upload",
-        params={"userid": userid},
-        headers={"apptoken": token},
-        files={"file": (zabs[0].name, f, "application/octet-stream")},
-        data={"app_type": "2"},          # 1 = watch face, 2 = app
-        timeout=120,
-    )
+try:
+    with zabs[0].open("rb") as f:
+        res = requests.post(
+            f"https://{host}/custom/tools/app-dial/upload",
+            params={"userid": userid},
+            headers={"apptoken": token},
+            files={"file": (zabs[0].name, f, "application/octet-stream")},
+            data={"app_type": "2"},          # 1 = watch face, 2 = app
+            timeout=120,
+        )
+except requests.RequestException as e:
+    fail(f"could not reach the Zepp host from ZEPP_CNAME ({type(e).__name__}: {e})")
 if res.status_code == 401:
-    sys.exit("Zepp rejected the login (401): the token has expired. Log in again and update ZEPP_APPTOKEN.")
-res.raise_for_status()
-body = res.json()
-protocol, code = body.get("protocol"), body.get("code")
+    fail("Zepp rejected the login (401): the token has expired. Log in again and update ZEPP_APPTOKEN.")
+if res.status_code != 200:
+    fail(f"upload failed: HTTP {res.status_code}: {res.text[:300]}")
+try:
+    body = res.json()
+except ValueError:
+    fail(f"upload returned non-JSON: {res.text[:300]}")
+data = body.get("data", body) if isinstance(body, dict) else {}
+protocol, code = data.get("protocol"), data.get("code")
 if not (protocol and code):
-    sys.exit(f"unexpected response from Zepp: {body}")
+    fail(f"unexpected response from Zepp: {str(body)[:300]}")
 
 url = f"{protocol}://{host}/custom/tools/app-dial/download/{code}"
 expires = (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%d %H:%M UTC")
