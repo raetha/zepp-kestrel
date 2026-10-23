@@ -54,9 +54,9 @@ Pluggable: `start()`, `stop()`, `onFire(cb)`. Snap (accelerometer spike), wrist 
 
 ## What the real watch measured (M0, Balance 3)
 
-- **Motion sensors: 25 Hz.** The accelerometer and gyro deliver about 25 readings a second even in HIGH mode (snap recordings). Zepp OS has no batched or faster API. A finger snap's click lasts about 10 ms and falls between readings; the wrist's turn during a snap (a gyro swing of roughly 200°/s over 200 ms) does show.
+- **Motion sensors: 25 Hz.** The accelerometer and gyro deliver about 25 readings a second in every mode (Sensor rates probe). NORMAL and HIGH deliver one every 40 ms; LOW saves them up and delivers bursts about twice a second, so readings arrive late and with useless timestamps. Use NORMAL. Zepp OS has no faster API. A finger snap's click lasts about 10 ms and falls between readings; the wrist's turn during a snap (a gyro swing of roughly 200°/s over 200 ms) does show.
 - **Axes.** Raising and lowering the arm moves gravity along x, so the forearm is the 3–9 o'clock axis (y, 12 o'clock, points across the wrist).
-- **Compass.** Apps get the heading of 12 o'clock (`getDirectionAngle()`), at about 2 readings a second by default (faster modes from API 4.0), and no raw magnetic field. Whether that heading is tilt-compensated is being measured (Compass tilt probe). If it isn't, aim will steer with the gyro between compass readings taken with the arm level.
+- **Compass.** Apps get the heading of 12 o'clock (`getDirectionAngle()`) and no raw magnetic field. It has a new value about 4 times a second at most: LOW gives one every 2 s or so, NORMAL about 4 a second, and HIGH calls back 13 times a second but mostly repeats values. Use NORMAL. Between compass updates the gyro (25 Hz) is the only way to keep aim responsive. Whether the heading is tilt-compensated is being measured (Compass tilt probe). If it isn't, aim will also steer with the gyro between compass readings taken with the arm level.
 - **Latency.** Watch ↔ phone over Bluetooth: median 0.6 s, 90th percentile 0.9 s. Phone ↔ Home Assistant: median 0.12 s (over a VPN). Bluetooth dominates, so the watch buzzes as soon as a command is sent rather than waiting for the result.
 
 ## Milestones

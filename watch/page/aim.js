@@ -18,7 +18,7 @@ export function startAim(onAim, { mode = 'NORMAL', gate = {} } = {}) {
   g.start(mode, (s) => {
     gyroDps = mag(s.x, s.y, s.z)
   })
-  c.start('HIGH', () => {})
+  c.start('NORMAL', () => {})
 
   const timer = setInterval(() => {
     const h = c.read()

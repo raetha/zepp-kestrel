@@ -53,7 +53,7 @@ export const tiltProbe = {
     g.start('NORMAL', (s) => {
       lastG = s
     })
-    c.start('HIGH', () => {})
+    c.start('NORMAL', () => {})
     ctx.onCleanup(() => {
       a.stop()
       g.stop()

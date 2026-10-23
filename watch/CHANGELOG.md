@@ -22,6 +22,7 @@ All notable changes to the WristWand watch app. The format is based on
 - Aim uses where your forearm points, not where the watch's 12 o'clock points, and allows for the wrist turning a little. Devices painted with earlier test builds need painting again.
 - Compass tilt probe: two short guided recordings (up and down along one line; wrist turned in and out) instead of single captures.
 - Sensor rates probe also measures the compass in each speed mode.
+- Point and Paint read the compass at its normal speed, which gives the most fresh headings.
 
 ### Fixed
 
