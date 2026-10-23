@@ -65,6 +65,7 @@ We aim for the [integration quality scale](https://developers.home-assistant.io/
 - Tests run with HA's deprecation checks, which raise on deprecated APIs (for example `async_get_device` and `DeviceEntry.config_entries`, replaced in 2026 by `async_get_device_by_identifier` and `config_entry_id`). Fix them rather than silencing them.
 - Coverage stays at or above 95% (CI fails below).
 - Strings live in `strings.json`, copied to `translations/en.json` (custom integrations load translations from there).
+- The manifest has no `categories` yet, so HACS validation warns about it. The hassfest image CI runs (the latest stable HA, 2026.10) rejects the key; HA's development branch accepts it. Once a stable HA release accepts it, add `"categories": ["buttons_remotes"]` (allowed values: https://contributors.home-assistant.io/core/integrations/categories/).
 
 ## Testing on the emulator
 
