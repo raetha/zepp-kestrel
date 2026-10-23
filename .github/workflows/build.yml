@@ -101,6 +101,11 @@ jobs:
           # "Preview installs"): the only install route that gets the app's Settings page.
           if [ -n "$ZEPP_APPTOKEN" ]; then
             python3 tools/zepp_preview.py watch-dev/dist "$out/watch"
+            # EXPERIMENT (remove once settled): the same code under the app ID registered in the
+            # Zepp console (1132466). Does the Zepp app only list apps whose ID is the developer's?
+            if [ -d "$GITHUB_WORKSPACE/watch/dist" ]; then
+              python3 tools/zepp_preview.py "$GITHUB_WORKSPACE/watch/dist" "$out/watch-release" || true
+            fi
           else
             echo "::warning::ZEPP_APPTOKEN not set: no preview install (the test build will have no Settings page)"
           fi
