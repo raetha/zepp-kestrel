@@ -19,11 +19,11 @@ All notable changes to the WristWand watch app. The format is based on
 
 ### Changed
 
-- Aim uses where your forearm points, not where the watch's 12 o'clock points, and allows for the wrist turning a little. Devices painted with earlier test builds need painting again.
-- Compass tilt probe: two short guided recordings (up and down along one line; wrist turned in and out) instead of single captures.
+- Aim uses where your forearm points (the watch's compass heading turned by 90°), and works with the wrist turned up to about 80°. Devices painted with earlier test builds need painting again.
+- Compass tilt probe: two short guided recordings (up and down along one line; wrist turned in and out) instead of single captures. Each step is announced by 1 to 4 buzzes, so you needn't read the screen, and all steps are shown before you start.
 - Sensor rates probe also measures the compass in each speed mode.
 - Point and Paint read the compass at its normal speed, which gives the most fresh headings.
 
-### Fixed
+### Added (testing)
 
-- The back button on a probe screen (and on Paint and Point) returns to the previous screen instead of closing the app.
+- The app records which screens it opened, which buttons and swipes arrived, and any errors, and sends that to Home Assistant at the next launch (in the diagnostics download), to track down why the lower button or a swipe sometimes closes the app instead of going back. Errors in a screen are contained instead of closing the app.

@@ -3,8 +3,9 @@
 
 import { createWidget, deleteWidget, widget, align, prop, text_style } from '@zos/ui'
 import { px } from '@zos/utils'
-import { onKey, offKey, KEY_SELECT, KEY_BACK, KEY_EVENT_CLICK } from '@zos/interaction'
+import { onKey, offKey, onGesture, offGesture, KEY_SELECT, KEY_BACK, KEY_EVENT_CLICK } from '@zos/interaction'
 import { back } from '@zos/router'
+import { note, safe } from './trail.js'
 
 export const COLOR = {
   bg: 0x000000,
@@ -91,13 +92,15 @@ export function ask(page, method, params, timeout = 6000) {
 
 /**
  * Physical buttons for a page: SELECT runs onSelect (when given), BACK goes
- * back a page. Back is handled here rather than left to the system, because
- * on the Balance 3 a page that listens to keys was closing the whole app.
+ * back a page. Every button event and swipe is noted in the trail
+ * (page/trail.js), so we can see what the watch really sends: on the
+ * Balance 3 the lower button was closing the app instead of going back.
  * Call the returned function in onDestroy.
  */
 export function listenKeys(onSelect) {
   onKey({
-    callback: (key, event) => {
+    callback: safe('keys', (key, event) => {
+      note('key', [key, event])
       if (key === KEY_SELECT && onSelect) {
         if (event === KEY_EVENT_CLICK) onSelect()
         return event === KEY_EVENT_CLICK
@@ -107,7 +110,16 @@ export function listenKeys(onSelect) {
         return event === KEY_EVENT_CLICK
       }
       return false
-    },
+    }),
   })
-  return () => offKey()
+  onGesture({
+    callback: safe('gesture', (event) => {
+      note('gesture', event)
+      return false
+    }),
+  })
+  return () => {
+    offKey()
+    offGesture()
+  }
 }

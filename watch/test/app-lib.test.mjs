@@ -27,11 +27,11 @@ function pose(headingDeg, pitchDeg, rollDeg) {
 }
 
 // What the sensors would read in that pose: gravity reaction (world up) in
-// device axes, and the compass angle of 12 o'clock.
-function read({ x, y, z }) {
+// device axes, and the compass angle as the Balance 3 reports it (the
+// forearm's heading plus 90, whatever the tilt and roll).
+function read({ x, y, z }, heading) {
   const g = 981
-  const heading12 = ((Math.atan2(y[0], y[1]) * 180) / Math.PI + 360) % 360
-  return { ax: x[2] * g, ay: y[2] * g, az: z[2] * g, heading12 }
+  return { ax: x[2] * g, ay: y[2] * g, az: z[2] * g, compassAngle: (heading + 90) % 360 }
 }
 
 const angleNear = (a, b, eps = 1e-6) => {
@@ -44,24 +44,21 @@ test('attitude: flat, raised, palm up', () => {
   const flat = attitude(0, 0, g, 100)
   near(flat.pitch, 0)
   near(flat.roll, 0)
-  angleNear(flat.heading, 10) // the hand is 90 degrees counterclockwise of 12 o'clock
+  angleNear(flat.heading, 10)
   // right wrist, hand raised 30 degrees: +x (toward the elbow) dips, so gravity's reaction has -x
   near(attitude(-g / 2, 0, (g * Math.sqrt(3)) / 2).pitch, 30)
-  // palm up: 12 o'clock now points the other way; the forearm heading stays put
-  const up = attitude(0, 0, -g, 280)
-  near(Math.abs(up.roll), 180)
-  angleNear(up.heading, 10)
+  near(Math.abs(attitude(0, 0, -g, 100).roll), 180)
   assert.equal(attitude(0, 0, g).heading, null)
   assert.equal(attitude(0, 0, 0), null)
 })
 
-test('attitude recovers the forearm heading across pitch and roll', () => {
+test('attitude: pitch and roll across poses; heading follows the compass', () => {
   for (const heading of [0, 37, 145, 260, 359]) {
     for (const pitch of [-45, -10, 0, 25, 60]) {
-      for (const roll of [-45, -20, 0, 15, 40]) {
-        const { ax, ay, az, heading12 } = read(pose(heading, pitch, roll))
-        const a = attitude(ax, ay, az, heading12)
-        angleNear(a.heading, heading, 1e-6)
+      for (const roll of [-70, -20, 0, 15, 40]) {
+        const r = read(pose(heading, pitch, roll), heading)
+        const a = attitude(r.ax, r.ay, r.az, r.compassAngle)
+        angleNear(a.heading, heading)
         near(a.pitch, pitch, 1e-6)
         near(a.roll, roll, 1e-6)
       }
@@ -77,7 +74,7 @@ test('AimGate needs stillness, a sane pose and calibration', () => {
   assert.equal(gate.update(700, 5, 10, 0, true), false) // stillness restarted at 700
   assert.equal(gate.update(1100, 5, 85, 0, true), false) // pointing at the ceiling
   assert.equal(gate.update(1110, 5, -75, 0, true), false) // or the floor
-  assert.equal(gate.update(1150, 5, 10, 80, true), false) // thumb up: compass heading unreliable
+  assert.equal(gate.update(1150, 5, 10, 85, true), false) // wrist turned too far
   assert.equal(gate.update(1200, 5, 10, 0, false), false) // compass not calibrated
   assert.equal(gate.update(1300, 5, 10, -30, true), true)
 })
@@ -126,4 +123,21 @@ test('Dedupe drops repeats and forgets old entries', () => {
   d.accept(2)
   d.accept(3)
   assert.equal(d.accept(1), true)
+})
+
+test('trail keeps the newest entries and splits off earlier runs', async () => {
+  const { append, splitPrevious, describeError } = await import('../lib/trail.js')
+  const list = []
+  for (let i = 0; i < 5; i++) append(list, [i, 'key', i], 3)
+  assert.deepEqual(list.map((e) => e[0]), [2, 3, 4])
+
+  assert.deepEqual(splitPrevious([[1, 'open', 'home']]), { previous: [], current: [[1, 'open', 'home']] })
+  assert.deepEqual(splitPrevious([[1, 'launch'], [2, 'open']]).previous, [])
+  const run = [[1, 'launch'], [2, 'key'], [3, 'launch'], [4, 'open']]
+  assert.deepEqual(splitPrevious(run), { previous: [[1, 'launch'], [2, 'key']], current: [[3, 'launch'], [4, 'open']] })
+
+  const err = describeError('test.onDestroy', new Error('boom'))
+  assert.equal(err.where, 'test.onDestroy')
+  assert.equal(err.message, 'boom')
+  assert.equal(describeError('x', 'plain').message, 'plain')
 })

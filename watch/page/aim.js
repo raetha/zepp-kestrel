@@ -3,6 +3,7 @@
 
 import { accel, gyro, compass } from './sensors.js'
 import { attitude, mag, AimGate } from '../lib/aim.js'
+import { safe } from './trail.js'
 
 export function startAim(onAim, { mode = 'NORMAL', gate = {} } = {}) {
   const a = accel()
@@ -20,7 +21,7 @@ export function startAim(onAim, { mode = 'NORMAL', gate = {} } = {}) {
   })
   c.start('NORMAL', () => {})
 
-  const timer = setInterval(() => {
+  const timer = setInterval(safe('aim', () => {
     const h = c.read()
     if (!lastA || !h) return
     const calibrated = h.calibrated && h.angle !== null
@@ -30,7 +31,7 @@ export function startAim(onAim, { mode = 'NORMAL', gate = {} } = {}) {
     const t = Date.now()
     const ready = aimGate.update(t, gyroDps, pitch, roll, calibrated && heading !== null)
     onAim({ t, heading, pitch, roll, calibrated, ready, gyroDps })
-  }, 100)
+  }), 100)
 
   return {
     stop() {

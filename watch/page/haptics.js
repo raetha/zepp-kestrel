@@ -1,4 +1,4 @@
-// Short, distinct buzzes for: command sent, command confirmed, error.
+// Short, distinct buzzes for: command sent, command confirmed, error (long).
 
 import { Vibrator, VIBRATOR_SCENE_SHORT_LIGHT, VIBRATOR_SCENE_SHORT_STRONG, VIBRATOR_SCENE_DURATION } from '@zos/sensor'
 
@@ -28,3 +28,4 @@ function buzz(mode) {
 export const sent = () => buzz(VIBRATOR_SCENE_SHORT_LIGHT)
 export const done = () => buzz(VIBRATOR_SCENE_SHORT_STRONG)
 export const failed = () => buzz(VIBRATOR_SCENE_DURATION)
+export const long = failed

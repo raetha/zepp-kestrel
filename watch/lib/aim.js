@@ -9,9 +9,11 @@
 // and turns the heading by 180 degrees, the same way for painting and
 // pointing, so spots still match; the aim gate's limits are symmetric.
 //
-// The compass reports where 12 o'clock points (clockwise from north), which
-// is 90 degrees off the forearm when the screen faces up and drifts further
-// as the wrist rolls. attitude() turns it into the forearm's own heading.
+// The compass (getDirectionAngle()) is already tilt-compensated: on a
+// Balance 3 it held steady while the arm was raised and lowered along one
+// line, and while the wrist rolled about 70 degrees about the forearm (M0
+// tilt probe). It reads 90 degrees clockwise of where the forearm points, so
+// the forearm's heading is that minus 90.
 
 import { wrap360 } from '../../lib/circular.js'
 
@@ -21,29 +23,18 @@ const clamp1 = (v) => Math.max(-1, Math.min(1, v))
 /**
  * @param ax, ay, az  accelerometer reading (any consistent unit; at rest it
  *                    points up, away from gravity)
- * @param heading12   compass angle of 12 o'clock, 0..360, or null
+ * @param compassAngle getDirectionAngle(), 0..360, or null
  * @returns {pitch, roll, heading} in degrees, or null without a reading.
  *   pitch: forearm elevation above horizontal, -90..90
  *   roll: rotation about the forearm, -180..180, 0 = screen facing up
- *   heading: compass heading of the forearm, 0..360, or null. Unreliable
- *     when 12 o'clock points nearly straight up or down (|roll| near 90),
- *     which the aim gate rules out.
+ *   heading: compass heading of the forearm, 0..360, or null
  */
-export function attitude(ax, ay, az, heading12 = null) {
+export function attitude(ax, ay, az, compassAngle = null) {
   const n = Math.sqrt(ax * ax + ay * ay + az * az)
   if (!n) return null
-  const ux = ax / n
-  const uy = ay / n
-  const uz = az / n
-  const pitch = Math.asin(clamp1(-ux)) * DEG
-  const roll = Math.atan2(uy, uz) * DEG
-  let heading = null
-  if (typeof heading12 === 'number' && Number.isFinite(heading12)) {
-    // Angle from 12 o'clock to 3 o'clock, both projected onto the horizontal
-    // plane, counterclockwise seen from above: atan2(u.(y x x), y_h . x_h).
-    const theta = Math.atan2(-uz, -ux * uy) * DEG
-    heading = wrap360(heading12 - theta + 180)
-  }
+  const pitch = Math.asin(clamp1(-ax / n)) * DEG
+  const roll = Math.atan2(ay / n, az / n) * DEG
+  const heading = typeof compassAngle === 'number' && Number.isFinite(compassAngle) ? wrap360(compassAngle - 90) : null
   return { pitch, roll, heading }
 }
 
@@ -56,7 +47,7 @@ export const AIM_DEFAULTS = {
   maxGyroDps: 30, // arm counts as still below this angular rate
   stillMs: 300, // ...for at least this long
   maxAbsPitch: 70, // not pointing at the ceiling or the floor
-  maxAbsRoll: 50, // screen roughly facing up, so the compass heading holds
+  maxAbsRoll: 80, // not palm up (untested); the compass held through about 70 degrees of roll
 }
 
 /**
