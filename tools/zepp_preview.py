@@ -23,6 +23,7 @@ import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import unquote
 
 import requests
 
@@ -37,12 +38,18 @@ def fail(msg):
 
 
 dist, out = Path(sys.argv[1]), Path(sys.argv[2])
-token = os.environ.get("ZEPP_APPTOKEN", "").strip()
-userid = os.environ.get("ZEPP_USERID", "").strip()
-host = os.environ.get("ZEPP_CNAME", "").strip()
-if not (token and userid and host):
+# Values copied out of the login callback URL may still be URL-encoded (%2C and so on).
+token = unquote(os.environ.get("ZEPP_APPTOKEN", "").strip())
+userid = unquote(os.environ.get("ZEPP_USERID", "").strip())
+cname = unquote(os.environ.get("ZEPP_CNAME", "").strip())
+if not (token and userid and cname):
     fail("ZEPP_APPTOKEN, ZEPP_USERID and ZEPP_CNAME must all be set")
-host = host.removeprefix("https://").removeprefix("http://").strip("/")
+# cname is a comma-separated list of the account's regional hosts; like zeus, use the
+# api-mifit one (zeus-cli utils/pre-check.js initVariable).
+hosts = [h.strip().removeprefix("https://").removeprefix("http://").strip("/") for h in cname.split(",")]
+host = next((h for h in hosts if "api-mifit" in h), None)
+if not host:
+    fail(f"ZEPP_CNAME has no api-mifit host ({len(hosts)} entries); copy the whole cname value again")
 
 zabs = sorted(dist.glob("*.zab"))
 if len(zabs) != 1:
