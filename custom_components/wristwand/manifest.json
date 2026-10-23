@@ -4,6 +4,9 @@
   "codeowners": [
     "@raetha"
   ],
+  "categories": [
+    "buttons_remotes"
+  ],
   "config_flow": true,
   "dependencies": [
     "http"
