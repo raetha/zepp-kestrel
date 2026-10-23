@@ -11,9 +11,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.storage import Store
 
 from .const import (
+    DOMAIN,
     PAIR_STARTS_PER_WINDOW,
     PAIR_WINDOW,
     PAIRING_MAX_ATTEMPTS,
@@ -40,16 +42,18 @@ class Pairing:
 
 @dataclass
 class Watches:
-    """Paired watches (persisted) plus pairings in progress (memory only)."""
+    """Paired watches (persisted, one device each) plus pairings in progress (memory only)."""
 
     hass: HomeAssistant
+    entry_id: str
+    version: str = ""
     store: Store = field(init=False)
     watches: dict[str, dict[str, Any]] = field(default_factory=dict)
     pairings: dict[str, Pairing] = field(default_factory=dict)
     starts: dict[str, deque] = field(default_factory=dict)
     seen_seqs: dict[str, deque] = field(default_factory=dict)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self) -> None:  # noqa: D105
         self.store = Store(self.hass, STORAGE_VERSION, STORAGE_KEY)
 
     async def async_load(self) -> None:
@@ -108,6 +112,7 @@ class Watches:
         watch = {"id": watch_id, "name": pairing.watch_name, "token_hash": _hash(token), "paired_at": time.time()}
         self.watches[watch_id] = watch
         await self._async_save()
+        self._device(watch)
         return "ok", watch, token
 
     # ------------------------------------------------------------ paired watches
@@ -125,6 +130,26 @@ class Watches:
             self.watches.pop(wid, None)
             self.seen_seqs.pop(wid, None)
         await self._async_save()
+
+    # ------------------------------------------------------------ devices
+    def _device(self, watch: dict[str, Any]) -> dr.DeviceEntry:
+        return dr.async_get(self.hass).async_get_or_create(
+            config_entry_id=self.entry_id,
+            identifiers={(DOMAIN, watch["id"])},
+            name=watch["name"],
+            manufacturer="Amazfit",
+            model="Zepp OS watch",
+        )
+
+    def sync_devices(self) -> None:
+        """One device per paired watch; devices of watches no longer paired are removed."""
+        dev_reg = dr.async_get(self.hass)
+        for watch in self.watches.values():
+            self._device(watch)
+        for device in dr.async_entries_for_config_entry(dev_reg, self.entry_id):
+            ids = {ident for domain, ident in device.identifiers if domain == DOMAIN}
+            if not ids & set(self.watches):
+                dev_reg.async_remove_device(device.id)
 
     async def async_clear(self) -> None:
         self.watches = {}

@@ -1,0 +1,163 @@
+# Integration quality scale: where WristWand stands on each rule.
+# https://developers.home-assistant.io/docs/core/integration-quality-scale/
+# status: done | todo | exempt (with a comment saying why). Review before each release;
+# rule list checked against home-assistant/core script/hassfest/quality_scale.py (2026-10).
+rules:
+  # Bronze
+  action-setup:
+    status: exempt
+    comment: No service actions; watches use the HTTP API, registered once in async_setup.
+  appropriate-polling:
+    status: exempt
+    comment: No polling; watches push requests.
+  brands:
+    status: todo
+    comment: Add brand images (home-assistant/brands or the custom integration brand folder) before the first release.
+  common-modules:
+    status: done
+  config-flow:
+    status: done
+  config-flow-test-coverage:
+    status: done
+  dependency-transparency:
+    status: exempt
+    comment: No external requirements.
+  docs-actions:
+    status: exempt
+    comment: No service actions.
+  docs-conditions:
+    status: exempt
+    comment: No conditions.
+  docs-high-level-description:
+    status: done
+    comment: README "How it will work".
+  docs-installation-instructions:
+    status: done
+    comment: README "Try the test build"; update for HACS default repositories at release.
+  docs-removal-instructions:
+    status: todo
+  docs-triggers:
+    status: todo
+    comment: Document the wristwand_fired and wristwand_probe events (device triggers planned).
+  entity-event-setup:
+    status: exempt
+    comment: No entities yet.
+  entity-unique-id:
+    status: exempt
+    comment: No entities yet.
+  has-entity-name:
+    status: exempt
+    comment: No entities yet.
+  runtime-data:
+    status: done
+  test-before-configure:
+    status: exempt
+    comment: Nothing to connect to when adding the integration; watches pair afterwards.
+  test-before-setup:
+    status: exempt
+    comment: No external connection at setup.
+  unique-config-entry:
+    status: done
+    comment: single_config_entry in manifest.json.
+
+  # Silver
+  action-exceptions:
+    status: exempt
+    comment: No service actions. API errors return JSON messages to the watch.
+  config-entry-unloading:
+    status: done
+    comment: HTTP views can't be unregistered; they answer 404 while no entry is loaded.
+  docs-configuration-parameters:
+    status: exempt
+    comment: No options.
+  docs-installation-parameters:
+    status: exempt
+    comment: The config flow has no fields.
+  entity-unavailable:
+    status: exempt
+    comment: No entities yet.
+  integration-owner:
+    status: done
+  log-when-unavailable:
+    status: exempt
+    comment: Nothing is polled; watches report their own connection problems.
+  parallel-updates:
+    status: exempt
+    comment: No entity platforms.
+  reauthentication-flow:
+    status: exempt
+    comment: No credentials; a removed watch pairs again from the watch.
+  test-coverage:
+    status: done
+    comment: CI requires 95%.
+
+  # Gold
+  devices:
+    status: done
+    comment: One device per paired watch.
+  diagnostics:
+    status: done
+  discovery:
+    status: exempt
+    comment: Nothing to discover from Home Assistant's side; watches find Home Assistant.
+  discovery-update-info:
+    status: exempt
+    comment: No discovery.
+  docs-data-update:
+    status: exempt
+    comment: No data is fetched.
+  docs-examples:
+    status: todo
+    comment: Automation examples with wristwand_fired.
+  docs-known-limitations:
+    status: todo
+  docs-supported-devices:
+    status: todo
+    comment: Zepp OS watches with a compass.
+  docs-supported-functions:
+    status: todo
+  docs-troubleshooting:
+    status: todo
+  docs-use-cases:
+    status: todo
+  dynamic-devices:
+    status: done
+    comment: Devices are added when a watch pairs.
+  entity-category:
+    status: exempt
+    comment: No entities yet.
+  entity-device-class:
+    status: exempt
+    comment: No entities yet.
+  entity-disabled-by-default:
+    status: exempt
+    comment: No entities yet.
+  entity-translations:
+    status: exempt
+    comment: No entities yet.
+  exception-translations:
+    status: exempt
+    comment: No exceptions are raised to the user interface.
+  icon-translations:
+    status: exempt
+    comment: No entities yet.
+  reconfiguration-flow:
+    status: exempt
+    comment: Nothing to reconfigure.
+  repair-issues:
+    status: todo
+    comment: Consider a repair issue when Home Assistant has no external URL (watches then only work at home).
+  stale-devices:
+    status: done
+    comment: Devices of watches no longer paired are removed at setup; deleting a device unpairs the watch.
+
+  # Platinum
+  async-dependency:
+    status: exempt
+    comment: No external library.
+  inject-websession:
+    status: exempt
+    comment: No HTTP client.
+  strict-typing:
+    status: todo
+    comment: Fully annotated; add py.typed and a mypy --strict check in CI.

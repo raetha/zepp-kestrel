@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import { makeSpot, addSpot, MAX_SPOTS } from '../lib/paint.js'
 import { scoreSpot, rank, Aimer, STATE } from '../lib/classifier.js'
-import { HaClient, directServiceCall, normalizeUrl } from '../lib/ha-client.js'
+import { HaClient, directServiceCall, normalizeUrl, expandAddress, DISCOVERY_CANDIDATES } from '../lib/ha-client.js'
 
 // ------------------------------------------------------------------ painting
 function sweep(center, pitch, n = 40, width = 10) {
@@ -198,4 +198,17 @@ test('spotProblem flags too few samples and unsteady compass readings', async ()
   assert.equal(spotProblem(null), 'few')
   assert.equal(spotProblem(makeSpot(sweep(90, 0))), null)
   assert.equal(spotProblem(makeSpot(sweep(90, 0, 40, 200))), 'unsteady')
+})
+
+test('discovery tries port 80 and 8123, and typed addresses', async () => {
+  assert.ok(DISCOVERY_CANDIDATES.includes('http://homeassistant.local'))
+  assert.ok(DISCOVERY_CANDIDATES.includes('http://homeassistant.local:8123'))
+  assert.deepEqual(expandAddress('192.168.1.20'), ['http://192.168.1.20', 'http://192.168.1.20:8123'])
+  assert.deepEqual(expandAddress('192.168.1.20:9000'), ['http://192.168.1.20:9000'])
+  assert.deepEqual(expandAddress('https://ha.example/'), ['https://ha.example'])
+  const fetch = fakeFetch({
+    'GET http://192.168.1.20:9000/api/wristwand/info': async () => ({ status: 200, body: { name: 'WristWand', ha_name: 'Lab' } }),
+  })
+  const found = await new HaClient({ fetch, store: memStore() }).discover(['192.168.1.20:9000'])
+  assert.deepEqual(found, [{ url: 'http://192.168.1.20:9000', haName: 'Lab', version: undefined }])
 })

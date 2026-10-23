@@ -16,7 +16,7 @@ This is the canonical guide for the repository. Read it before changing anything
 | `lib/` | Generic helpers with no tie to watches (MIT): circular statistics, summary statistics, a rate meter. Tests in `lib/test/`. Watch code imports them by relative path. |
 | `watch/docs/` | Install QR code and emulator screenshots. |
 | `watch/CHANGELOG.md` | The watch app's version history; its sections become release notes. |
-| `custom_components/wristwand/` | The Home Assistant component (MIT): pairing, the target list and actions for watches (`http.py`), paired watches (`watches.py`), targets and service mapping (`targets.py`), config and options flows. At the repo root because HACS expects it there. |
+| `custom_components/wristwand/` | The Home Assistant component (MIT): the watch API (`http.py`), paired watches and their devices (`watches.py`), targets and service mapping (`targets.py`), config flow, diagnostics, and `quality_scale.yaml` (the status of every quality-scale rule). At the repo root because HACS expects it there. |
 | `ha/` | The component's tests (`ha/tests/`, pytest against a real HA core), `CHANGELOG.md`, `requirements_test.txt` and `DRAFT`. |
 | `hacs.json` | HACS metadata for installing the component as a custom repository. |
 | `tools/` | Packaging, release and site helpers, and `emu/` (the emulator). |
@@ -55,6 +55,16 @@ Prefer a maintained library over our own code; write our own when nothing mainta
 | Snap / tap / flick detection | Our own `watch/lib/spike.js` | Nothing maintained exists for this; it will be tuned on our own recordings. |
 | Bluetooth scanning | Zepp's `@zos/ble` directly | We only scan and read signal strength. `@silver-zepp/easy-ble` (MIT, last published 2024) helps with connecting to devices, which we don't do. |
 | Storing paint data (M2) | To decide | Candidates: Zepp's built-in storage, or `@silver-zepp/easy-storage` (MIT, published 2025). |
+
+## The Home Assistant component and the quality scale
+
+We aim for the [integration quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/) as we go, so the final compliance check finds little to change. `custom_components/wristwand/quality_scale.yaml` lists every rule as done, todo or exempt (with the reason); update it in the same change as the code. Rules that shape everyday code:
+
+- State lives on the config entry (`entry.runtime_data`, typed `WristWandConfigEntry`), never in `hass.data`. The HTTP views find it with `hass.config_entries.async_loaded_entries(DOMAIN)`.
+- Each paired watch is a device (`identifiers={(DOMAIN, watch_id)}`); deleting it unpairs the watch (`async_remove_config_entry_device`), and setup removes devices of watches that are gone.
+- Tests run with HA's deprecation checks, which raise on deprecated APIs (for example `async_get_device` and `DeviceEntry.config_entries`, replaced in 2026 by `async_get_device_by_identifier` and `config_entry_id`). Fix them rather than silencing them.
+- Coverage stays at or above 95% (CI fails below).
+- Strings live in `strings.json`, copied to `translations/en.json` (custom integrations load translations from there).
 
 ## Testing on the emulator
 
@@ -134,7 +144,7 @@ Repository settings (owner, one time):
 
 `.github/workflows/build.yml`:
 
-- **Every push and pull request:** `tools/release_plan.py` (fails if a non-draft component's version has no changelog section), `npm test`, a Zeus build of the watch app, and the HA component's tests (`ha-tests` job, Python 3.14).
+- **Every push and pull request:** `tools/release_plan.py` (fails if a non-draft component's version has no changelog section), `npm test`, a Zeus build of the watch app, the HA component's tests with at least 95% coverage (`ha-tests`, Python 3.14), and `validate`: Home Assistant's hassfest and the HACS repository checks.
 - **On `main`, for each component whose `<component>-vX.Y.Z` tag doesn't exist yet:** creates the tag and a GitHub release, with notes from the changelog plus install instructions.
 - **Every push to `main` or `dev`:** builds the DEV test build from the tip of `dev` and redeploys the Pages site. The public install page only ever offers released versions.
 

@@ -130,12 +130,27 @@ jobs:
       - name: Install the HA test harness
         run: pip install -r ha/requirements_test.txt
 
-      - name: Component tests
+      - name: Component tests (95% coverage required, quality scale Silver)
         working-directory: ha
-        run: pytest -q
+        run: pytest -q --cov=custom_components.wristwand --cov-report=term-missing --cov-fail-under=95
+
+  validate:
+    # Home Assistant's own manifest/translation checks and the HACS repository checks.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: hassfest
+        uses: home-assistant/actions/hassfest@cd6f3635a740c84d8a14f6121a90068b8ece6bf6 # master, 2026-10
+
+      - name: HACS validation
+        uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0
+        with:
+          category: integration
+          ignore: brands   # custom integrations; brand images come with the first release
 
   release:
-    needs: [build, ha-tests]
+    needs: [build, ha-tests, validate]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.releases != '[]'
     runs-on: ubuntu-24.04
     permissions:
@@ -169,7 +184,7 @@ jobs:
   # so HACS can install test builds once "beta versions" is on for WristWand. Older dev
   # pre-releases (and their tags) are deleted; real releases are never touched.
   ha-dev-release:
-    needs: [build, ha-tests]
+    needs: [build, ha-tests, validate]
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-24.04
     permissions:
@@ -193,11 +208,11 @@ jobs:
             done
 
   pages:
-    needs: [build, ha-tests, release]
+    needs: [build, ha-tests, validate, release]
     if: >-
       always() && github.event_name != 'pull_request' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
-      needs.build.result == 'success' && needs.ha-tests.result == 'success' &&
+      needs.build.result == 'success' && needs.ha-tests.result == 'success' && needs.validate.result == 'success' &&
       (needs.release.result == 'success' || needs.release.result == 'skipped')
     runs-on: ubuntu-24.04
     concurrency:
@@ -260,10 +275,10 @@ jobs:
   # After a release pull request is merged, dev holds the same files as main but different
   # commits; reset it to main so the next cycle starts clean. Skipped if dev has new work.
   sync-dev:
-    needs: [build, ha-tests, release]
+    needs: [build, ha-tests, validate, release]
     if: >-
       always() && github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      needs.build.result == 'success' && needs.ha-tests.result == 'success' &&
+      needs.build.result == 'success' && needs.ha-tests.result == 'success' && needs.validate.result == 'success' &&
       (needs.release.result == 'success' || needs.release.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:

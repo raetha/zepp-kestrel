@@ -31,7 +31,9 @@ Test builds are for development and change often.
 
 **4. Paint and point.** Paint a device: pick it, stand where you'd use it, press Start, and sweep your arm slowly across it for 15 s. Then Point: hold your arm out at it. The circle turns green when the watch has it in mind; press the select button (or tap the circle) to toggle it. Locks ask for a confirming tap.
 
-To offer the watch only some devices, add the label `wristwand` to those entities or devices in Home Assistant, then Sync on the watch.
+To offer the watch only some devices, add the label `wristwand` to those entities or devices in Home Assistant, then Sync on the watch. Each paired watch appears in Home Assistant as a device under the WristWand integration; delete the device to unpair it.
+
+If your phone can't find Home Assistant (another port, or a name other than `homeassistant.local`), choose **Type address** on the watch and enter its IP address, with `:port` if it isn't 80 or 8123.
 
 ### Running the M0 probes
 

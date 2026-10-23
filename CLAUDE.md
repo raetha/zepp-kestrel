@@ -15,6 +15,7 @@ WristWand: point an Amazfit / Zepp OS watch at a smart-home device and trigger i
 ## Validate on the real firmware
 
 - `npm test` runs the pure-JS library tests (`lib/` and `watch/lib/`). Fast, but no Zepp runtime.
+- HA component: keep `custom_components/wristwand/quality_scale.yaml` current with each change (`docs/development.md` → "The Home Assistant component and the quality scale"). State on `entry.runtime_data`, one device per watch, ≥95% test coverage. HA's deprecation checks fail tests on deprecated APIs: fix, don't silence.
 - HA component tests run against a real HA core (Python 3.14): `uv venv .venv --python 3.14 && uv pip install --python .venv/bin/python -r ha/requirements_test.txt`, then `cd ha && ../.venv/bin/pytest -q`.
 - The emulator runs the real Zepp OS firmware (Balance 2 image, API 4.2) in QEMU, headless. Use it to catch crashes and layout problems before a push. First-time setup in a fresh container (about 5 minutes, about 240 MB):
 

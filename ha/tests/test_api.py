@@ -9,11 +9,15 @@ from homeassistant.helpers import area_registry as ar, entity_registry as er, la
 from custom_components.wristwand.const import DOMAIN, EVENT_FIRED, TOKEN_HEADER
 
 
+def _watches(hass):
+    return hass.config_entries.async_loaded_entries(DOMAIN)[0].runtime_data
+
+
 async def _pair(hass, client, name="Balance 3"):
     res = await client.post("/api/wristwand/pair", json={"watch_name": name})
     assert res.status == HTTPStatus.OK
     pairing_id = (await res.json())["pairing_id"]
-    code = hass.data[DOMAIN].pairings[pairing_id].code
+    code = _watches(hass).pairings[pairing_id].code
     res = await client.post("/api/wristwand/pair/confirm", json={"pairing_id": pairing_id, "code": code})
     assert res.status == HTTPStatus.OK
     return await res.json()
@@ -43,7 +47,7 @@ async def test_pairing_shows_a_code_and_issues_a_token(hass, setup_entry, hass_c
     client = await hass_client_no_auth()
     res = await client.post("/api/wristwand/pair", json={"watch_name": "Balance 3"})
     pairing_id = (await res.json())["pairing_id"]
-    pairing = hass.data[DOMAIN].pairings[pairing_id]
+    pairing = _watches(hass).pairings[pairing_id]
     # the code is shown to the HA user as a notification
     from homeassistant.components import persistent_notification
 
@@ -67,7 +71,7 @@ async def test_too_many_wrong_codes_cancels_the_pairing(hass, setup_entry, hass_
     client = await hass_client_no_auth()
     res = await client.post("/api/wristwand/pair", json={"watch_name": "W"})
     pairing_id = (await res.json())["pairing_id"]
-    code = hass.data[DOMAIN].pairings[pairing_id].code
+    code = _watches(hass).pairings[pairing_id].code
     for _ in range(5):
         await client.post("/api/wristwand/pair/confirm", json={"pairing_id": pairing_id, "code": "x"})
     res = await client.post("/api/wristwand/pair/confirm", json={"pairing_id": pairing_id, "code": code})

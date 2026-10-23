@@ -35,7 +35,7 @@ AppSideService(
           case METHOD.STATUS:
             return this.ha.status()
           case METHOD.DISCOVER:
-            return { found: await this.ha.discover() }
+            return { found: await this.ha.discover(p.address ? [p.address] : []) }
           case METHOD.PAIR_START:
             return this.ha.pairStart(p.url, p.watchName)
           case METHOD.PAIR_CONFIRM:

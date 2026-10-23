@@ -40,11 +40,11 @@ Page(
     },
 
     // ------------------------------------------------------------ step 1: find HA
-    discover() {
+    discover(address) {
       clear(this.widgets)
       setText(this.titleW, 'Pair')
-      setText(this.msgW, 'Looking for Home Assistant on your network…')
-      ask(this, METHOD.DISCOVER, undefined, 15000)
+      setText(this.msgW, address ? `Looking for Home Assistant at ${address}…` : 'Looking for Home Assistant on your network…')
+      ask(this, METHOD.DISCOVER, address ? { address } : undefined, 15000)
         .then((r) => {
           const found = (r && r.found) || []
           if (r && r.error) return this.nothing(r.error)
@@ -54,7 +54,8 @@ Page(
           found.slice(0, 3).forEach((ha, i) =>
             this.add(button({ x: 90, w: 300, y: 150 + i * 70, h: 58, label: fit(ha.haName, 20), primary: true, onClick: () => this.start(ha) })),
           )
-          this.add(button({ x: 150, w: 180, y: 380, h: 50, size: 22, label: 'Search again', onClick: () => this.discover() }))
+          this.add(button({ x: 70, w: 166, y: 370, h: 50, size: 20, label: 'Search again', onClick: () => this.discover() }))
+          this.add(button({ x: 244, w: 166, y: 370, h: 50, size: 20, label: 'Type address', onClick: () => this.addressPad() }))
         })
         .catch(() => this.nothing('Phone not reachable. Is the Zepp app open and connected?'))
     },
@@ -64,9 +65,45 @@ Page(
       setText(
         this.msgW,
         error ||
-          'No Home Assistant with WristWand found. Your phone must be on the home Wi-Fi, and the WristWand integration added in HA.',
+          'No Home Assistant with WristWand found. Your phone must be on the home Wi-Fi, and the WristWand integration added in HA. Using another address or port? Type it.',
       )
-      this.add(button({ x: 120, w: 240, y: 320, h: 56, label: 'Try again', primary: true, onClick: () => this.discover() }))
+      this.add(button({ x: 120, w: 240, y: 300, h: 56, label: 'Try again', primary: true, onClick: () => this.discover() }))
+      this.add(button({ x: 120, w: 240, y: 366, h: 52, size: 22, label: 'Type address', onClick: () => this.addressPad() }))
+    },
+
+    // ------------------------------------------------------------ typed address, e.g. 192.168.1.20:8123
+    addressPad() {
+      clear(this.widgets)
+      this.address = this.address || ''
+      setText(this.titleW, 'HA address')
+      setText(this.msgW, '')
+      this.add(text({ y: 74, h: 26, size: 17, color: COLOR.quiet, value: 'IP, and :port if not 80 or 8123' }))
+      this.addrW = this.add(text({ x: 50, y: 100, w: 380, h: 40, size: 28, value: this.address || '_' }))
+      const keys = ['1', '2', '3', '.', '4', '5', '6', ':', '7', '8', '9', 'Del', '0', 'OK']
+      keys.forEach((k, i) => {
+        const col = i % 4
+        const row = Math.floor(i / 4)
+        const wide = k === 'OK'
+        this.add(
+          button({
+            x: 72 + col * 86,
+            y: 148 + row * 62,
+            w: wide ? 164 : 78,
+            h: 54,
+            size: k.length > 1 ? 22 : 28,
+            label: k,
+            primary: wide,
+            onClick: () => this.addrKey(k),
+          }),
+        )
+      })
+    },
+
+    addrKey(k) {
+      if (k === 'Del') this.address = this.address.slice(0, -1)
+      else if (k === 'OK') return this.address && this.discover(this.address)
+      else if (this.address.length < 21) this.address += k
+      setText(this.addrW, this.address || '_')
     },
 
     // ------------------------------------------------------------ step 2: code

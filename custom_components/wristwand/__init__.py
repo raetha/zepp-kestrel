@@ -2,49 +2,58 @@
 
 The integration gives watches a small API of their own (see http.py): pairing
 with a code shown in Home Assistant, the list of things they can point at, and
-running an action. Every action fires a `wristwand_fired` event for automations.
+running an action. Each paired watch is a device; deleting the device unpairs
+it. Every action fires a `wristwand_fired` event for automations.
 """
 
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN
 from .http import VIEWS
 from .watches import Watches
 
-_VIEWS_REGISTERED = f"{DOMAIN}_views_registered"
+type WristWandConfigEntry = ConfigEntry[Watches]
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Load paired watches and expose the watch API."""
-    watches = Watches(hass)
-    await watches.async_load()
-    hass.data[DOMAIN] = watches
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the watch API once. It answers 404 while no entry is loaded."""
+    for view in VIEWS:
+        hass.http.register_view(view())
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: WristWandConfigEntry) -> bool:
+    """Load paired watches and their devices."""
     integration = await async_get_integration(hass, DOMAIN)
-    hass.data[f"{DOMAIN}_version"] = str(integration.version or "")
-    # HTTP views can't be unregistered: register once per run; they answer 404
-    # while no entry is loaded (hass.data[DOMAIN] missing).
-    if not hass.data.get(_VIEWS_REGISTERED):
-        for view in VIEWS:
-            hass.http.register_view(view())
-        hass.data[_VIEWS_REGISTERED] = True
-    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+    watches = Watches(hass, entry.entry_id, version=str(integration.version or ""))
+    await watches.async_load()
+    watches.sync_devices()
+    entry.runtime_data = watches
     return True
 
 
-async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    await hass.config_entries.async_reload(entry.entry_id)
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    hass.data.pop(DOMAIN, None)
+async def async_unload_entry(hass: HomeAssistant, entry: WristWandConfigEntry) -> bool:
+    """Nothing to tear down: the API checks for a loaded entry on every request."""
     return True
 
 
-async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def async_remove_entry(hass: HomeAssistant, entry: WristWandConfigEntry) -> None:
     """Removing the integration forgets every paired watch."""
-    watches = Watches(hass)
-    await watches.async_clear()
+    await Watches(hass, entry.entry_id).async_clear()
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: WristWandConfigEntry, device: dr.DeviceEntry
+) -> bool:
+    """Deleting a watch's device unpairs that watch."""
+    watch_ids = [ident for domain, ident in device.identifiers if domain == DOMAIN]
+    await entry.runtime_data.async_remove(watch_ids)
+    return True

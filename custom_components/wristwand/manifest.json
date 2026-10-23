@@ -1,11 +1,15 @@
 {
   "domain": "wristwand",
   "name": "WristWand",
-  "codeowners": ["@raetha"],
+  "codeowners": [
+    "@raetha"
+  ],
   "config_flow": true,
-  "dependencies": ["http", "persistent_notification"],
+  "dependencies": [
+    "http"
+  ],
   "documentation": "https://github.com/raetha/zepp-wristwand",
-  "integration_type": "service",
+  "integration_type": "hub",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/raetha/zepp-wristwand/issues",
   "requirements": [],

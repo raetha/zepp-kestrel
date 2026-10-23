@@ -11,11 +11,28 @@
 //   fetch({ url, method, headers, body, timeout }) -> Promise<{ status, body }>
 //   store.getItem(key) -> string | null ; store.setItem(key, string)
 
+// New Home Assistant OS installs (2026.8+) listen on port 80; older installs and
+// containers on 8123. Users with another port or name can type an address on the watch.
 export const DISCOVERY_CANDIDATES = [
+  'http://homeassistant.local',
   'http://homeassistant.local:8123',
+  'http://homeassistant',
   'http://homeassistant:8123',
+  'https://homeassistant.local',
   'https://homeassistant.local:8123',
 ]
+
+/**
+ * URLs to try for an address typed on the watch: "192.168.1.20", "192.168.1.20:8123"
+ * or a full URL. Without a port, try 80 and 8123.
+ */
+export function expandAddress(text) {
+  const t = (text || '').trim().replace(/\/+$/, '')
+  if (!t) return []
+  if (/^https?:\/\//i.test(t)) return [t]
+  if (/:\d+$/.test(t)) return [`http://${t}`]
+  return [`http://${t}`, `http://${t}:8123`]
+}
 
 export const SUPPORTED_DOMAINS = [
   'light', 'switch', 'fan', 'media_player', 'lock', 'cover', 'climate',
@@ -94,6 +111,7 @@ export class HaClient {
   // ---------------------------------------------------------------- discovery and pairing
   /** Probe likely local addresses (and any saved ones) for the WristWand component. */
   async discover(extra = []) {
+    extra = extra.flatMap((a) => expandAddress(a))
     const p = this.pairing()
     const direct = this.directConfig()
     const urls = [...new Set([...extra, ...(p ? p.urls : []), direct && direct.url, ...DISCOVERY_CANDIDATES]

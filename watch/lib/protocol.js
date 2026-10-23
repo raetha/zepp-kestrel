@@ -6,7 +6,7 @@ export const METHOD = {
   HA_PING: 'ww.haPing', // phone calls HA GET /api/: measures phone <-> HA
   PROBE_LOG: 'ww.probeLog', // watch sends a probe result for storage/forwarding
   STATUS: 'ww.status', // { paired, mode, haName }
-  DISCOVER: 'ww.discover', // look for Home Assistant on the local network
+  DISCOVER: 'ww.discover', // { address? } look for Home Assistant on the local network (or at a typed address)
   PAIR_START: 'ww.pairStart', // { url, watchName } -> { pairingId } (HA shows a code)
   PAIR_CONFIRM: 'ww.pairConfirm', // { url, pairingId, code } -> { ok, haName, error }
   UNPAIR: 'ww.unpair',

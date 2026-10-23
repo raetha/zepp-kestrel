@@ -33,7 +33,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _watches(hass: HomeAssistant) -> Watches | None:
-    return hass.data.get(DOMAIN)
+    """The loaded entry's paired watches, or None while WristWand isn't set up."""
+    entries = hass.config_entries.async_loaded_entries(DOMAIN)
+    return entries[0].runtime_data if entries else None
 
 
 def _error(message: str, status: HTTPStatus) -> web.Response:
@@ -82,8 +84,8 @@ class InfoView(HomeAssistantView):
         hass = request.app[KEY_HASS]
         if _watches(hass) is None:
             return _error("WristWand is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
-        version = hass.data.get(f"{DOMAIN}_version", "")
-        return web.json_response({"name": NAME, "version": version, "ha_name": hass.config.location_name})
+        watches = _watches(hass)
+        return web.json_response({"name": NAME, "version": watches.version, "ha_name": hass.config.location_name})
 
 
 class PairView(HomeAssistantView):
