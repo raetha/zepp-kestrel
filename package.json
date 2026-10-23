@@ -11,7 +11,8 @@
     "qr": "python3 tools/make_qr.py"
   },
   "dependencies": {
-    "@zeppos/zml": "0.0.43"
+    "@zeppos/zml": "0.0.43",
+    "simple-statistics": "7.12.1"
   },
   "devDependencies": {
     "@zeppos/device-types": "4.0.0",

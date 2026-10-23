@@ -36,6 +36,20 @@ npm install -g @zeppos/zeus-cli@1.9.3        # builds the watch app
 4. Run it on the emulator (below): open the screens you changed, look at screenshots, and check `tools/.emu/serial.log` for `Mini Program Error`.
 5. Push to `dev` and test on the watch from the test-build page.
 
+## Dependencies
+
+Prefer a maintained library over our own code; write our own when nothing maintained fits. Pin exact versions (Dependabot proposes updates weekly). Everything bundled into the watch app runs in Zepp's QuickJS and counts against the package size, so check the bundled size too.
+
+| Need | Choice | Why |
+| --- | --- | --- |
+| Watch ↔ phone messaging, side-service HTTP | `@zeppos/zml` | Zepp's official library. |
+| Mean, median, quantiles, standard deviation | `simple-statistics` (ISC) | Maintained; about 3.4 KB bundled for what we use. `lib/stats.js` wraps it. |
+| Circular statistics (compass headings) | Our own `lib/circular.js` | `angles` (MIT, maintained) has normalising, distances and a plain average, but no weighted mean and no spread measure, which the paint model needs; it also keeps a global scale setting. |
+| Pitch and roll from gravity | Our own `watch/lib/aim.js` | Two textbook formulas. Sensor-fusion libraries (for example `ahrs`, unmaintained since 2023) need raw magnetometer readings, which Zepp OS doesn't expose (the compass API gives only a heading). |
+| Snap / tap / flick detection | Our own `watch/lib/spike.js` | Nothing maintained exists for this; it will be tuned on our own recordings. |
+| Bluetooth scanning | Zepp's `@zos/ble` directly | We only scan and read signal strength. `@silver-zepp/easy-ble` (MIT, last published 2024) helps with connecting to devices, which we don't do. |
+| Storing paint data (M2) | To decide | Candidates: Zepp's built-in storage, or `@silver-zepp/easy-storage` (MIT, published 2025). |
+
 ## Testing on the emulator
 
 `tools/emu/emu.mjs` runs the app on the real Zepp OS firmware, headless, using the QEMU emulator that ships with Zepp's simulator. The image is the Amazfit Balance 2 (480×480 round, Zepp OS 5, API 4.2), the closest Zepp publishes to the Balance 3.
