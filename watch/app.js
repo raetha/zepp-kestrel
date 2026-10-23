@@ -1,24 +1,13 @@
 import { BaseApp } from '@zeppos/zml/base-app'
-import { getDeviceInfo } from '@zos/device'
-import { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } from '@zos/interaction'
-import { note } from './page/trail.js'
 
+// No storage writes here: the app context keeps its own copy of
+// LocalStorage and writes it back when the app closes, which wiped what the
+// pages had written (the trail's page entries were lost that way). The home
+// page notes each launch instead (page/trail.js, noteLaunch).
 App(
   BaseApp({
-    globalData: {},
-    onCreate() {
-      let device = null
-      try {
-        const d = getDeviceInfo()
-        device = { source: d.deviceSource, width: d.width, height: d.height, shape: d.screenShape }
-      } catch (e) {
-        device = null
-      }
-      // A new run starts here; the key codes say which button is which on this watch.
-      note('launch', { device, keys: { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } })
-    },
-    onDestroy() {
-      note('exit')
-    },
+    globalData: { launched: false },
+    onCreate() {},
+    onDestroy() {},
   }),
 )

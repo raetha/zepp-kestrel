@@ -92,6 +92,11 @@ export const tiltProbe = {
       once(async () => {
         const name = names[which]
         const { phases } = RECORDINGS[name]
+        const h = c.read()
+        if (!h || !h.calibrated || h.angle === null) {
+          ctx.status('The compass needs calibrating first. Open the Compass app on the watch and follow its prompt, then come back and press Record.')
+          return
+        }
         for (let s = 3; s > 0; s--) {
           ctx.status(`Get ready: ${phases[0][1]}\n\nStarting in ${s}…`)
           await sleep(1000)

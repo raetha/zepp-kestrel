@@ -2,6 +2,8 @@
 // callbacks so an error is recorded (and contained) instead of closing the app.
 
 import { LocalStorage } from '@zos/storage'
+import { getDeviceInfo } from '@zos/device'
+import { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } from '@zos/interaction'
 import { append, splitPrevious, describeError } from '../lib/trail.js'
 
 const KEY = 'ww.trail'
@@ -68,4 +70,29 @@ export function tracked(name, def) {
     }
   }
   return out
+}
+
+
+/**
+ * Note the start of a run, once per run (the home page calls this on every
+ * visit): device details and which code each button sends on this watch.
+ */
+export function noteLaunch() {
+  let g = null
+  try {
+    const app = getApp()
+    g = app && app._options && app._options.globalData
+  } catch (e) {
+    g = null
+  }
+  if (g && g.launched) return
+  if (g) g.launched = true
+  let device = null
+  try {
+    const d = getDeviceInfo()
+    device = { source: d.deviceSource, width: d.width, height: d.height, shape: d.screenShape }
+  } catch (e) {
+    device = { error: String((e && e.message) || e) }
+  }
+  note('launch', { device, keys: { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } })
 }

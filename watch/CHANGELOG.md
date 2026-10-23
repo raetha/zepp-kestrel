@@ -31,4 +31,6 @@ All notable changes to the WristWand watch app. The format is based on
 
 ### Fixed
 
+- The record of screens, buttons and swipes kept only launches and exits: the app itself overwrote what the screens wrote when it closed. Launches are now noted by the home screen, and the record also says which watch model it is.
+- The Compass tilt probe says when the compass needs calibrating instead of recording without headings.
 - Probe results stopped reaching Home Assistant ("Not sent: undefined is not an object"): the phone now sends each result to Home Assistant before keeping a small summary for itself, clears an oversized summary list, and says which step failed if one does.

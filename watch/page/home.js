@@ -1,11 +1,14 @@
 // Home: pair with Home Assistant first; then Point, Paint, Sync, Probes.
 
 import { BasePage } from '@zeppos/zml/base-page'
-import { tracked, previousRuns, forgetPreviousRuns } from './trail.js'
+import { tracked, previousRuns, forgetPreviousRuns, noteLaunch } from './trail.js'
 import { push } from '@zos/router'
 import { text, setText, button, clear, ask, COLOR } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
 import { targets, paintedDevices, saveTargets } from './store.js'
+
+// Before the page's own 'open' entry, so a run's trail starts with its launch.
+noteLaunch()
 
 Page(
   BasePage(
