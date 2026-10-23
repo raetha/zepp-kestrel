@@ -147,7 +147,9 @@ jobs:
         uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0
         with:
           category: integration
-          ignore: brands   # custom integrations; brand images come with the first release
+          # brands: images come with the first release. license: GitHub cannot name
+          # our split LICENSE (MIT + CC BY-NC-SA); settle before the first release.
+          ignore: brands license
 
   release:
     needs: [build, ha-tests, validate]
