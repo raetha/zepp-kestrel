@@ -3,7 +3,7 @@
 
 import { createWidget, deleteWidget, widget, align, prop, text_style } from '@zos/ui'
 import { px } from '@zos/utils'
-import { onKey, offKey, onGesture, offGesture, KEY_SELECT, KEY_BACK, KEY_EVENT_CLICK } from '@zos/interaction'
+import { onKey, offKey, onGesture, offGesture, KEY_SELECT, KEY_BACK, KEY_EVENT_CLICK, KEY_EVENT_PRESS, KEY_EVENT_RELEASE } from '@zos/interaction'
 import { back } from '@zos/router'
 import { note, safe } from './trail.js'
 
@@ -92,18 +92,20 @@ export function ask(page, method, params, timeout = 6000) {
 
 /**
  * Physical buttons for a page: SELECT runs onSelect (when given), BACK goes
- * back a page. Every button event and swipe is noted in the trail
- * (page/trail.js), so we can see what the watch really sends: on the
- * Balance 3 the lower button was closing the app instead of going back.
+ * back a page. opts.onSelectPress / opts.onSelectRelease see the select
+ * button go down and up (for hold-to-dim); a click still follows a short
+ * press. Every button event and swipe is noted in the trail (page/trail.js).
  * Call the returned function in onDestroy.
  */
-export function listenKeys(onSelect) {
+export function listenKeys(onSelect, opts = {}) {
   onKey({
     callback: safe('keys', (key, event) => {
       note('key', [key, event])
-      if (key === KEY_SELECT && onSelect) {
-        if (event === KEY_EVENT_CLICK) onSelect()
-        return event === KEY_EVENT_CLICK
+      if (key === KEY_SELECT && (onSelect || opts.onSelectPress)) {
+        if (event === KEY_EVENT_PRESS && opts.onSelectPress) opts.onSelectPress()
+        if (event === KEY_EVENT_RELEASE && opts.onSelectRelease) opts.onSelectRelease()
+        if (event === KEY_EVENT_CLICK && onSelect) onSelect()
+        return true
       }
       if (key === KEY_BACK) {
         if (event === KEY_EVENT_CLICK) back()

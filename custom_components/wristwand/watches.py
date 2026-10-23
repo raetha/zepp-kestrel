@@ -21,18 +21,13 @@ from .const import (
     PAIR_WINDOW,
     PAIRING_MAX_ATTEMPTS,
     PAIRING_TTL,
-    PAINTS_MAX_DEVICES,
-    PAINTS_MAX_SPOTS,
     PROBES_KEPT,
     PROBES_SAVE_DELAY,
     PROBES_STORAGE_KEY,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
-
-
-def _is_number(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+from .watchdata import PAINTS_MAX_SPOTS, SECTIONS, clean_gesture, clean_paints, clean_rooms, settings_of
 
 
 def _hash(token: str) -> str:
@@ -152,23 +147,63 @@ class Watches:
             self._save_probes()
         await self._async_save()
 
-    # ------------------------------------------------------------ paints
+    # ------------------------------------------------------------ synced data (watchdata.py)
+    def synced(self, watch_id: str) -> dict[str, Any]:
+        """Everything the watch keeps in sync, with each section's revision."""
+        w = self.watches[watch_id]
+        out: dict[str, Any] = {"settings": settings_of(w), "paints": w.get("paints", {}), "rooms": w.get("rooms", {})}
+        for section in SECTIONS:
+            out[f"{section}_rev"] = w.get(f"{section}_rev", 0)
+        return out
+
     def paints(self, watch_id: str) -> dict[str, list[dict[str, Any]]]:
-        """The watch's painted spots, backed up so a reset or new watch can restore them."""
         return self.watches.get(watch_id, {}).get("paints", {})
 
-    async def async_save_paints(self, watch_id: str, paints: dict[str, Any]) -> int:
-        """Replace a watch's paints with a cleaned copy; returns the number of devices kept."""
-        clean: dict[str, list[dict[str, Any]]] = {}
-        for target, spots in list(paints.items())[:PAINTS_MAX_DEVICES]:
-            if not isinstance(target, str) or "." not in target or not isinstance(spots, list):
-                continue
-            kept = [s for s in spots if isinstance(s, dict) and _is_number(s.get("heading")) and _is_number(s.get("pitch"))]
-            if kept:
-                clean[target[:255]] = kept[-PAINTS_MAX_SPOTS:]
-        self.watches[watch_id]["paints"] = clean
+    async def _async_set(self, watch_id: str, section: str, value: Any) -> int:
+        w = self.watches[watch_id]
+        w[section] = value
+        w[f"{section}_rev"] = w.get(f"{section}_rev", 0) + 1
         await self._async_save()
-        return len(clean)
+        return w[f"{section}_rev"]
+
+    async def async_save_paints(self, watch_id: str, paints: dict[str, Any]) -> int:
+        """Replace a watch's paints with a cleaned copy; returns the new revision."""
+        return await self._async_set(watch_id, "paints", clean_paints(paints))
+
+    async def async_save_rooms(self, watch_id: str, rooms: dict[str, Any]) -> int:
+        return await self._async_set(watch_id, "rooms", clean_rooms(rooms))
+
+    async def async_update_gesture(self, watch_id: str, values: dict[str, Any]) -> int:
+        """Gesture settings from the watch (calibration). Other settings are changed in the options."""
+        settings = settings_of(self.watches[watch_id])
+        settings["gesture"].update(clean_gesture(values))
+        return await self._async_set(watch_id, "settings", settings)
+
+    async def async_save_settings(self, watch_id: str, settings: dict[str, Any]) -> int:
+        """All settings, from the integration's options."""
+        return await self._async_set(watch_id, "settings", settings)
+
+    async def async_remove_paint(self, watch_id: str, entity_id: str, last_only: bool = False) -> int:
+        """Forget a device's paints, or only its newest spot (a bad paint)."""
+        paints = dict(self.paints(watch_id))
+        spots = paints.get(entity_id, [])
+        if last_only and len(spots) > 1:
+            paints[entity_id] = spots[:-1]
+        else:
+            paints.pop(entity_id, None)
+        return await self._async_set(watch_id, "paints", paints)
+
+    async def async_reassign_paint(self, watch_id: str, entity_id: str, new_entity_id: str) -> int:
+        """Point a device's paints at another entity (merged with any it already has)."""
+        paints = dict(self.paints(watch_id))
+        spots = paints.pop(entity_id, [])
+        paints[new_entity_id] = (paints.get(new_entity_id, []) + spots)[-PAINTS_MAX_SPOTS:]
+        return await self._async_set(watch_id, "paints", paints)
+
+    async def async_remove_room(self, watch_id: str, area_id: str) -> int:
+        rooms = dict(self.watches[watch_id].get("rooms", {}))
+        rooms.pop(area_id, None)
+        return await self._async_set(watch_id, "rooms", rooms)
 
     # ------------------------------------------------------------ probe results
     def add_probe(self, watch: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:

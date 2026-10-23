@@ -7,7 +7,12 @@ token, sent as X-WristWand-Token, which only works on these endpoints.
   POST /api/wristwand/pair            no auth, rate limited: start pairing (HA shows a code)
   POST /api/wristwand/pair/confirm    no auth, limited attempts: code -> watch token
   GET  /api/wristwand/targets         watch token: what can be painted
-  POST /api/wristwand/fire            watch token: run an action on a target
+  GET  /api/wristwand/sync            watch token: targets, areas, settings, paints, rooms (with revisions)
+  POST /api/wristwand/paints          watch token: the watch's paints after a change
+  POST /api/wristwand/rooms           watch token: the watch's room fingerprints after calibrating
+  POST /api/wristwand/gesture         watch token: gesture calibration
+  GET  /api/wristwand/room            watch token: the current room from a sensor, if configured
+  POST /api/wristwand/fire            watch token: run an action on a target (away mode applies)
   POST /api/wristwand/probe           watch token: a measurement result -> wristwand_probe event
 """
 
@@ -27,6 +32,7 @@ from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, SUPPORTED_DOMAINS, TOKEN_HEADER
 from .targets import list_targets, service_call
+from .watchdata import areas, away_block, current_room
 from .watches import Watches
 
 _LOGGER = logging.getLogger(__name__)
@@ -163,33 +169,108 @@ class TargetsView(_WatchView):
         return web.json_response({"targets": list_targets(hass)})
 
 
-class PaintsView(_WatchView):
-    """The calling watch's painted spots: saved after painting, fetched to restore."""
+async def _json_object(request: web.Request) -> dict[str, Any] | None:
+    try:
+        body = await request.json()
+    except ValueError:
+        return None
+    return body if isinstance(body, dict) else None
 
-    url = "/api/wristwand/paints"
-    name = "api:wristwand:paints"
+
+class SyncView(_WatchView):
+    """Everything a watch keeps in sync: targets, areas, settings, paints and rooms."""
+
+    url = "/api/wristwand/sync"
+    name = "api:wristwand:sync"
 
     async def get(self, request: web.Request) -> web.Response:
         auth = self._authorize(request)
         if isinstance(auth, web.Response):
             return auth
-        _, watches, watch = auth
-        return web.json_response({"paints": watches.paints(watch["id"])})
+        hass, watches, watch = auth
+        synced = watches.synced(watch["id"])
+        body: dict[str, Any] = {"room": current_room(hass, synced["settings"]), **synced}
+        # ?only=paints,rooms skips the target list (large over Bluetooth) after a small change
+        only = [x for x in request.query.get("only", "").split(",") if x]
+        if only:
+            body = {k: v for k, v in body.items() if k.removesuffix("_rev") in only}
+        else:
+            body.update(targets=list_targets(hass), areas=areas(hass))
+        return web.json_response(body)
+
+
+class _SectionView(_WatchView):
+    """POST {<key>: {...}}: the watch's new copy of one synced section."""
+
+    key = ""
+
+    async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
+        raise NotImplementedError
 
     async def post(self, request: web.Request) -> web.Response:
         auth = self._authorize(request)
         if isinstance(auth, web.Response):
             return auth
         _, watches, watch = auth
-        try:
-            body = await request.json()
-        except ValueError:
+        body = await _json_object(request)
+        value = body.get(self.key) if body else None
+        if not isinstance(value, dict):
             return _error("Bad request", HTTPStatus.BAD_REQUEST)
-        paints = body.get("paints") if isinstance(body, dict) else None
-        if not isinstance(paints, dict):
-            return _error("Bad request", HTTPStatus.BAD_REQUEST)
-        kept = await watches.async_save_paints(watch["id"], paints)
-        return web.json_response({"ok": True, "devices": kept})
+        rev = await self.save(watches, watch["id"], value)
+        return web.json_response({"ok": True, "rev": rev, **self.result(watches.synced(watch["id"]))})
+
+    def result(self, synced: dict[str, Any]) -> dict[str, Any]:
+        return {self.key: synced[self.key]}
+
+
+class PaintsView(_SectionView):
+    """The watch's painted spots, after painting or a correction."""
+
+    url = "/api/wristwand/paints"
+    name = "api:wristwand:paints"
+    key = "paints"
+
+    async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
+        return await watches.async_save_paints(watch_id, value)
+
+
+class RoomsView(_SectionView):
+    """The watch's room fingerprints, after calibrating a room."""
+
+    url = "/api/wristwand/rooms"
+    name = "api:wristwand:rooms"
+    key = "rooms"
+
+    async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
+        return await watches.async_save_rooms(watch_id, value)
+
+
+class GestureView(_SectionView):
+    """The watch's gesture calibration. Other settings are changed in the integration's options."""
+
+    url = "/api/wristwand/gesture"
+    name = "api:wristwand:gesture"
+    key = "gesture"
+
+    async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
+        return await watches.async_update_gesture(watch_id, value)
+
+    def result(self, synced: dict[str, Any]) -> dict[str, Any]:
+        return {"settings": synced["settings"]}
+
+
+class RoomView(_WatchView):
+    """The current room, when a sensor provides it (settings: room source = sensor)."""
+
+    url = "/api/wristwand/room"
+    name = "api:wristwand:room"
+
+    async def get(self, request: web.Request) -> web.Response:
+        auth = self._authorize(request)
+        if isinstance(auth, web.Response):
+            return auth
+        hass, watches, watch = auth
+        return web.json_response({"room": current_room(hass, watches.synced(watch["id"])["settings"])})
 
 
 class FireView(_WatchView):
@@ -213,6 +294,9 @@ class FireView(_WatchView):
             state = hass.states.get(target)
             return web.json_response({"ok": True, "duplicate": True, "state": state.state if state else None})
 
+        blocked = away_block(hass, watches.synced(watch["id"])["settings"], target)
+        if blocked:
+            return web.json_response({"ok": False, "away": True, "error": blocked})
         call = service_call(hass, target, action, body.get("value"), bool(body.get("confirmed")))
         if call is None:
             return web.json_response({"ok": False, "needsConfirm": True})
@@ -228,7 +312,10 @@ class FireView(_WatchView):
             context=context,
         )
         state = hass.states.get(target)
-        return web.json_response({"ok": True, "state": state.state if state else None})
+        reply: dict[str, Any] = {"ok": True, "state": state.state if state else None}
+        if state is not None and state.domain == "light" and state.attributes.get("brightness") is not None:
+            reply["brightness"] = round(state.attributes["brightness"] * 100 / 255)
+        return web.json_response(reply)
 
 
 class ProbeView(_WatchView):
@@ -252,4 +339,16 @@ class ProbeView(_WatchView):
         return web.json_response({"ok": True})
 
 
-VIEWS = (InfoView, PairView, PairConfirmView, TargetsView, PaintsView, FireView, ProbeView)
+VIEWS = (
+    InfoView,
+    PairView,
+    PairConfirmView,
+    TargetsView,
+    SyncView,
+    PaintsView,
+    RoomsView,
+    GestureView,
+    RoomView,
+    FireView,
+    ProbeView,
+)

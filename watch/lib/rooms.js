@@ -1,0 +1,88 @@
+// Which room is the watch in? Bluetooth fingerprints.
+//
+// Calibrating a room records a few scans while walking around it. A
+// fingerprint keeps, for each steady device heard, its average signal and how
+// often it was heard. A later scan is scored against each room: devices the
+// room expects count by how often they're heard there and how close their
+// signal is; strong devices the room doesn't know count against it.
+// Rotating (random) addresses are dropped before this (lib/ble.js).
+//
+// Rooms are Home Assistant areas, keyed by area id.
+
+export const FINGERPRINT_MAX = 60 // strongest devices kept per room
+export const MIN_SEEN = 0.5 // with several scans, keep devices heard in at least half of them
+export const STRONG_RSSI = -75 // an unknown device this strong suggests another room
+export const RSSI_SIGMA = 10 // dB: how far a signal may wander and still count
+
+/**
+ * @param scans [[{ mac, rssi }]] one list per scan
+ * @returns { mac: [meanRssi, seenFraction] }
+ */
+export function buildFingerprint(scans) {
+  const n = scans.length
+  if (!n) return {}
+  const seen = new Map()
+  for (const scan of scans) {
+    for (const d of scan) {
+      const e = seen.get(d.mac) || { sum: 0, count: 0 }
+      e.sum += d.rssi
+      e.count++
+      seen.set(d.mac, e)
+    }
+  }
+  const rows = []
+  for (const [mac, e] of seen) {
+    const frac = Math.min(1, e.count / n)
+    if (n > 1 && frac < MIN_SEEN) continue
+    rows.push([mac, Math.round(e.sum / e.count), Math.round(frac * 100) / 100])
+  }
+  rows.sort((a, b) => b[1] - a[1])
+  const fp = {}
+  for (const [mac, rssi, frac] of rows.slice(0, FINGERPRINT_MAX)) fp[mac] = [rssi, frac]
+  return fp
+}
+
+/** How well one scan matches one fingerprint, 0..1. */
+export function scoreRoom(fingerprint, scan) {
+  const byMac = new Map(scan.map((d) => [d.mac, d.rssi]))
+  let total = 0
+  let got = 0
+  for (const mac of Object.keys(fingerprint)) {
+    const [rssi, seen] = fingerprint[mac]
+    total += seen
+    if (byMac.has(mac)) {
+      const d = (byMac.get(mac) - rssi) / RSSI_SIGMA
+      got += seen * Math.exp(-0.5 * d * d)
+    }
+  }
+  if (!total) return 0
+  let strangers = 0
+  for (const d of scan) if (!(d.mac in fingerprint) && d.rssi >= STRONG_RSSI) strangers++
+  return (got / total) / (1 + 0.15 * strangers)
+}
+
+/** Rooms ranked best first: [{ id, name, score }]. rooms = { id: { name, fingerprint } } */
+export function rankRooms(rooms, scan) {
+  const out = Object.keys(rooms || {}).map((id) => ({ id, name: rooms[id].name, score: scoreRoom(rooms[id].fingerprint || {}, scan) }))
+  out.sort((a, b) => b.score - a.score)
+  return out
+}
+
+export const PICK = { minScore: 0.25, margin: 1.25 }
+
+/** The room to believe, or null when no room matches clearly. */
+export function pickRoom(ranked, o = PICK) {
+  const [best, second] = ranked
+  if (!best || best.score < o.minScore) return null
+  if (second && best.score < second.score * o.margin) return null
+  return { id: best.id, name: best.name, score: Math.round(best.score * 100) / 100 }
+}
+
+/**
+ * The spots that apply in a room: those painted there, and those painted
+ * before rooms were known (no room). Without a room, all spots apply.
+ */
+export function spotsForRoom(spots, roomId) {
+  if (!roomId) return spots
+  return spots.filter((s) => !s.room || s.room === roomId)
+}

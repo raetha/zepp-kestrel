@@ -39,7 +39,8 @@
             "page/probes",
             "page/test",
             "page/more",
-            "page/flick"
+            "page/gesture",
+            "page/rooms"
           ]
         },
         "app-side": {

@@ -6,7 +6,10 @@ import { tracked } from './trail.js'
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
 import { text, setText, button, clear, fit, ask, listenKeys, COLOR } from './ui.js'
 import { startAim } from './aim.js'
-import { targets, paints, savePaints, backupPaints } from './store.js'
+import { targets, paints, setPaint } from './store.js'
+import { syncSoon } from './sync.js'
+import { detectRoom } from './room.js'
+import { stopScan } from './scan.js'
 import { makeSpot, addSpot, spotProblem, MAX_SPOTS } from '../lib/paint.js'
 import * as haptics from './haptics.js'
 
@@ -108,6 +111,13 @@ Page(
         })
         pauseDropWristScreenOff({ duration: 0 })
         this.awake = true
+        // which room this is painted from (a short Bluetooth scan, or the HA sensor)
+        this.room = null
+        detectRoom((m, p, t) => ask(this, m, p, t))
+          .then((r) => {
+            this.room = r.room
+          })
+          .catch(() => null)
         for (let s = 3; s > 0; s--) {
           setText(this.msgW, `Point at it…\n\n${s}`)
           await sleep(800)
@@ -129,7 +139,9 @@ Page(
         this.aim = null
         this.painting = false
         haptics.done()
-        this.saved(makeSpot(samples))
+        const spot = makeSpot(samples)
+        if (spot && this.room) spot.room = this.room.id
+        this.saved(spot)
       },
 
       saved(spot) {
@@ -144,14 +156,13 @@ Page(
               : `The compass was unsteady (±${Math.round(spot.headingSpread)}°). Sweep a little less widely, away from metal, and try again.`,
           )
         } else {
-          const p = paints()
-          p[t.id] = addSpot(p[t.id], spot)
-          savePaints(p)
-          backupPaints((m, params) => ask(this, m, params, 15000))
-          const n = p[t.id].length
+          const spots = addSpot(paints()[t.id], spot)
+          setPaint(t.id, spots)
+          syncSoon((m, p, tm) => ask(this, m, p, tm), 'paints')
+          const n = spots.filter((x) => x.kind !== 'correction').length
           setText(
             this.msgW,
-            `Saved: ${Math.round(spot.heading)}° ±${Math.round(spot.headingSpread)}, pitch ${Math.round(spot.pitch)}°.\n\nSpot ${n} of up to ${MAX_SPOTS}. Painting again from another place you use it improves aim.`,
+            `Saved${this.room ? ` in ${this.room.name}` : ''}: ${Math.round(spot.heading)}° ±${Math.round(spot.headingSpread)}, pitch ${Math.round(spot.pitch)}°.\n\nSpot ${n} of up to ${MAX_SPOTS}. Painting again from another place you use it improves aim.`,
           )
         }
         this.add(button({ x: 90, w: 140, y: 340, h: 56, size: 22, label: 'Again', onClick: () => this.ready(t) }))
@@ -159,6 +170,7 @@ Page(
       },
 
       onDestroy() {
+        stopScan()
         if (this.aim) this.aim.stop()
         this.unkeys && this.unkeys()
         this.alive = false

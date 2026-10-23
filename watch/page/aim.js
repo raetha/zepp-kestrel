@@ -7,10 +7,11 @@ import { safe } from './trail.js'
 
 /**
  * @param onAim  called every 100 ms with the current aim
- * @param opts.onGyro  called with (t, deg/s) for every gyro reading (25 Hz),
- *                     for triggers such as the wrist flick
+ * @param opts.onGyro  called with (t, deg/s) for every gyro reading (25 Hz)
+ * @param opts.onAccel called with (t, {x, y, z}) for every accelerometer reading
+ *                     (both for gesture triggers, lib/gesture.js)
  */
-export function startAim(onAim, { mode = 'NORMAL', gate = {}, onGyro = null } = {}) {
+export function startAim(onAim, { mode = 'NORMAL', gate = {}, onGyro = null, onAccel = null } = {}) {
   const a = accel()
   const g = gyro()
   const c = compass()
@@ -18,8 +19,10 @@ export function startAim(onAim, { mode = 'NORMAL', gate = {}, onGyro = null } = 
   let lastA = null
   let gyroDps = 0
 
+  const accelCb = onAccel ? safe('accel', onAccel) : null
   a.start(mode, (s) => {
     lastA = s
+    if (accelCb) accelCb(s.t, s)
   })
   const gyroCb = onGyro ? safe('gyro', onGyro) : null
   g.start(mode, (s) => {

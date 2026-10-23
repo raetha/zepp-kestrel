@@ -68,8 +68,8 @@ rules:
     status: done
     comment: HTTP views can't be unregistered; they answer 404 while no entry is loaded.
   docs-configuration-parameters:
-    status: exempt
-    comment: No options.
+    status: done
+    comment: README "Managing things in Home Assistant" covers every option; strings carry data_description.
   docs-installation-parameters:
     status: exempt
     comment: The config flow has no fields.

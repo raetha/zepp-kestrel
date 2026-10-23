@@ -15,11 +15,14 @@ All notable changes to the WristWand watch app. The format is based on
 - Point: hold your arm out at a painted device; the circle turns amber while aiming, green when the watch has a device in mind, and bright green when it's sure. Press the select button or tap the circle to toggle it. Locks ask for a confirming tap. Short buzzes confirm sent, done and failed.
 - Home screen with Point, Paint, Sync, Probes and Unpair. The M0 probes moved under Probes.
 - Probes report on screen whether each result reached Home Assistant.
-- Flick to trigger: on Point, aim, then flick your wrist. More → Flick calibrates it to your flick (five flicks and ten seconds of ordinary movement) or turns it off.
+- Gesture trigger: on Point, aim, then flick your wrist, snap or tap your fingers. More → Gesture picks the gesture and calibrates it to yours (five gestures and a few seconds of aiming), or turns it off.
+- Dimming: on a dimmable light, hold the select button or the circle and twist your wrist; thumb up brightens.
+- Rooms: More → Rooms calibrates each Home Assistant area by Bluetooth. Pointing then only considers devices painted in the room you're in. A Home Assistant room sensor (for example Bermuda) can be used instead.
+- Home Assistant holds the master copy of paints, rooms and settings: changes made in the integration's options (removing a bad paint, pointing a paint at another entity) reach the watch on Sync, and the app syncs quietly when it starts.
+- The BLE probe lists your Home Assistant areas.
 - Corrections: after a trigger, "Not it?" offers the next most likely device for 5 seconds. Choosing it undoes the first where possible, toggles the right one, and teaches the watch where you aimed.
-- Paints are backed up in Home Assistant, and Sync restores them on a reset or new watch.
 - Each trigger sends a short record of the aim to Home Assistant (in the diagnostics download), to tune pointing.
-- More screen on Home: Flick, Probes and Unpair.
+- More screen on Home: Gesture, Rooms, Probes and Unpair.
 - Licence: CC BY-NC-SA 4.0 for the watch app (share and adapt non-commercially, with credit, but don't sell it).
 
 ### Changed

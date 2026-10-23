@@ -2,7 +2,7 @@
 
 Point your Amazfit watch at a smart-home device and trigger it. An open-source pointing remote for Zepp OS watches, built around [Home Assistant](https://www.home-assistant.io/).
 
-> **Status: M2, test builds.** Pair the watch with Home Assistant, paint a device, point at it, and press the select button or flick your wrist to toggle it. A wrong guess can be corrected, which teaches the watch. Paints are backed up in Home Assistant. The M0 probes (sensor rates, gestures, compass, Bluetooth, latency) are under More → Probes. There is no release yet.
+> **Status: feature-complete test builds, before release polish.** Pair the watch with Home Assistant, paint devices, point, and trigger with the select button, a tap or a gesture (wrist flick, finger snap or finger tap). Twist to dim lights. Rooms are recognised by Bluetooth (or a Home Assistant sensor). Away mode, paints, rooms and settings are managed in Home Assistant. There is no release yet.
 
 <p align="center">
   <img src="watch/docs/screenshot-menu.png" width="240" alt="WristWand probe menu on the watch">
@@ -29,13 +29,22 @@ Test builds are for development and change often.
 
 **3. Pair.** With your phone on the home Wi-Fi, open WristWand DEV on the watch → Pair with HA. Pick your Home Assistant, then type the 6-digit code from the notification Home Assistant shows. The watch then fetches your devices. (If the Zepp app asks for Local Network access, allow it: that's how the phone finds `homeassistant.local`.)
 
-**4. Paint and point.** Paint a device: pick it, stand where you'd use it, press Start, and sweep your arm slowly across it for 15 s, palm down. Then Point: hold your arm out at it, palm down. The circle turns green when the watch has it in mind; press the select button, tap the circle, or flick your wrist to toggle it. Locks ask for a confirming tap. If the watch picked the wrong device, tap **Not it?** within 5 s: it undoes the first (lights, switches, fans and the like), toggles the right one, and remembers where you aimed. Dropping your wrist and raising it again brings Point back.
+**4. Paint and point.** Paint a device: pick it, stand where you'd use it, press Start, and sweep your arm slowly across it for 15 s, palm down. Then Point: hold your arm out at it, palm down. The circle turns green when the watch has it in mind; press the select button, tap the circle, or do your gesture to toggle it. Locks ask for a confirming tap. If the watch picked the wrong device, tap **Not it?** within 5 s: it undoes the first (lights, switches, fans and the like), toggles the right one, and remembers where you aimed. Dropping your wrist and raising it again brings Point back.
 
 To test without your own devices nearby (at work, say), create a helper in Home Assistant (Settings → Devices & services → Helpers → Toggle), Sync, and paint something in the room, like a door frame, as that helper.
 
-**5. Fit the flick to you.** More → Flick → Calibrate: five flicks after the buzzes, then ten seconds of ordinary movement. The watch sets its threshold between them. Flick can be turned off there too.
+**5. Dim.** On a dimmable light, hold the select button (or a finger on the circle) and twist your wrist: thumb up brightens, thumb down dims, a quarter turn is the whole range. Let go to send it.
 
-Paints are backed up in Home Assistant after each paint; on a reset or new watch, Sync restores them.
+**6. Gesture.** More → Gesture: choose wrist flick, finger snap or finger tap, then Calibrate: five gestures after the buzzes, then a few seconds of slowly pointing around. The watch learns thresholds that separate your gesture from aiming. It only counts while you're aiming at something.
+
+**7. Rooms.** More → Rooms lists your Home Assistant areas. Calibrate each room you point in: walk around it for three short Bluetooth scans. Paint devices afterwards, from inside each room: then the watch only considers devices painted in the room you're in, which keeps things apart that line up through walls. "Where am I?" tests it. If you already track rooms in Home Assistant (for example Bermuda), choose that sensor in the integration's options instead.
+
+**Managing things in Home Assistant.** Settings → Devices & services → WristWand → Configure:
+- **Painted devices**: remove a bad paint (the newest spot) or all of a device's paints, or make a paint trigger a different entity.
+- **Rooms**: delete a room's calibration.
+- **Settings**: gesture on or off and its thresholds; **away mode** (while the chosen person isn't home, only the entities you allow work, so pointing at work doesn't switch things at home); where the current room comes from.
+
+The watch picks changes up on its next Sync (it also syncs quietly each time the app starts). Paints, rooms and settings live in Home Assistant, so a reset or new watch gets them back on Sync.
 
 To offer the watch only some devices, add the label `wristwand` to those entities or devices in Home Assistant, then Sync on the watch. Each paired watch appears in Home Assistant as a device under the WristWand integration; delete the device to unpair it.
 

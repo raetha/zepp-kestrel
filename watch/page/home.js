@@ -1,20 +1,39 @@
-// Home: pair with Home Assistant first; then Point, Paint, Sync, Probes.
+// Home: pair with Home Assistant first; then Point, Paint, Sync, More.
+// Syncs quietly once per run, so changes made in Home Assistant arrive.
 
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked, previousRuns, forgetPreviousRuns, noteLaunch } from './trail.js'
 import { push } from '@zos/router'
-import { text, setText, button, clear, ask, COLOR } from './ui.js'
+import { text, setText, setLabel, button, clear, ask, COLOR } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
-import { targets, paintedDevices, saveTargets, paints, savePaints } from './store.js'
+import { targets, paintedDevices } from './store.js'
+import { sync } from './sync.js'
 
 // Before the page's own 'open' entry, so a run's trail starts with its launch.
 noteLaunch()
+
+/** True on the first home visit of this run (the app's globalData lives for the run). */
+function firstVisit() {
+  try {
+    const g = getApp()._options.globalData
+    if (g.synced) return false
+    g.synced = true
+    return true
+  } catch (e) {
+    return false
+  }
+}
 
 Page(
   BasePage(
     tracked('home', {
       onInit() {
         this.widgets = []
+        this.alive = true
+      },
+
+      onDestroy() {
+        this.alive = false
       },
 
       build() {
@@ -22,8 +41,12 @@ Page(
         this.statusW = text({ y: 80, h: 30, size: 19, color: COLOR.quiet, value: 'Checking…' })
         ask(this, METHOD.STATUS, undefined, 5000)
           .then((st) => {
+            if (!this.alive) return
             this.render(st || {})
-            if (st && st.paired) this.sendTrail()
+            if (st && st.paired) {
+              this.sendTrail()
+              if (firstVisit()) this.sync(true)
+            }
           })
           .catch(() => this.render({ offline: true }))
       },
@@ -51,7 +74,8 @@ Page(
         }
         btn(0, 'Point', go('page/point'), true)
         btn(1, 'Paint a device', go('page/paint'))
-        btn(2, `Sync (${targets().length})`, () => this.sync())
+        this.syncW = button({ x: 120, w: 240, y: 126 + 2 * 66, h: 54, label: `Sync (${targets().length})`, onClick: () => this.sync() })
+        add(this.syncW)
         btn(3, 'More', go('page/more'))
       },
 
@@ -65,28 +89,23 @@ Page(
           .catch(() => null)
       },
 
-      sync() {
-        setText(this.statusW, 'Syncing devices…')
-        ask(this, METHOD.SYNC, undefined, 15000)
-          .then(async (r) => {
-            if (!(r && r.targets)) {
-              setText(this.statusW, (r && r.error) || 'Sync failed')
+      // Targets, areas, settings, paints and rooms from Home Assistant (page/sync.js).
+      sync(quiet = false) {
+        if (!quiet) setText(this.statusW, 'Syncing…')
+        sync((m, p, t) => ask(this, m, p, t))
+          .then((r) => {
+            if (!this.alive) return
+            if (!r.ok) {
+              if (!quiet) setText(this.statusW, r.error || 'Sync failed')
               return
             }
-            saveTargets(r.targets)
-            let msg = `${r.targets.length} devices synced`
-            // a reset or new watch gets its paints back from Home Assistant
-            if (!Object.keys(paints()).length) {
-              const b = await ask(this, METHOD.LOAD_PAINTS, undefined, 15000).catch(() => null)
-              const restored = (b && b.paints) || {}
-              if (Object.keys(restored).length) {
-                savePaints(restored)
-                msg += `, ${Object.keys(restored).length} paints restored`
-              }
-            }
-            setText(this.statusW, msg)
+            const parts = [`${r.targets || 0} devices`]
+            if (r.paints !== undefined) parts.push(`${r.paints} painted`)
+            if (r.rooms) parts.push(`${r.rooms} rooms`)
+            setText(this.statusW, parts.join(' · '))
+            if (this.syncW) setLabel(this.syncW, `Sync (${targets().length})`)
           })
-          .catch(() => setText(this.statusW, 'Phone not reachable'))
+          .catch(() => !quiet && setText(this.statusW, 'Phone not reachable'))
       },
     }),
   ),

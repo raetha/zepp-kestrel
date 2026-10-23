@@ -9,5 +9,103 @@
     "abort": {
       "single_instance_allowed": "WristWand is already set up. Pair more watches from the watch itself."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Choose a watch",
+        "data": {
+          "watch": "Watch"
+        }
+      },
+      "watch": {
+        "title": "{watch}",
+        "description": "What would you like to manage? Changes reach the watch the next time it syncs (Sync on the watch's home screen).",
+        "menu_options": {
+          "paints": "Painted devices",
+          "settings": "Settings",
+          "rooms": "Rooms"
+        }
+      },
+      "paints": {
+        "title": "Painted devices",
+        "description": "Remove a paint that went wrong, or make a paint trigger a different entity.",
+        "data": {
+          "device": "Device",
+          "action": "Change"
+        },
+        "data_description": {
+          "action": "\"Remove the newest spot\" undoes the last paint of this device and keeps the others."
+        }
+      },
+      "reassign": {
+        "title": "Trigger a different entity",
+        "description": "The spots painted for {device} will trigger this entity instead.",
+        "data": {
+          "entity": "Entity"
+        }
+      },
+      "rooms": {
+        "title": "Rooms",
+        "description": "Delete a room's Bluetooth calibration, for example after moving furniture or devices. Calibrate it again on the watch under More → Rooms.",
+        "data": {
+          "room": "Room"
+        }
+      },
+      "settings": {
+        "title": "Settings",
+        "description": "Calibrating the gesture on the watch (More → Gesture) sets the thresholds; adjust them here if it triggers too easily (raise) or too hard (lower).",
+        "data": {
+          "gesture_enabled": "Gesture trigger",
+          "gesture_kind": "Gesture",
+          "gesture_gyro": "Gyro threshold (°/s)",
+          "gesture_jolt": "Jolt threshold",
+          "away_block": "Away mode",
+          "away_person": "Person",
+          "away_allowed": "Allowed while away",
+          "room_source": "Current room from",
+          "room_sensor": "Room sensor"
+        },
+        "data_description": {
+          "gesture_gyro": "How fast the wrist must turn. Leave empty to not use the gyro.",
+          "gesture_jolt": "How sharp a jolt the accelerometer must feel. Leave empty to not use it.",
+          "away_block": "While the person below isn't home, the watch can only trigger the entities allowed while away. This keeps a pointing arm at work from switching things at home.",
+          "away_allowed": "Entities that work wherever you are.",
+          "room_source": "The watch's own Bluetooth room calibration, or a sensor whose state is an area name (for example from Bermuda).",
+          "room_sensor": "A sensor whose state is the name of the area the watch (or you) is in."
+        }
+      }
+    },
+    "abort": {
+      "no_watches": "No watches are paired yet. Open WristWand on the watch and choose Pair with HA.",
+      "no_paints": "This watch hasn't painted any devices yet.",
+      "no_rooms": "This watch hasn't calibrated any rooms yet. Calibrate them on the watch under More → Rooms."
+    },
+    "error": {
+      "person_needed": "Choose the person whose presence decides away mode.",
+      "sensor_needed": "Choose the sensor that says which room you're in."
+    }
+  },
+  "selector": {
+    "paint_action": {
+      "options": {
+        "remove_last": "Remove the newest spot (a bad paint)",
+        "remove_all": "Forget this device's paints",
+        "reassign": "Trigger a different entity"
+      }
+    },
+    "gesture_kind": {
+      "options": {
+        "flick": "Wrist flick",
+        "snap": "Finger snap",
+        "tap": "Finger tap"
+      }
+    },
+    "room_source": {
+      "options": {
+        "watch": "The watch's Bluetooth calibration",
+        "sensor": "A Home Assistant sensor"
+      }
+    }
   }
 }

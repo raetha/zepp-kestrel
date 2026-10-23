@@ -18,8 +18,6 @@ STORAGE_VERSION = 1
 PROBES_STORAGE_KEY = "wristwand.probes"  # recent probe results, for diagnostics downloads
 PROBES_KEPT = 200
 PROBES_SAVE_DELAY = 10  # seconds; probe results arrive in bursts
-PAINTS_MAX_DEVICES = 300  # painted devices kept per watch
-PAINTS_MAX_SPOTS = 12  # spots kept per device (painted plus corrections)
 
 SUPPORTED_DOMAINS = (
     "light",

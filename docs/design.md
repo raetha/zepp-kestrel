@@ -33,8 +33,8 @@ The side service calls `GET /api/wristwand/info` at startup; a 404 means direct 
 | What you can paint | Entities | Targets: an entity, a script, or a virtual target that only fires an event |
 | What a trigger does | Fixed per-domain action | Per-target action, set in the HA UI |
 | Automations | Wrap logic in scripts | `wristwand_fired` event and device triggers |
-| Safety | Enforced on the watch | Enforced in HA: confirm-required domains, away mode, per-user allow lists |
-| Paint data | Watch, backed up to the phone | Also stored in HA, so a new or reset watch restores quickly |
+| Safety | Enforced on the watch | Enforced in HA: confirm-required domains, away mode (person not home: only allowed entities) |
+| Paints, rooms, settings | On the watch only | Master copy in HA (`watchdata.py`), editable in the integration's options; the watch syncs by revision (`watch/lib/sync.js`) |
 | Room | Watch Bluetooth fingerprint | Watch fingerprint, or HA presence (Bermuda, ESPHome proxies, room sensors) |
 | Round trip | Service call | `POST /api/wristwand/fire` returns the new state |
 | Setup | Settings page: URL + long-lived token (store installs only) | Pairing code; nothing to copy |
@@ -46,16 +46,19 @@ Direct mode filters entities with an HA label `wristwand` (all supported entitie
 - Aim = the forearm's compass heading plus its pitch (`attitude()` in `watch/lib/aim.js`). The watch's compass heading is already tilt-compensated and reads 90° clockwise of the forearm, so the forearm heading is that minus 90°. Pitch and roll come from the accelerometer's gravity vector; the forearm runs along the watch's 3–9 o'clock axis (x). Roll is also used for the dimming twist.
 - Aim gate: the arm must be still (gyro under about 30°/s for 300 ms), pitch within ±70°, roll within ±45° for at least 1.5 s (the compass is smoothed and lags after the wrist turns), compass calibrated. The limits are symmetric, so the left wrist works without a setting.
 - A paint stores, per device and room, one or more spots: circular mean heading and spread, mean pitch and spread, and up to 60 samples. Heading maths is always circular (`lib/circular.js`).
-- Classification scores each spot with a 2D Gaussian; states are resting, aiming, candidate (show the name) and locked (margin over the runner-up). A wrong guess offers the runner-up; corrections reweight spots.
+- Classification scores each spot with a 2D Gaussian; states are resting, aiming, candidate (show the name) and locked (margin over the runner-up). A wrong guess offers the runner-up; corrections add a small spot where the arm was.
+- Rooms: spots are tagged with the room they were painted in. When the current room is known (a Bluetooth scan matched against calibrated fingerprints, `watch/lib/rooms.js`, or a Home Assistant sensor), only that room's spots and untagged ones count. Point checks the room when it opens and every 45 s.
+- Dimming: hold the select button or the circle (450 ms) on a dimmable light and twist; a quarter turn is the whole range (`watch/lib/dim.js`). Release sends `brightness_step_pct`.
 
 ## Triggers
 
-Physical button, screen tap and wrist flick (built), snap (later, if at all). With motion sensors at 25 Hz (see below), gestures are recognised by the wrist movement, not a click, and calibrated per person on the watch: record the gesture a few times and some ordinary movement, and the watch sets its own threshold (`watch/lib/flick.js`).
+Physical button, screen tap, and a gesture: wrist flick, finger snap or finger tap. With motion sensors at 25 Hz (see below), gestures are recognised by the movement of the wrist, not a click, and calibrated per person on the watch (`watch/lib/gesture.js`).
 
-- **Wrist flick**: a gyro burst above the threshold (600°/s until calibrated) that rises within 400 ms, then 1.2 s of quiet. The flick moves the arm, so it acts on the device the aim had in mind when the burst began (within 800 ms), and only if there was one.
+- **Gesture**: two channels, the gyro (how fast the wrist turns; flicks) and the jolt (how far the accelerometer jumps between readings; snaps and taps). Calibration records five gestures and a few seconds of ordinary aiming, and sets a threshold on each channel where the gesture stands at least 1.5 times above aiming (geometric midpoint); a channel that doesn't separate is left off. A burst must cross its threshold within 400 ms of starting, then 1.2 s of quiet. Gestures only count while aiming, against the device the aim had in mind when the burst began (within 800 ms). Default before calibration: wrist flick, gyro 600°/s.
 - **Corrections**: after a trigger, "Not it?" offers the runner-up for 5 s. It toggles the first device back where that undoes it (lights, switches, fans, input booleans, media players, covers), toggles the runner-up, and adds a small correction spot where the arm was. A device keeps at most two correction spots apart from its painted ones.
 - **Aim traces**: each trigger sends the aim of the seconds before it (heading, pitch, roll, state, best guess) to Home Assistant as a `point` probe result, for replaying the classifier offline.
-- **Paint backup**: paints go to Home Assistant after each paint and correction (`/api/wristwand/paints`, per watch); Sync restores them on a watch that has none.
+- **Sync**: Home Assistant holds the master copy of each watch's paints, rooms and settings, each with a revision. The watch sends a section right after changing it, and syncs everything when the app starts and on Sync: if Home Assistant didn't change, the watch's copy stands; if it did (edited in the options), Home Assistant's copy wins, plus whatever the watch changed since.
+- **Away mode** (Home Assistant): while the chosen person isn't home, `fire` refuses all but the allowed entities.
 
 ## What the real watch measured (M0, Balance 3)
 
@@ -72,5 +75,5 @@ Physical button, screen tap and wrist flick (built), snap (later, if at all). Wi
 1. **M0 Spike**: measurement probes. Done.
 2. **M1 One lamp**: pairing, side service, entity sync, paint, button trigger, haptic acknowledgement. Built; home test pending.
 3. **M2 Whole room**: classifier, aim states, corrections, the HA component, paint backup, aim traces (replay tests to come with real traces). Built.
-4. **M3 Whole house**: room fingerprints, flick (built) and maybe snap, lock confirmation (built), dimming, away mode.
+4. **M3 Whole house**: room fingerprints, gestures, lock confirmation, dimming, away mode, management in Home Assistant. Built; home test pending.
 5. **M4 Ship it**: polish, battery, other round Zepp watches, first release.

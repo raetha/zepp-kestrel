@@ -68,16 +68,19 @@ AppSideService(
             this.ha.unpair()
             return { ok: true }
           case METHOD.SYNC:
-            return { targets: await this.ha.targets() }
+            return this.ha.sync(p.only || null)
           case METHOD.FIRE:
             // the watch may retry over Bluetooth; never run a command twice
             if (p.seq !== undefined && !dedupe.accept(p.seq)) return { ok: true, duplicate: true }
             return this.ha.fire(p)
 
-          case METHOD.SAVE_PAINTS:
-            return this.ha.savePaints(p.paints || {})
-          case METHOD.LOAD_PAINTS:
-            return { paints: await this.ha.loadPaints() }
+          case METHOD.SAVE:
+            if (p.section !== 'paints' && p.section !== 'rooms') throw new Error('unknown section')
+            return this.ha.saveSection(p.section, p.value || {})
+          case METHOD.SAVE_GESTURE:
+            return this.ha.saveGesture(p.gesture || {})
+          case METHOD.ROOM:
+            return { room: await this.ha.room() }
 
           case METHOD.HA_PING:
             return this.haPing()

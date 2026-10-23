@@ -231,24 +231,33 @@ test('corrections add small spots without pushing painted ones out', async () =>
   assert.equal(rank(devices, 104, 5)[0].id, 'light.b')
 })
 
-test('paints are backed up to and restored from the component', async () => {
+test('sync, section saves, gesture and room go to the component', async () => {
   const url = 'http://homeassistant.local'
   const store = memStore({ 'ww.pairing': JSON.stringify({ token: 'tok', urls: [url] }) })
-  const saved = {}
   const fetch = fakeFetch({
+    [`GET ${url}/api/wristwand/sync`]: async () => ({ status: 200, body: { targets: [], paints: {}, paints_rev: 2 } }),
+    [`GET ${url}/api/wristwand/sync?only=paints`]: async () => ({ status: 200, body: { paints: {}, paints_rev: 2 } }),
     [`POST ${url}/api/wristwand/paints`]: async (r) => {
-      Object.assign(saved, JSON.parse(r.body).paints)
-      return { status: 200, body: { ok: true, devices: Object.keys(saved).length } }
+      assert.deepEqual(JSON.parse(r.body), { paints: { 'light.a': [] } })
+      return { status: 200, body: { ok: true, rev: 3 } }
     },
-    [`GET ${url}/api/wristwand/paints`]: async () => ({ status: 200, body: { paints: saved } }),
+    [`POST ${url}/api/wristwand/gesture`]: async () => ({ status: 200, body: { ok: true, rev: 4, settings: { gesture: { gyro: 500 } } } }),
+    [`GET ${url}/api/wristwand/room`]: async () => ({ status: 200, body: { room: { id: 'office', name: 'Office' } } }),
   })
   const ha = new HaClient({ fetch, store })
-  const paints = { 'light.desk': [{ heading: 10, pitch: 2 }] }
-  assert.deepEqual(await ha.savePaints(paints), { ok: true, devices: 1 })
-  assert.deepEqual(await ha.loadPaints(), paints)
+  assert.equal((await ha.sync()).paints_rev, 2)
+  assert.deepEqual(await ha.sync(['paints']), { paints: {}, paints_rev: 2 })
+  assert.deepEqual(await ha.saveSection('paints', { 'light.a': [] }), { ok: true, rev: 3 })
+  assert.equal((await ha.saveGesture({ gyro: 500 })).settings.gesture.gyro, 500)
+  assert.deepEqual(await ha.room(), { id: 'office', name: 'Office' })
 
-  // direct mode has nowhere to keep them
-  const direct = new HaClient({ fetch, store: memStore({ haUrl: 'https://ha.example/', haToken: 'llt' }) })
-  assert.equal((await direct.savePaints(paints)).ok, false)
-  assert.deepEqual(await direct.loadPaints(), {})
+  // direct mode: targets only, nothing kept in Home Assistant
+  const direct = new HaClient({
+    fetch: fakeFetch({ 'GET https://ha.example/api/states': async () => ({ status: 200, body: [] }) }),
+    store: memStore({ haUrl: 'https://ha.example/', haToken: 'llt' }),
+  })
+  assert.deepEqual(await direct.sync(), { targets: [] })
+  assert.equal((await direct.saveSection('paints', {})).ok, false)
+  assert.equal((await direct.saveGesture({})).ok, false)
+  assert.equal(await direct.room(), null)
 })

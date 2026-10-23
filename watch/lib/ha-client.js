@@ -259,18 +259,38 @@ export class HaClient {
       })
   }
 
-  /** Back up the watch's paints in Home Assistant (needs the component). */
-  async savePaints(paints) {
-    if (this.status().mode !== 'component') return { ok: false, error: 'Needs the WristWand integration' }
-    const b = await this.component('/api/wristwand/paints', { method: 'POST', body: { paints } })
-    return { ok: true, devices: (b && b.devices) || 0 }
+  /**
+   * Everything the watch keeps in sync (component), or just the targets (direct
+   * mode: nothing else is kept in Home Assistant). `only` limits it to some
+   * sections, e.g. ['paints'], skipping the large target list.
+   * -> { targets, areas, settings, paints, rooms, settings_rev, paints_rev, rooms_rev, room }
+   */
+  async sync(only = null) {
+    if (this.status().mode === 'component') {
+      return (await this.component(`/api/wristwand/sync${only ? `?only=${only.join(',')}` : ''}`)) || {}
+    }
+    return { targets: only ? undefined : await this.targets() }
   }
 
-  /** The paints backed up in Home Assistant, or {} without the component. */
-  async loadPaints() {
-    if (this.status().mode !== 'component') return {}
-    const b = await this.component('/api/wristwand/paints')
-    return (b && b.paints) || {}
+  /** Send one section after a change on the watch: paints, rooms (component only). -> { ok, rev } */
+  async saveSection(section, value) {
+    if (this.status().mode !== 'component') return { ok: false, error: 'Needs the WristWand integration' }
+    const b = await this.component(`/api/wristwand/${section}`, { method: 'POST', body: { [section]: value } })
+    return { ok: true, rev: b && b.rev }
+  }
+
+  /** Send the gesture calibration. -> { ok, rev, settings } */
+  async saveGesture(gesture) {
+    if (this.status().mode !== 'component') return { ok: false, error: 'Needs the WristWand integration' }
+    const b = await this.component('/api/wristwand/gesture', { method: 'POST', body: { gesture } })
+    return { ok: true, rev: b && b.rev, settings: b && b.settings }
+  }
+
+  /** The current room from a Home Assistant sensor, if one is configured. -> { id, name } | null */
+  async room() {
+    if (this.status().mode !== 'component') return null
+    const b = await this.component('/api/wristwand/room')
+    return (b && b.room) || null
   }
 
   /** Run an action on a target. Returns { ok, state, needsConfirm, error } */

@@ -10,10 +10,11 @@ export const METHOD = {
   PAIR_START: 'ww.pairStart', // { url, watchName } -> { pairingId } (HA shows a code)
   PAIR_CONFIRM: 'ww.pairConfirm', // { url, pairingId, code } -> { ok, haName, error }
   UNPAIR: 'ww.unpair',
-  SYNC: 'ww.sync', // -> { targets: [{ id, name, domain, area, dimmable, confirm }] }
+  SYNC: 'ww.sync', // { only? } -> { targets, areas, settings, paints, rooms, *_rev, room } (see ha-client sync)
   FIRE: 'ww.fire', // { seq, target, action, value, confirmed } -> { ok, state, needsConfirm, error }
-  SAVE_PAINTS: 'ww.savePaints', // { paints } -> { ok, devices } backed up in Home Assistant (component only)
-  LOAD_PAINTS: 'ww.loadPaints', // -> { paints } the backup, to restore a reset or new watch
+  SAVE: 'ww.save', // { section: 'paints' | 'rooms', value } -> { ok, rev } after a change on the watch
+  SAVE_GESTURE: 'ww.saveGesture', // { gesture } -> { ok, rev, settings } after calibrating
+  ROOM: 'ww.room', // -> { room: { id, name } | null } from a Home Assistant sensor, if configured
 }
 
 /**
