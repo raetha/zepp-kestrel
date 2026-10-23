@@ -189,3 +189,18 @@ async def test_paired_watches_survive_a_reload(hass, setup_entry, hass_client_no
     await hass.async_block_till_done()
     res = await client.get("/api/wristwand/targets", headers={TOKEN_HEADER: paired["token"]})
     assert res.status == HTTPStatus.OK
+
+
+async def test_probe_results_become_events(hass, setup_entry, hass_client_no_auth):
+    from custom_components.wristwand.const import EVENT_PROBE
+
+    events = async_capture_events(hass, EVENT_PROBE)
+    client = await hass_client_no_auth()
+    paired = await _pair(hass, client)
+    res = await client.post(
+        "/api/wristwand/probe", headers={TOKEN_HEADER: paired["token"]}, json={"test": "rates", "results": [1]}
+    )
+    assert (await res.json())["ok"] is True
+    await hass.async_block_till_done()
+    assert events[0].data["test"] == "rates"
+    assert events[0].data["watch_name"] == "Balance 3"

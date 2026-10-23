@@ -8,6 +8,7 @@ token, sent as X-WristWand-Token, which only works on these endpoints.
   POST /api/wristwand/pair/confirm    no auth, limited attempts: code -> watch token
   GET  /api/wristwand/targets         watch token: what can be painted
   POST /api/wristwand/fire            watch token: run an action on a target
+  POST /api/wristwand/probe           watch token: a measurement result -> wristwand_probe event
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 
-from .const import DOMAIN, EVENT_FIRED, NAME, PAIRING_TTL, SUPPORTED_DOMAINS, TOKEN_HEADER
+from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, SUPPORTED_DOMAINS, TOKEN_HEADER
 from .targets import list_targets, service_call
 from .watches import Watches
 
@@ -199,4 +200,25 @@ class FireView(_WatchView):
         return web.json_response({"ok": True, "state": state.state if state else None})
 
 
-VIEWS = (InfoView, PairView, PairConfirmView, TargetsView, FireView)
+class ProbeView(_WatchView):
+    """Measurement results from the watch's Probes, as wristwand_probe events."""
+
+    url = "/api/wristwand/probe"
+    name = "api:wristwand:probe"
+
+    async def post(self, request: web.Request) -> web.Response:
+        auth = self._authorize(request)
+        if isinstance(auth, web.Response):
+            return auth
+        hass, _, watch = auth
+        try:
+            body = await request.json()
+        except ValueError:
+            return _error("Bad request", HTTPStatus.BAD_REQUEST)
+        if not isinstance(body, dict):
+            return _error("Bad request", HTTPStatus.BAD_REQUEST)
+        hass.bus.async_fire(EVENT_PROBE, {"watch_id": watch["id"], "watch_name": watch["name"], **body})
+        return web.json_response({"ok": True})
+
+
+VIEWS = (InfoView, PairView, PairConfirmView, TargetsView, FireView, ProbeView)

@@ -35,7 +35,7 @@ To offer the watch only some devices, add the label `wristwand` to those entitie
 
 ### Running the M0 probes
 
-Under **Probes** on the watch. Results show on the watch; the select button presses the main button on every probe screen.
+Under **Probes** on the watch. Results show on the watch, and once the watch is paired each result (raw sensor traces included) also arrives in Home Assistant as a `wristwand_probe` event: open Developer tools → Events, enter `wristwand_probe` under "Listen to events", press **Start listening**, then run the probes and copy what arrives. The select button presses the main button on every probe screen.
 
 | Probe | What to do | What it answers |
 | --- | --- | --- |

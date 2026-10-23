@@ -5,6 +5,7 @@ NAME = "WristWand"
 
 TOKEN_HEADER = "X-WristWand-Token"
 EVENT_FIRED = "wristwand_fired"
+EVENT_PROBE = "wristwand_probe"  # M0 measurement results from a watch
 LABEL_NAME = "wristwand"  # entities (or their devices) with this label are offered to watches
 
 PAIRING_TTL = 600  # seconds a pairing code stays valid

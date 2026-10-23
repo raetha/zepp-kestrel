@@ -89,10 +89,18 @@ AppSideService(
       log.unshift(summary)
       this.settings.setItem(LOG_KEY, JSON.stringify(log.slice(0, LOG_MAX)))
 
+      // Paired with the component: always send the full result (raw traces included)
+      // as a wristwand_probe event. Direct mode: only if the settings page says so.
       let forwarded = false
-      const cfg = haConfig(this.settings)
-      if (cfg && this.settings.getItem('forwardToHa') === 'true') {
-        forwarded = await fireEvent(this, cfg, 'wristwand_probe', entry).catch(() => false)
+      if (this.ha.status().mode === 'component') {
+        forwarded = await this.ha
+          .component('/api/wristwand/probe', { method: 'POST', body: entry })
+          .then(() => true, () => false)
+      } else {
+        const cfg = haConfig(this.settings)
+        if (cfg && this.settings.getItem('forwardToHa') === 'true') {
+          forwarded = await fireEvent(this, cfg, 'wristwand_probe', entry).catch(() => false)
+        }
       }
       return { stored: true, forwarded }
     },
