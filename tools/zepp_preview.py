@@ -10,7 +10,10 @@ secrets (see docs/development.md -> "Preview installs"):
 
   ZEPP_APPTOKEN, ZEPP_USERID, ZEPP_CNAME
 
-  python3 tools/zepp_preview.py <dist dir with one .zab> <out dir>
+  python3 tools/zepp_preview.py <dist dir with one .zab> <out dir> [--device-source N]
+
+Like `zeus preview`, it uploads a bundle holding only the chosen watch's package
+(default: Amazfit Balance 3, 11141376) and no intermediate products.
 
 Writes <out>/preview-url.txt (the zpkd1:// style URL Zepp returns), <out>/preview-qr.png
 and <out>/preview-expires.txt. Zepp keeps preview packages for 7 days, so CI uploads a
@@ -19,8 +22,11 @@ fresh one on every push to dev.
 Mirrors @zeppos/zeus-cli 1.9.3 (zeppos-app-utils api.uploadPackage and
 modules.previewBuild).
 """
+import io
+import json
 import os
 import sys
+import zipfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import unquote
@@ -37,7 +43,12 @@ def fail(msg):
     sys.exit(1)
 
 
-dist, out = Path(sys.argv[1]), Path(sys.argv[2])
+args = [a for a in sys.argv[1:] if not a.startswith("--device-source")]
+dist, out = Path(args[0]), Path(args[1])
+device_source = 11141376
+for a in sys.argv[1:]:
+    if a.startswith("--device-source="):
+        device_source = int(a.split("=", 1)[1])
 # Values copied out of the login callback URL may still be URL-encoded (%2C and so on).
 token = unquote(os.environ.get("ZEPP_APPTOKEN", "").strip())
 userid = unquote(os.environ.get("ZEPP_USERID", "").strip())
@@ -55,16 +66,40 @@ zabs = sorted(dist.glob("*.zab"))
 if len(zabs) != 1:
     fail(f"expected exactly one .zab in {dist}, found {len(zabs)}")
 
+
+
+def single_device_zab(zab_path, source):
+    """The .zab with only the package for one watch, as zeus preview builds it."""
+    with zipfile.ZipFile(zab_path) as zab:
+        manifest = json.loads(zab.read("manifest.json"))
+        keep = None
+        for entry in manifest["zpks"]:
+            zpk = zab.read(entry["name"])
+            with zipfile.ZipFile(io.BytesIO(zpk)) as z, zipfile.ZipFile(io.BytesIO(z.read("device.zip"))) as d:
+                sources = [p.get("deviceSource") for p in json.loads(d.read("app.json")).get("platforms", [])]
+            if source in sources:
+                keep = (entry, zpk)
+                break
+    if keep is None:
+        fail(f"no package in {zab_path.name} targets deviceSource {source}")
+    manifest["zpks"] = [keep[0]]
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr(keep[0]["name"], keep[1])
+        z.writestr("manifest.json", json.dumps(manifest, separators=(",", ":")))
+    return buf.getvalue()
+
+
+payload = single_device_zab(zabs[0], device_source)
 try:
-    with zabs[0].open("rb") as f:
-        res = requests.post(
-            f"https://{host}/custom/tools/app-dial/upload",
-            params={"userid": userid},
-            headers={"apptoken": token},
-            files={"file": (zabs[0].name, f, "application/octet-stream")},
-            data={"app_type": "2"},          # 1 = watch face, 2 = app
-            timeout=120,
-        )
+    res = requests.post(
+        f"https://{host}/custom/tools/app-dial/upload",
+        params={"userid": userid},
+        headers={"apptoken": token},
+        files={"file": (zabs[0].name, payload, "application/octet-stream")},
+        data={"app_type": "2"},          # 1 = watch face, 2 = app
+        timeout=120,
+    )
 except requests.RequestException as e:
     fail(f"could not reach the Zepp host from ZEPP_CNAME ({type(e).__name__}: {e})")
 if res.status_code == 401:
