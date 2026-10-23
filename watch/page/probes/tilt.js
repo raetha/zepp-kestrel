@@ -55,7 +55,7 @@ function buzzes(n) {
 export const tiltProbe = {
   title: 'Compass tilt',
   start(ctx) {
-    const once = guard()
+    const once = guard(ctx)
     let lastA = null
     let lastG = null
     const a = accel()

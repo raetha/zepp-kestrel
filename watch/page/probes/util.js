@@ -11,16 +11,22 @@ export function cycler(ctx, prefix, options) {
   return () => options[i]
 }
 
-/** Prevents a second press from starting a run while one is going. */
-export function guard() {
+/**
+ * Prevents a second press from starting a run while one is going, and keeps
+ * the screen on during the run only (ctx.awake), so the watch times out
+ * normally before and after.
+ */
+export function guard(ctx) {
   let busy = false
   return async (fn) => {
     if (busy) return
     busy = true
+    if (ctx) ctx.awake(true)
     try {
       await fn()
     } finally {
       busy = false
+      if (ctx) ctx.awake(false)
     }
   }
 }

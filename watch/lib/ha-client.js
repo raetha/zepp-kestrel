@@ -171,6 +171,15 @@ export class HaClient {
     return { ok: true, haName: b.ha_name || 'Home Assistant' }
   }
 
+  /** Note the address that answered; storage trouble never fails a request. */
+  remember(url) {
+    try {
+      if (this.store.getItem(KEY.lastGood) !== url) this.store.setItem(KEY.lastGood, url)
+    } catch (e) {
+      // best effort
+    }
+  }
+
   // ---------------------------------------------------------------- requests
   /** URLs to try, best first: the last one that worked, then local, then remote. */
   candidateUrls() {
@@ -199,7 +208,7 @@ export class HaClient {
           this.unpair()
           throw Object.assign(new Error('This watch was removed in Home Assistant: pair again'), { fatal: true })
         }
-        this.store.setItem(KEY.lastGood, url)
+        this.remember(url)
         const b = parseBody(res)
         if (res.status !== 200) throw Object.assign(new Error((b && b.message) || `HA answered ${res.status}`), { fatal: true })
         return b

@@ -11,7 +11,7 @@ const ROOMS = ['Room A', 'Room B', 'Room C', 'Room D', 'Room E']
 export const bleProbe = {
   title: 'BLE scan',
   start(ctx) {
-    const once = guard()
+    const once = guard(ctx)
     let scanning = false
     ctx.onCleanup(() => scanning && mstStopScan())
 

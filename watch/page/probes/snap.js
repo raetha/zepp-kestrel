@@ -15,7 +15,7 @@ const GESTURES = ['snap', 'finger tap', 'wrist flick', 'arm wave', 'nothing']
 export const snapProbe = {
   title: 'Snap recorder',
   start(ctx) {
-    const once = guard()
+    const once = guard(ctx)
     const aBuf = []
     const gBuf = []
     const trim = (buf, now) => {

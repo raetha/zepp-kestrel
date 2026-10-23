@@ -11,7 +11,7 @@ const ROUNDS = 20
 export const latencyProbe = {
   title: 'Latency',
   start(ctx) {
-    const once = guard()
+    const once = guard(ctx)
     ctx.status(`Times ${ROUNDS} round trips to the phone, then ${ROUNDS} to Home Assistant via the phone.\n\nPair with Home Assistant first.`)
     ctx.primary('Run', () =>
       once(async () => {

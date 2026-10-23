@@ -34,11 +34,10 @@ Page(
       onInit(params) {
         this.mode = typeof params === 'string' && PROBES[params] ? params : 'rates'
         this.alive = true
+        this.awake = false
         this.cleanups = []
         this.onPrimary = null
         this.onSecondary = null
-        // Keep the app open while the wrist moves around during a test.
-        pauseDropWristScreenOff({ duration: 0 })
       },
 
       build() {
@@ -74,7 +73,14 @@ Page(
             live(setText)(page.sentW, 'Sending…')
             return ask(page, METHOD.PROBE_LOG, { ...result, test: page.mode, at: Date.now() }, 15000)
               .then((r) => {
-                const msg = r && r.forwarded ? 'Sent to Home Assistant' : r && r.stored ? 'Saved on the phone only' : `Not sent: ${(r && r.error) || 'no reply'}`
+                const msg =
+                  r && r.forwarded
+                    ? 'Sent to Home Assistant'
+                    : r && r.error
+                      ? `Not sent: ${r.error}`
+                      : r && r.stored
+                        ? 'Saved on the phone only'
+                        : 'Not sent: no reply'
                 live(setText)(page.sentW, msg)
                 return r
               })
@@ -82,6 +88,19 @@ Page(
                 live(setText)(page.sentW, 'Not sent: phone not reachable')
                 return null
               })
+          },
+          // Keep the screen on while a probe runs (the wrist moves around);
+          // otherwise the watch times out as usual. Keeping it on for the whole
+          // page seemed to make back and swipes close the app once the normal
+          // screen timeout had passed.
+          awake: (on) => {
+            page.awake = on
+            try {
+              if (on) pauseDropWristScreenOff({ duration: 0 })
+              else resetDropWristScreenOff()
+            } catch (e) {
+              // not critical
+            }
           },
           onCleanup: (fn) => page.cleanups.push(fn),
           color: COLOR,
@@ -99,7 +118,13 @@ Page(
             // keep cleaning up
           }
         }
-        resetDropWristScreenOff()
+        if (this.awake) {
+          try {
+            resetDropWristScreenOff()
+          } catch (e) {
+            // not critical
+          }
+        }
       },
     }),
   ),

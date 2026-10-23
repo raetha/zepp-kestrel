@@ -22,7 +22,7 @@ const RUNS = [
 export const ratesProbe = {
   title: 'Sensor rates',
   start(ctx) {
-    const once = guard()
+    const once = guard(ctx)
     let active = null
     ctx.onCleanup(() => active && active.stop())
 

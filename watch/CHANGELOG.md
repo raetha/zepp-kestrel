@@ -23,7 +23,12 @@ All notable changes to the WristWand watch app. The format is based on
 - Compass tilt probe: two short guided recordings (up and down along one line; wrist turned in and out) instead of single captures. Each step is announced by 1 to 4 buzzes, so you needn't read the screen, and all steps are shown before you start.
 - Sensor rates probe also measures the compass in each speed mode.
 - Point and Paint read the compass at its normal speed, which gives the most fresh headings.
+- Probe screens and Paint keep the screen on only while a probe runs or a device is being painted; otherwise the watch times out as usual.
 
 ### Added (testing)
 
 - The app records which screens it opened, which buttons and swipes arrived, and any errors, and sends that to Home Assistant at the next launch (in the diagnostics download), to track down why the lower button or a swipe sometimes closes the app instead of going back. Errors in a screen are contained instead of closing the app.
+
+### Fixed
+
+- Probe results stopped reaching Home Assistant ("Not sent: undefined is not an object"): the phone now sends each result to Home Assistant before keeping a small summary for itself, clears an oversized summary list, and says which step failed if one does.

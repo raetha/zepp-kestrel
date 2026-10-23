@@ -22,7 +22,7 @@ Page(
         this.page = 0
         this.aim = null
         this.onSelect = null
-        pauseDropWristScreenOff({ duration: 0 })
+        this.alive = true
       },
 
       build() {
@@ -106,9 +106,12 @@ Page(
             samples.push({ heading: a.heading, pitch: a.pitch })
           }
         })
+        pauseDropWristScreenOff({ duration: 0 })
+        this.awake = true
         for (let s = 3; s > 0; s--) {
           setText(this.msgW, `Point at it…\n\n${s}`)
           await sleep(800)
+          if (!this.alive) return
         }
         haptics.sent()
         this.recording = true
@@ -117,8 +120,11 @@ Page(
           const left = Math.ceil((end - Date.now()) / 1000)
           setText(this.msgW, `Sweep slowly across it…\n\n${left} s${calibrated ? '' : '\n(compass not calibrated)'}`)
           await sleep(250)
+          if (!this.alive) return
         }
         this.recording = false
+        resetDropWristScreenOff()
+        this.awake = false
         this.aim.stop()
         this.aim = null
         this.painting = false
@@ -154,7 +160,8 @@ Page(
       onDestroy() {
         if (this.aim) this.aim.stop()
         this.unkeys && this.unkeys()
-        resetDropWristScreenOff()
+        this.alive = false
+        if (this.awake) resetDropWristScreenOff()
       },
     }),
   ),
