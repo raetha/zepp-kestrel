@@ -3,7 +3,7 @@
 // recorder now, and the basis of the real snap detector later.
 
 import { mag } from './aim.js'
-import { median } from './stats.js'
+import { median } from '../../lib/stats.js'
 
 /**
  * @param samples array of { t, x, y, z } in ms and cm/s^2, time-ordered

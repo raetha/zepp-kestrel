@@ -1,25 +1,26 @@
 Licensing for raetha/zepp-wristwand
 ===================================
 
-This repository uses different licences for different parts. In short: the
-shared tooling and helper code are free to reuse for anything, while the
-WristWand app itself may be shared and remixed but not sold by anyone other
-than the author.
+This repository uses different licences for different parts. The dividing
+line: anything that could power someone else's paid watch app is
+non-commercial; everything else is MIT.
 
-1. Shared code and tooling: MIT (see LICENSES/MIT.txt)
-   - watch/lib/      (pure JS helpers: circular statistics, aim maths, sensor
-                      rate meter, spike analysis, BLE aggregation, protocol)
+1. MIT (see LICENSES/MIT.txt)
+   - lib/            (generic helpers with no tie to watches: circular
+                      statistics, summary statistics, a rate meter)
+   - ha/             (the Home Assistant custom component, when it is added)
    - tools/          (packaging, release, site and emulator scripts)
    - .github/        (CI configuration)
    - repository-level docs and config files (README.md, docs/, package.json, ...)
 
-2. The WristWand app: CC BY-NC-SA 4.0 (see LICENSES/CC-BY-NC-SA-4.0.txt)
-   Everything inside watch/ except watch/lib/ - the watch app, side service,
-   settings page, icon, screenshots and documentation - and, when it is added,
-   everything inside ha/ (the Home Assistant component) is licensed under
-   Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.
+2. The WristWand watch app: CC BY-NC-SA 4.0 (see LICENSES/CC-BY-NC-SA-4.0.txt)
+   Everything inside watch/ - the watch app and its pointing, gesture and
+   room-detection logic (watch/lib/), the side service, the settings page,
+   the icon, screenshots and documentation - is licensed under Creative
+   Commons Attribution-NonCommercial-ShareAlike 4.0 International.
    You may study, share and adapt it for non-commercial purposes, with credit,
-   under the same licence. You may not sell it or a derivative of it.
+   under the same licence. You may not sell it or a derivative of it, in any
+   store.
 
 3. Names and logos are not licensed
    The name "WristWand" and its icon are not licensed for reuse under either

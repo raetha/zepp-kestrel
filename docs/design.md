@@ -33,7 +33,7 @@ Direct mode filters entities with an HA label `wristwand` (all supported entitie
 
 - Aim = compass heading (`getDirectionAngle()`) plus forearm pitch from the accelerometer's gravity vector. Roll is used for the dimming twist.
 - Aim gate: the arm must be still (gyro under about 30°/s for 300 ms), pitch between −30° and +70°, compass calibrated.
-- A paint stores, per device and room, one or more spots: circular mean heading and spread, mean pitch and spread, and up to 60 samples. Heading maths is always circular (`watch/lib/circular.js`).
+- A paint stores, per device and room, one or more spots: circular mean heading and spread, mean pitch and spread, and up to 60 samples. Heading maths is always circular (`lib/circular.js`).
 - Classification scores each spot with a 2D Gaussian; states are resting, aiming, candidate (show the name) and locked (margin over the runner-up). A wrong guess offers the runner-up; corrections reweight spots.
 
 ## Triggers

@@ -1,7 +1,7 @@
 // BLE scan helpers: MAC formatting and per-device RSSI aggregation.
 // The aggregate is the raw material for room fingerprints.
 
-import { median } from './stats.js'
+import { median } from '../../lib/stats.js'
 
 /** Format a 6-byte MAC (ArrayBuffer, typed array or plain array) as AA:BB:... */
 export function macToString(addr) {

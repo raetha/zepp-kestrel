@@ -5,7 +5,7 @@
   "description": "Wristwand: point at a smart-home device with an Amazfit / Zepp OS watch and trigger it",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
-    "test": "node --test watch/test/*.test.mjs",
+    "test": "node --test lib/test/*.test.mjs watch/test/*.test.mjs",
     "build": "cd watch && zeus build",
     "emu": "node tools/emu/emu.mjs",
     "qr": "python3 tools/make_qr.py"

@@ -9,10 +9,11 @@ This is the canonical guide for the repository. Read it before changing anything
 | `watch/` | The Zepp OS mini program (Zeus CLI project): watch app, side service, settings page. |
 | `watch/app.json` | Manifest: app ID 1132466, version, permissions (accelerometer, gyroscope, compass, BLE), API level. |
 | `watch/page/` | Watch screens. M0: `menu.js` and `test.js` (hosts one probe from `probes/`). `sensors.js` wraps `@zos/sensor`; `ui.js` has the widget helpers. |
-| `watch/lib/` | Pure JS shared by watch and phone, unit-tested in Node: circular statistics, aim maths, rate meter, spike analysis, BLE aggregation, message protocol. No `@zos/*` imports. |
+| `watch/lib/` | The app's pure-JS logic, unit-tested in Node: aim maths, spike (gesture) analysis, BLE aggregation for rooms, watch ↔ phone protocol. No `@zos/*` imports. |
 | `watch/app-side/` | Side service, running in the Zepp phone app: answers the watch and talks to Home Assistant (`ha.js`). |
 | `watch/setting/` | Settings page in the Zepp phone app. |
 | `watch/test/` | `node --test` suites for `watch/lib/`. |
+| `lib/` | Generic helpers with no tie to watches (MIT): circular statistics, summary statistics, a rate meter. Tests in `lib/test/`. Watch code imports them by relative path. |
 | `watch/docs/` | Install QR code and emulator screenshots. |
 | `watch/CHANGELOG.md` | The watch app's version history; its sections become release notes. |
 | `ha/` | (M2) the optional `wristwand` Home Assistant custom component, with its own changelog and version. |
@@ -29,7 +30,7 @@ npm install -g @zeppos/zeus-cli@1.9.3        # builds the watch app
 
 ## Everyday loop
 
-1. Change code in `watch/`. Keep logic that doesn't need the Zepp runtime in `watch/lib/` with tests.
+1. Change code in `watch/`. Keep logic that doesn't need the Zepp runtime in `watch/lib/` (or `lib/` if it is generic, see "Licensing") with tests.
 2. `npm test`.
 3. `npm run build` (or `cd watch && zeus build`) to check it compiles.
 4. Run it on the emulator (below): open the screens you changed, look at screenshots, and check `tools/.emu/serial.log` for `Mini Program Error`.
@@ -129,13 +130,16 @@ The release QR code (`watch/docs/install-qr.png`) encodes `zpkd1://raetha.github
 
 ## Licensing
 
-Following [raetha/zepp-watch-faces](https://github.com/raetha/zepp-watch-faces): open source, but only the author may sell the app.
+Open source, but nobody else may sell the watch app. The dividing line is whether code could power someone else's paid watch app:
 
-- **Shared helper code and tooling** (`watch/lib/`, `tools/`, `.github/`, repo docs and config) is MIT (`LICENSES/MIT.txt`). Put generic, reusable code in `watch/lib/`.
-- **The app** (`watch/` apart from `watch/lib/`, and `ha/` when it's added) is CC BY-NC-SA 4.0 (`LICENSES/CC-BY-NC-SA-4.0.txt`), with its own `watch/LICENSE`.
-- **The name "WristWand"** and its icon aren't licensed for reuse.
+| Path | Licence | Why |
+| --- | --- | --- |
+| `watch/` (including `watch/lib/`) | CC BY-NC-SA 4.0 | The app, and the pointing, gesture, room-detection and protocol logic that would let someone build a paid copy. Zepp and other watch brands have paid stores. |
+| `ha/` (the HA component, when added) | MIT | Home Assistant's ecosystem is free, with no paid store. |
+| `lib/` | MIT | Generic helpers an unrelated project could use. |
+| `tools/`, `.github/`, repo docs and config | MIT | Tooling. |
 
-See the root `LICENSE`.
+When adding code: generic with no tie to watches goes in `lib/`; anything watch- or Zepp-specific goes in `watch/`. The name "WristWand" and its icon aren't licensed for reuse. See the root `LICENSE`.
 
 ## Packaging for delivery
 

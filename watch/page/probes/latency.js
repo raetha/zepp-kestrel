@@ -3,7 +3,7 @@
 // end to end for the "it just happened" feeling.
 
 import { METHOD } from '../../lib/protocol.js'
-import { summarize } from '../../lib/stats.js'
+import { summarize } from '../../../lib/stats.js'
 import { guard } from './util.js'
 
 const ROUNDS = 20

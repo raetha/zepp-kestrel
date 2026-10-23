@@ -1,9 +1,10 @@
 WristWand watch app
 Copyright (c) 2026 raetha
 
-Everything in this directory (watch/) except watch/lib/ is licensed under the
-Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International licence
-(CC BY-NC-SA 4.0). Full text: ../LICENSES/CC-BY-NC-SA-4.0.txt or
+Everything in this directory (watch/), including the pointing, gesture and
+room-detection code in watch/lib/, is licensed under the Creative Commons
+Attribution-NonCommercial-ShareAlike 4.0 International licence (CC BY-NC-SA
+4.0). Full text: ../LICENSES/CC-BY-NC-SA-4.0.txt or
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 - Attribution: credit "WristWand by raetha" with a link to
@@ -14,4 +15,5 @@ https://creativecommons.org/licenses/by-nc-sa/4.0/
 The name "WristWand" and its icon are not licensed for reuse; adaptations must
 use a different name.
 
-The helper code in watch/lib/ is MIT licensed (see watch/lib/LICENSE).
+The generic helpers this app imports from ../lib/ are MIT licensed (see the
+repository's LICENSE).

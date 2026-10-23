@@ -4,8 +4,8 @@
 
 import { accel, compass } from '../sensors.js'
 import { pitchRoll } from '../../lib/aim.js'
-import { circularMean, angleDiff } from '../../lib/circular.js'
-import { mean } from '../../lib/stats.js'
+import { circularMean, angleDiff } from '../../../lib/circular.js'
+import { mean } from '../../../lib/stats.js'
 import { sleep, guard, cycler, r1 } from './util.js'
 
 const POSES = ['palm down', 'thumb up', 'palm up', 'arm raised', 'arm lowered']

@@ -9,11 +9,11 @@ WristWand: point an Amazfit / Zepp OS watch at a smart-home device and trigger i
 - Record each adopted change under `## [Unreleased]` in the component's `CHANGELOG.md` (`watch/CHANGELOG.md`, later `ha/CHANGELOG.md`), written for people installing it. Never bump a version or date a changelog without being asked: that's the release pull request (`dev` → `main`), which the owner squash-merges. CI then resets `dev` to `main` (when nothing new landed on `dev` meanwhile).
 - `watch/DRAFT` keeps the watch app from being released until the owner says the first release is ready.
 - Name: **WristWand** (store name; "Wristwand" in prose is fine). It is inspired by commercial point-and-snap apps for other watches but must never use their names, code, assets or branding.
-- Licences (`LICENSE`): `watch/lib/`, `tools/` and CI are MIT. The app itself (`watch/` apart from `watch/lib/`, and later `ha/`) is CC BY-NC-SA 4.0: open, but nobody else may sell it. Code that is generic and reusable belongs in `watch/lib/` (MIT); app-specific code goes elsewhere in `watch/`.
+- Licences (`LICENSE`). The test is whether code could power someone else's paid watch app. Everything in `watch/` (including `watch/lib/`: pointing, gestures, room detection, protocol) is CC BY-NC-SA 4.0. `lib/` (generic helpers an unrelated project could use), `ha/` (the HA component; HA has no paid store), `tools/` and CI are MIT. New code: generic with no tie to watches → `lib/`; anything watch- or Zepp-specific → `watch/`.
 
 ## Validate on the real firmware
 
-- `npm test` runs the pure-JS library tests (`watch/lib/`). Fast, but no Zepp runtime.
+- `npm test` runs the pure-JS library tests (`lib/` and `watch/lib/`). Fast, but no Zepp runtime.
 - The emulator runs the real Zepp OS firmware (Balance 2 image, API 4.2) in QEMU, headless. Use it to catch crashes and layout problems before a push. First-time setup in a fresh container (about 5 minutes, about 240 MB):
 
   ```bash
@@ -32,5 +32,5 @@ WristWand: point an Amazfit / Zepp OS watch at a smart-home device and trigger i
 - The emulator has no phone: the side service and settings page never run there, so watch → phone requests fail ("Phone not reachable"), which is the expected result.
 - The emulator feeds synthetic motion at about 25 Hz in every frequency mode and a wandering compass. Its sensor numbers say nothing about the real watch.
 - On every launch the emulator log shows `Mini Program Error TypeError: cannot set property 'exports' of undefined` from `app.js`. It comes after ZML's `BaseApp` has registered the app and doesn't stop anything working; watch for it on the real watch.
-- `watch/lib/` must stay free of `@zos/*` imports so Node can test it; its own `package.json` sets `"type": "module"`.
+- `lib/` and `watch/lib/` must stay free of `@zos/*` imports so Node can test them; each has a `package.json` setting `"type": "module"`. Watch code imports `lib/` by relative path (`../../../lib/stats.js`); Zeus bundles it.
 - Dependencies live in the root `package.json`; Zeus resolves them from `watch/` and `watch-dev/` by walking up.
