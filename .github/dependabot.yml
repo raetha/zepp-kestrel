@@ -17,3 +17,8 @@ updates:
     target-branch: dev
     schedule:
       interval: weekly
+  - package-ecosystem: pip
+    directory: /ha
+    target-branch: dev
+    schedule:
+      interval: weekly

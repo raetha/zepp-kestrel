@@ -10,3 +10,5 @@ out/
 out-dev/
 watch-dev/
 tools/.emu*/
+.venv/
+.pytest_cache/

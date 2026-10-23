@@ -2,7 +2,8 @@ name: Build and publish
 
 # Branches (docs/development.md -> "Branches and releases"): work lands on `dev`, and
 # each release is one squash-merged pull request from `dev` into `main`.
-# Every push and pull request: changelog check, unit tests, Zeus build of the watch app.
+# Every push and pull request: changelog check, unit tests, Zeus build of the watch app,
+# and the Home Assistant component's tests.
 # Push to main: any component whose version has no `<component>-v<version>` tag yet is
 # released (tag + GitHub release with that version's changelog section).
 # Push to main or dev (and manual runs): builds a "DEV" test build of the watch app from
@@ -116,8 +117,25 @@ jobs:
           name: wristwand-dev
           path: out-dev/
 
+  ha-tests:
+    # The Home Assistant component (custom_components/wristwand), tested against a real HA core.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Install the HA test harness
+        run: pip install -r ha/requirements_test.txt
+
+      - name: Component tests
+        working-directory: ha
+        run: pytest -q
+
   release:
-    needs: build
+    needs: [build, ha-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.releases != '[]'
     runs-on: ubuntu-24.04
     permissions:
@@ -147,12 +165,39 @@ jobs:
             gh release create "$tag" --target "$GITHUB_SHA" --title "$title" --notes-file notes.md $assets
           done
 
+  # Each push to dev publishes the HA component as a GitHub pre-release (ha-v<version>-dev.<run>),
+  # so HACS can install test builds once "beta versions" is on for WristWand. Older dev
+  # pre-releases (and their tags) are deleted; real releases are never touched.
+  ha-dev-release:
+    needs: [build, ha-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Publish the dev pre-release for HACS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          version=$(python3 -c "import json;print(json.load(open('custom_components/wristwand/manifest.json'))['version'])")
+          tag="ha-v${version}-dev.${GITHUB_RUN_NUMBER}"
+          gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
+            --title "WristWand HA component ${version} test build ${GITHUB_RUN_NUMBER}" \
+            --notes "Test build of the Home Assistant component from dev (${GITHUB_SHA::7}). Install through HACS with beta versions turned on for WristWand. See ha/CHANGELOG.md → Unreleased."
+          gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' |
+            grep -E '^ha-v.*-dev\.[0-9]+$' | grep -vx "$tag" | while read -r old; do
+              gh release delete "$old" --yes --cleanup-tag
+            done
+
   pages:
-    needs: [build, release]
+    needs: [build, ha-tests, release]
     if: >-
       always() && github.event_name != 'pull_request' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
-      needs.build.result == 'success' &&
+      needs.build.result == 'success' && needs.ha-tests.result == 'success' &&
       (needs.release.result == 'success' || needs.release.result == 'skipped')
     runs-on: ubuntu-24.04
     concurrency:
@@ -215,10 +260,10 @@ jobs:
   # After a release pull request is merged, dev holds the same files as main but different
   # commits; reset it to main so the next cycle starts clean. Skipped if dev has new work.
   sync-dev:
-    needs: [build, release]
+    needs: [build, ha-tests, release]
     if: >-
       always() && github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      needs.build.result == 'success' &&
+      needs.build.result == 'success' && needs.ha-tests.result == 'success' &&
       (needs.release.result == 'success' || needs.release.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:

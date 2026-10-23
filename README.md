@@ -2,7 +2,7 @@
 
 Point your Amazfit watch at a smart-home device and trigger it. An open-source pointing remote for Zepp OS watches, built around [Home Assistant](https://www.home-assistant.io/).
 
-> **Status: M0, measurement build.** The watch app is currently a set of probes that measure what the hardware can do (sensor rates, gesture recordings, compass behaviour, Bluetooth per room, latency), so the real app is built on numbers rather than guesses. There is no release yet.
+> **Status: M1, first working version.** Pair the watch with Home Assistant, paint a device, point at it and press the select button to toggle it. The M0 probes (sensor rates, gestures, compass, Bluetooth, latency) are still on the watch under Probes. There is no release yet.
 
 <p align="center">
   <img src="watch/docs/screenshot-menu.png" width="240" alt="WristWand probe menu on the watch">
@@ -14,20 +14,28 @@ Point your Amazfit watch at a smart-home device and trigger it. An open-source p
 2. **Point** at it. The watch shows what it thinks you mean.
 3. **Trigger**: snap, flick, press a button or tap. A twist dims lights. Locks always ask for a confirming tap.
 
-It works with Home Assistant as it is (a URL and a long-lived token), and does more with the optional WristWand Home Assistant component: paint scripts or virtual targets, choose each target's action in HA, use events in automations, and back up your painted devices in HA. See [docs/design.md](docs/design.md).
+It works best with the WristWand Home Assistant component: the watch pairs with a code instead of a copied token, lists your devices by area, keeps working away from home through Nabu Casa, and every action fires a `wristwand_fired` event for automations. Store installs will also be able to use Home Assistant without it (a URL and a long-lived token in the app's settings). See [docs/design.md](docs/design.md).
 
 ## Try the test build
 
 Test builds are for development and change often.
 
+**1. Install the Home Assistant component.** In HACS: ⋮ → Custom repositories → `https://github.com/raetha/zepp-wristwand`, type Integration, then open WristWand. There's no release yet, so first turn on its test builds: ⋮ → Redownload → switch on **Show beta versions** → pick the newest `ha-v…-dev.N` → Download, then restart Home Assistant. (Each push to `dev` publishes a new one; HACS offers it as an update.) Or copy `custom_components/wristwand` from the `dev` branch into your HA config folder. Then Settings → Devices & services → Add integration → WristWand.
+
+**2. Install the watch app.**
 1. In the Zepp app, turn on Developer Mode: Profile → Settings → About, tap the Zepp logo 7 times.
 2. Open the [test-build page](https://raetha.github.io/zepp-wristwand/dev/) on another screen.
-3. In the Zepp app: Profile → your watch → Developer Mode → scan icon (top right). Scan the code and confirm.
-4. In the Zepp app, open **WristWand DEV**'s settings: enter your Home Assistant URL and a long-lived access token (HA → Profile → Security), then **Test connection**.
+3. In the Zepp app: Profile → your watch → Developer Mode → scan icon (top right). Scan the top code and confirm.
+
+**3. Pair.** With your phone on the home Wi-Fi, open WristWand DEV on the watch → Pair with HA. Pick your Home Assistant, then type the 6-digit code from the notification Home Assistant shows. The watch then fetches your devices. (If the Zepp app asks for Local Network access, allow it: that's how the phone finds `homeassistant.local`.)
+
+**4. Paint and point.** Paint a device: pick it, stand where you'd use it, press Start, and sweep your arm slowly across it for 15 s. Then Point: hold your arm out at it. The circle turns green when the watch has it in mind; press the select button (or tap the circle) to toggle it. Locks ask for a confirming tap.
+
+To offer the watch only some devices, add the label `wristwand` to those entities or devices in Home Assistant, then Sync on the watch.
 
 ### Running the M0 probes
 
-Optionally turn on **Send probe results to HA** in the settings: each result, including raw sensor traces, then arrives in Home Assistant as a `wristwand_probe` event (Developer tools → Events → listen to `wristwand_probe`). Results also show on the watch and in the settings page. The select button presses the main button on every probe screen.
+Under **Probes** on the watch. Results show on the watch; the select button presses the main button on every probe screen.
 
 | Probe | What to do | What it answers |
 | --- | --- | --- |

@@ -1,0 +1,2 @@
+# Home Assistant test harness for the WristWand component (Python 3.14).
+pytest-homeassistant-custom-component==0.13.373

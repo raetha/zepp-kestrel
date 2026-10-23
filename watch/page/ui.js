@@ -1,7 +1,7 @@
 // Tiny UI helpers for the 480 x 480 round screen. Layout is designed at
 // 480 wide; px() scales it for other round Zepp OS watches.
 
-import { createWidget, widget, align, prop, text_style } from '@zos/ui'
+import { createWidget, deleteWidget, widget, align, prop, text_style } from '@zos/ui'
 import { px } from '@zos/utils'
 
 export const COLOR = {
@@ -14,6 +14,8 @@ export const COLOR = {
   buttonPressed: 0x444444,
   good: 0x3ddc84,
   bad: 0xff5a5a,
+  aiming: 0xf0a030,
+  candidate: 0x3ddc84,
 }
 
 export function text({ x = 60, y, w = 360, h = 40, size = 24, color = COLOR.text, value = '', center = true }) {
@@ -53,4 +55,34 @@ export function button({ x = 110, y, w = 260, h = 60, label, onClick, primary = 
 
 export function setLabel(btn, label) {
   btn.setProperty(prop.TEXT, label)
+}
+
+/** Delete widgets created for one step of a page. */
+export function clear(list) {
+  for (const w of list.splice(0)) {
+    try {
+      deleteWidget(w)
+    } catch (e) {
+      // already gone
+    }
+  }
+}
+
+export function circle({ x = 240, y = 240, r = 120, color = COLOR.button }) {
+  return createWidget(widget.CIRCLE, { center_x: px(x), center_y: px(y), radius: px(r), color })
+}
+
+export function setColor(w, color) {
+  w.setProperty(prop.MORE, { color })
+}
+
+/** Shorten a label to fit a button. */
+export function fit(s, n = 18) {
+  s = String(s || '')
+  return s.length > n ? `${s.slice(0, n - 1)}…` : s
+}
+
+/** page.request with a timeout, so a missing phone fails fast instead of hanging. */
+export function ask(page, method, params, timeout = 6000) {
+  return page.request({ method, params }, { timeout })
 }

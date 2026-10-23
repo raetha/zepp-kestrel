@@ -5,8 +5,13 @@ export const METHOD = {
   PING: 'ww.ping', // phone answers immediately: measures watch <-> phone
   HA_PING: 'ww.haPing', // phone calls HA GET /api/: measures phone <-> HA
   PROBE_LOG: 'ww.probeLog', // watch sends a probe result for storage/forwarding
-  FIRE: 'ww.fire', // (M1) run an action on a target
-  SYNC: 'ww.sync', // (M1) fetch the target list
+  STATUS: 'ww.status', // { paired, mode, haName }
+  DISCOVER: 'ww.discover', // look for Home Assistant on the local network
+  PAIR_START: 'ww.pairStart', // { url, watchName } -> { pairingId } (HA shows a code)
+  PAIR_CONFIRM: 'ww.pairConfirm', // { url, pairingId, code } -> { ok, haName, error }
+  UNPAIR: 'ww.unpair',
+  SYNC: 'ww.sync', // -> { targets: [{ id, name, domain, area, dimmable, confirm }] }
+  FIRE: 'ww.fire', // { seq, target, action, value, confirmed } -> { ok, state, needsConfirm, error }
 }
 
 /**

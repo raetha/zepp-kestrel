@@ -1,4 +1,4 @@
-// M0 probe: menu of measurements. Each opens page/test with a mode name.
+// M0 probes: measurements of what the watch can do. Each opens page/test with a mode name.
 
 import { BasePage } from '@zeppos/zml/base-page'
 import { push } from '@zos/router'
@@ -15,7 +15,7 @@ const TESTS = [
 Page(
   BasePage({
     build() {
-      text({ y: 40, h: 40, size: 28, value: 'Wristwand probe' })
+      text({ y: 40, h: 40, size: 28, value: 'Probes' })
       text({ y: 78, h: 30, size: 18, color: COLOR.quiet, value: 'M0 measurements' })
       TESTS.forEach(([mode, label], i) => {
         button({

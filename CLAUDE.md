@@ -6,14 +6,16 @@ WristWand: point an Amazfit / Zepp OS watch at a smart-home device and trigger i
 
 - Sessions can push to this repo. If a session has read-only access, fall back to a zip of the repo (`docs/development.md` → "Packaging for delivery").
 - **Branches** (`docs/development.md` → "Branches and releases"): never push to `main`; it gets one squash-merged pull request per release. Adopted work goes on `dev`, and experiments that may be dropped go on `try/<topic>` branches off `dev`. Each push to `dev` publishes a DEV test build at https://raetha.github.io/zepp-wristwand/dev/, and the owner tests it on the watch by scanning its QR code. The owner has no local Zepp dev environment, so that page is how builds reach the watch.
-- Record each adopted change under `## [Unreleased]` in the component's `CHANGELOG.md` (`watch/CHANGELOG.md`, later `ha/CHANGELOG.md`), written for people installing it. Never bump a version or date a changelog without being asked: that's the release pull request (`dev` → `main`), which the owner squash-merges. CI then resets `dev` to `main` (when nothing new landed on `dev` meanwhile).
-- `watch/DRAFT` keeps the watch app from being released until the owner says the first release is ready.
+- Record each adopted change under `## [Unreleased]` in the component's `CHANGELOG.md` (`watch/CHANGELOG.md`, `ha/CHANGELOG.md`), written for people installing it. Never bump a version or date a changelog without being asked: that's the release pull request (`dev` → `main`), which the owner squash-merges. CI then resets `dev` to `main` (when nothing new landed on `dev` meanwhile).
+- `watch/DRAFT` and `ha/DRAFT` keep each component from being released until the owner says its first release is ready.
+- Two components: the watch app (`watch/`) and the Home Assistant component (`custom_components/wristwand/`, at the repo root where HACS expects it; its tests, changelog and DRAFT are in `ha/`).
 - Name: **WristWand** (store name; "Wristwand" in prose is fine). It is inspired by commercial point-and-snap apps for other watches but must never use their names, code, assets or branding.
-- Licences (`LICENSE`). The test is whether code could power someone else's paid watch app. Everything in `watch/` (including `watch/lib/`: pointing, gestures, room detection, protocol) is CC BY-NC-SA 4.0. `lib/` (generic helpers an unrelated project could use), `ha/` (the HA component; HA has no paid store), `tools/` and CI are MIT. New code: generic with no tie to watches → `lib/`; anything watch- or Zepp-specific → `watch/`.
+- Licences (`LICENSE`). The test is whether code could power someone else's paid watch app. Everything in `watch/` (including `watch/lib/`: pointing, gestures, room detection, protocol) is CC BY-NC-SA 4.0. `lib/` (generic helpers an unrelated project could use), the HA component (`custom_components/wristwand/`, `ha/`; HA has no paid store), `tools/` and CI are MIT. New code: generic with no tie to watches → `lib/`; anything watch- or Zepp-specific → `watch/`.
 
 ## Validate on the real firmware
 
 - `npm test` runs the pure-JS library tests (`lib/` and `watch/lib/`). Fast, but no Zepp runtime.
+- HA component tests run against a real HA core (Python 3.14): `uv venv .venv --python 3.14 && uv pip install --python .venv/bin/python -r ha/requirements_test.txt`, then `cd ha && ../.venv/bin/pytest -q`.
 - The emulator runs the real Zepp OS firmware (Balance 2 image, API 4.2) in QEMU, headless. Use it to catch crashes and layout problems before a push. First-time setup in a fresh container (about 5 minutes, about 240 MB):
 
   ```bash
@@ -28,9 +30,11 @@ WristWand: point an Amazfit / Zepp OS watch at a smart-home device and trigger i
 
 ## Hard-won facts (details in docs/development.md)
 
-- The Zepp app shows an app's Settings page only for installs from Zepp's preview service (`zeus preview`). Our own `.zpk` QR installs the watch app and side service but no Settings page; a `.zab` QR fails to parse. CI uploads each `dev` build with `tools/zepp_preview.py` using the `ZEPP_*` secrets; those QR codes expire after 7 days (`docs/development.md` → "Preview installs").
+- Sideloaded apps get **no Settings page** in the iPhone Zepp app: not from our `.zpk` QR, and not from Zepp's own preview service (`zeus preview`, which `tools/zepp_preview.py` mirrors in CI), whatever the app ID. Only store installs appear under Device → Device App Settings. So the watch pairs with the HA component instead (phone finds HA at `homeassistant.local`, HA shows a code, the code is typed on the watch). The side service does run for sideloaded apps.
 - A `.zab` holds one `.zpk` per screen and chip. `tools/extract_zpk.py` picks by device ID (Balance 3 = 11141376); a QR install must get that one.
-- The emulator has no phone: the side service and settings page never run there, so watch → phone requests fail ("Phone not reachable"), which is the expected result.
+- The emulator has no phone: the side service and settings page never run there, so watch → phone requests fail ("Phone not reachable"), which is the expected result. ZML's `request` waits up to 60 s by default: always go through `ask()` in `page/ui.js`, which sets a timeout.
+- Every `@zos/*` API that needs a permission throws "PERMISSION DENIED <code>" at runtime without it in `app.json` (e.g. `device:os.local_storage` for `@zos/storage`). The emulator catches these.
+- To check screens that need synced data on the emulator, make `watch-dev` (`tools/make_dev_variant.py`) and give `page/store.js` default targets and paints there; never commit that.
 - The emulator feeds synthetic motion at about 25 Hz in every frequency mode and a wandering compass. Its sensor numbers say nothing about the real watch.
 - On every launch the emulator log shows `Mini Program Error TypeError: cannot set property 'exports' of undefined` from `app.js`. It comes after ZML's `BaseApp` has registered the app and doesn't stop anything working; watch for it on the real watch.
 - `lib/` and `watch/lib/` must stay free of `@zos/*` imports so Node can test them; each has a `package.json` setting `"type": "module"`. Watch code imports `lib/` by relative path (`../../../lib/stats.js`); Zeus bundles it.

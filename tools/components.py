@@ -2,7 +2,8 @@
 
   watch  Zepp OS mini program (watch app + side service + settings page)
          version: watch/app.json -> app.version.name; tag watch-v<version>
-  ha     (M2) Home Assistant custom component, custom_components/wristwand/manifest.json
+  ha     Home Assistant component: custom_components/wristwand/ (at the repo root, where
+         HACS expects it); version in its manifest.json; changelog, tests and DRAFT in ha/
 
 A component containing a DRAFT file is built and tested but never released.
 """
@@ -28,9 +29,8 @@ def components():
     if (watch / "app.json").exists():
         meta = watch_meta(watch)
         out.append(("watch", meta["version"]["name"], f"{meta['appName']} watch app", (watch / "DRAFT").exists()))
-    ha = REPO / "ha"
-    manifests = sorted(ha.glob("custom_components/*/manifest.json")) if ha.exists() else []
-    if manifests:
-        man = json.loads(manifests[0].read_text())
-        out.append(("ha", man["version"], f"{man['name']} HA component", (ha / "DRAFT").exists()))
+    manifest = REPO / "custom_components" / "wristwand" / "manifest.json"
+    if manifest.exists():
+        man = json.loads(manifest.read_text())
+        out.append(("ha", man["version"], f"{man['name']} Home Assistant component", (REPO / "ha" / "DRAFT").exists()))
     return out

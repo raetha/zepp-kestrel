@@ -1,0 +1,141 @@
+"""Paired watches and pending pairings."""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
+import secrets
+import time
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Any
+
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.storage import Store
+
+from .const import (
+    PAIR_STARTS_PER_WINDOW,
+    PAIR_WINDOW,
+    PAIRING_MAX_ATTEMPTS,
+    PAIRING_TTL,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+)
+
+
+def _hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+@dataclass
+class Pairing:
+    """A watch waiting for its code to be entered."""
+
+    pairing_id: str
+    watch_name: str
+    code: str
+    expires: float
+    attempts: int = 0
+
+
+@dataclass
+class Watches:
+    """Paired watches (persisted) plus pairings in progress (memory only)."""
+
+    hass: HomeAssistant
+    store: Store = field(init=False)
+    watches: dict[str, dict[str, Any]] = field(default_factory=dict)
+    pairings: dict[str, Pairing] = field(default_factory=dict)
+    starts: dict[str, deque] = field(default_factory=dict)
+    seen_seqs: dict[str, deque] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.store = Store(self.hass, STORAGE_VERSION, STORAGE_KEY)
+
+    async def async_load(self) -> None:
+        data = await self.store.async_load() or {}
+        self.watches = data.get("watches", {})
+
+    async def _async_save(self) -> None:
+        await self.store.async_save({"watches": self.watches})
+
+    # ------------------------------------------------------------ pairing
+    def allow_start(self, client: str, now: float | None = None) -> bool:
+        """Rate-limit pairing requests per client address."""
+        now = time.monotonic() if now is None else now
+        q = self.starts.setdefault(client, deque())
+        while q and now - q[0] > PAIR_WINDOW:
+            q.popleft()
+        if len(q) >= PAIR_STARTS_PER_WINDOW:
+            return False
+        q.append(now)
+        return True
+
+    def start_pairing(self, watch_name: str, now: float | None = None) -> Pairing:
+        now = time.monotonic() if now is None else now
+        self._expire(now)
+        pairing = Pairing(
+            pairing_id=secrets.token_hex(8),
+            watch_name=(watch_name or "Watch").strip()[:40] or "Watch",
+            code=f"{secrets.randbelow(1_000_000):06d}",
+            expires=now + PAIRING_TTL,
+        )
+        self.pairings[pairing.pairing_id] = pairing
+        return pairing
+
+    def _expire(self, now: float) -> None:
+        for pid in [p for p, v in self.pairings.items() if v.expires < now]:
+            del self.pairings[pid]
+
+    async def async_confirm(
+        self, pairing_id: str, code: str, now: float | None = None
+    ) -> tuple[str, dict[str, Any] | None, str | None]:
+        """Check a code. Returns (status, watch, token): ok | wrong | gone."""
+        now = time.monotonic() if now is None else now
+        self._expire(now)
+        pairing = self.pairings.get(pairing_id)
+        if pairing is None:
+            return "gone", None, None
+        if not hmac.compare_digest(pairing.code, str(code).strip()):
+            pairing.attempts += 1
+            if pairing.attempts >= PAIRING_MAX_ATTEMPTS:
+                del self.pairings[pairing_id]
+                return "gone", None, None
+            return "wrong", None, None
+        del self.pairings[pairing_id]
+        token = secrets.token_urlsafe(32)
+        watch_id = secrets.token_hex(6)
+        watch = {"id": watch_id, "name": pairing.watch_name, "token_hash": _hash(token), "paired_at": time.time()}
+        self.watches[watch_id] = watch
+        await self._async_save()
+        return "ok", watch, token
+
+    # ------------------------------------------------------------ paired watches
+    def by_token(self, token: str | None) -> dict[str, Any] | None:
+        if not token:
+            return None
+        h = _hash(token)
+        for w in self.watches.values():
+            if hmac.compare_digest(w["token_hash"], h):
+                return w
+        return None
+
+    async def async_remove(self, watch_ids: list[str]) -> None:
+        for wid in watch_ids:
+            self.watches.pop(wid, None)
+            self.seen_seqs.pop(wid, None)
+        await self._async_save()
+
+    async def async_clear(self) -> None:
+        self.watches = {}
+        await self.store.async_remove()
+
+    def first_time(self, watch_id: str, seq: Any) -> bool:
+        """True the first time a command sequence number is seen (retries are dropped)."""
+        if seq is None:
+            return True
+        q = self.seen_seqs.setdefault(watch_id, deque(maxlen=64))
+        if seq in q:
+            return False
+        q.append(seq)
+        return True

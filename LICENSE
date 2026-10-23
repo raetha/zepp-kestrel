@@ -8,7 +8,8 @@ non-commercial; everything else is MIT.
 1. MIT (see LICENSES/MIT.txt)
    - lib/            (generic helpers with no tie to watches: circular
                       statistics, summary statistics, a rate meter)
-   - ha/             (the Home Assistant custom component, when it is added)
+   - custom_components/wristwand/ and ha/
+                     (the Home Assistant component, its tests and changelog)
    - tools/          (packaging, release, site and emulator scripts)
    - .github/        (CI configuration)
    - repository-level docs and config files (README.md, docs/, package.json, ...)

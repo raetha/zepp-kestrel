@@ -22,5 +22,5 @@ if component == "watch":
 
 Or download `wristwand-{version}.zpk` below. Then open WristWand's settings in the Zepp app and enter your Home Assistant URL and token. More: [install page](https://{PAGES}/) · [README]({GITHUB}#readme)"""
 else:
-    install = f"Install with HACS (custom repository `{GITHUB}`), or copy `custom_components/wristwand` into your HA config. More: [README]({GITHUB}#readme)"
+    install = f"Install with HACS (Custom repositories → `{GITHUB}`, type Integration), or copy `custom_components/wristwand` into your Home Assistant config folder. Then add the WristWand integration and pair from the watch. More: [README]({GITHUB}#readme)"
 print(f"{body}\n\n---\n\n{install}")

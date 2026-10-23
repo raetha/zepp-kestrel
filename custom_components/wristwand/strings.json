@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add WristWand",
+        "description": "WristWand lets an Amazfit / Zepp OS watch control things you point at. After adding it, open WristWand on the watch and choose Pair: Home Assistant will show a pairing code to enter on the watch."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "WristWand is already set up. Pair more watches from the watch itself."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Paired watches",
+        "description": "{count} watch(es) are paired. Select any to remove; a removed watch has to pair again.",
+        "data": {
+          "remove": "Remove these watches"
+        }
+      }
+    },
+    "abort": {
+      "no_watches": "No watches are paired yet. Open WristWand on the watch and choose Pair."
+    }
+  }
+}
