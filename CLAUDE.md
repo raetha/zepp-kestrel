@@ -28,6 +28,7 @@ WristWand: point an Amazfit / Zepp OS watch at a smart-home device and trigger i
 
 ## Hard-won facts (details in docs/development.md)
 
+- The Zepp app shows an app's Settings page only for installs from Zepp's preview service (`zeus preview`). Our own `.zpk` QR installs the watch app and side service but no Settings page; a `.zab` QR fails to parse. CI uploads each `dev` build with `tools/zepp_preview.py` using the `ZEPP_*` secrets; those QR codes expire after 7 days (`docs/development.md` → "Preview installs").
 - A `.zab` holds one `.zpk` per screen and chip. `tools/extract_zpk.py` picks by device ID (Balance 3 = 11141376); a QR install must get that one.
 - The emulator has no phone: the side service and settings page never run there, so watch → phone requests fail ("Phone not reachable"), which is the expected result.
 - The emulator feeds synthetic motion at about 25 Hz in every frequency mode and a wandering compass. Its sensor numbers say nothing about the real watch.

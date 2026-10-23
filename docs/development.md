@@ -140,6 +140,19 @@ Every push to `dev` (or `main`) publishes a test build on an unlisted page: **ht
 - It installs **next to** the released app. Its settings in the Zepp app are separate, so enter the HA URL and token for it once.
 - Its QR code (`zpkd1://raetha.github.io/zepp-wristwand/dev/watch/wristwand.zpk`) never changes: bookmark the page and rescan after each push. The Zepp app shows the build number. GitHub Pages can cache files for up to 10 minutes.
 
+### Preview installs (the Settings page)
+
+The Zepp app only shows an app's **Settings page** when the app was installed from Zepp's own preview service under the developer's account (what `zeus preview` does). Our own `zpkd1://` QR code installs the watch app and its side service (they work), but the Zepp app shows no Settings page for it, so there is nowhere to enter the HA URL and token. A full `.zab` served from Pages doesn't help: the Zepp app can't parse it.
+
+So on each push to `dev`, CI also uploads the test build to Zepp's preview service (`tools/zepp_preview.py`, which mirrors `zeus preview`) and puts that QR code first on the test-build page. Those codes expire after **7 days**; each push makes a new one. With no push for a week, rerun the workflow (Actions → Build and publish → Run workflow) for a fresh code.
+
+The upload needs the owner's Zepp developer login as three repository secrets (**Settings → Secrets and variables → Actions**): `ZEPP_APPTOKEN`, `ZEPP_USERID`, `ZEPP_CNAME`. To get them, from any browser including a phone:
+
+1. Open https://user.zepp.com/universalLogin/index.html#/login?project_name=zeppos_zeus_cli&platform_app=com.huami.webapp&project_redirect_uri=http%3A%2F%2Flocalhost%3A8765%2Flogin%2Fcallback and sign in with the Zepp developer account.
+2. The browser then tries to open `http://localhost:8765/login/callback?apptoken=…&userid=…&cname=…` and fails to connect. That's expected: the address bar holds the values. Copy them into the three secrets (`apptoken` → `ZEPP_APPTOKEN`, `userid` → `ZEPP_USERID`, `cname` → `ZEPP_CNAME`).
+
+When the token expires, the workflow fails with "token has expired": repeat both steps. Treat the token like a password; it can upload to the developer account.
+
 The release QR code (`watch/docs/install-qr.png`) encodes `zpkd1://raetha.github.io/zepp-wristwand/watch/wristwand.zpk`. Regenerate with `npm run qr` if the repo moves.
 
 ## Licensing

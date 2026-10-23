@@ -22,21 +22,26 @@ site, sha, build = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
 dev = site / "dev"
 cards = []
 if (dev / "watch" / WATCH_ZPK).exists():
-    make(dev / "watch" / "install-qr.png", f"zpkd1://{PAGES}/dev/watch/{WATCH_ZPK}")
+    w = dev / "watch"
+    make(w / "install-qr.png", f"zpkd1://{PAGES}/dev/watch/{WATCH_ZPK}")
     meta = watch_meta()
-    bundle = ""
-    if (dev / "watch" / "wristwand.zab").exists():
-        # Experiment: the full .zab, as `zeus preview` uploads it. Does the Zepp app then
-        # show the app's settings page (it doesn't for a bare .zpk)?
-        make(dev / "watch" / "install-qr-zab.png", f"zpkd1://{PAGES}/dev/watch/wristwand.zab")
-        bundle = '''<h3>Experiment: full bundle (.zab)</h3>
-<p>Same build as the whole bundle. Try this if the settings page doesn't show up.</p>
-<img class="qr" src="watch/install-qr-zab.png" alt="QR code for the full bundle">
-<p><a href="watch/wristwand.zab">wristwand.zab</a></p>'''
+    if (w / "preview-qr.png").exists():
+        # Installed from Zepp's preview service: the Zepp app shows the Settings page.
+        expires = (w / "preview-expires.txt").read_text().strip()
+        primary = f'''<p class="note">Use this one: it includes the Settings page in the Zepp app.
+Expires {html.escape(expires)} (each push to dev makes a new one).</p>
+<img class="qr" src="watch/preview-qr.png" alt="QR code for the WristWand test build with settings">
+<h3>Backup: watch app only</h3>
+<p class="note">Never expires, but the Zepp app shows no Settings page for it (so no HA URL or token).</p>
+<img class="qr small" src="watch/install-qr.png" alt="QR code for the watch-only test build">'''
+    else:
+        primary = '''<p class="note">Watch app only: the Zepp app shows no Settings page for this install.
+(Preview installs with settings need the ZEPP_* secrets; see docs/development.md.)</p>
+<img class="qr" src="watch/install-qr.png" alt="QR code for the WristWand test build">'''
     cards.append(f'''<section><h2>{html.escape(meta["appName"])} DEV</h2>
 <p>based on {html.escape(meta["version"]["name"])} · build {html.escape(build)} · {html.escape(sha)}</p>
-<img class="qr" src="watch/install-qr.png" alt="QR code for the WristWand test build">
-<p><a href="watch/{WATCH_ZPK}">{WATCH_ZPK}</a></p>{bundle}</section>''')
+{primary}
+<p><a href="watch/{WATCH_ZPK}">{WATCH_ZPK}</a></p></section>''')
 stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 dev.mkdir(parents=True, exist_ok=True)
 (dev / "index.html").write_text(f'''<!doctype html>
@@ -46,7 +51,7 @@ dev.mkdir(parents=True, exist_ok=True)
 <title>WristWand test builds</title>
 <style>:root{{color-scheme:dark}}body{{margin:0;font-family:system-ui,sans-serif;background:#0e0b1a;color:#ece9f6;text-align:center}}
 main{{max-width:640px;margin:0 auto;padding:24px 16px}}h2{{color:#a995ff;margin-bottom:4px}}p{{color:#a69fbe}}
-img.qr{{width:220px;max-width:70vw;background:#fff;padding:8px;border-radius:8px}}a{{color:#9fd4ff}}
+img.qr{{width:220px;max-width:70vw;background:#fff;padding:8px;border-radius:8px}}img.small{{width:150px}}.note{{max-width:420px;margin:8px auto}}a{{color:#9fd4ff}}
 section{{border-top:1px solid #241d3a;margin-top:20px;padding-top:12px}}</style></head>
 <body><main><h1>Test builds</h1>
 <p>Tip of dev ({html.escape(sha)}, {stamp}). The test build installs next to the released app as a
