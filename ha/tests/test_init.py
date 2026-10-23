@@ -83,3 +83,54 @@ async def test_pairings_expire(hass, setup_entry):
     pairing = watches.start_pairing("W", now=0)
     status, _, _ = await watches.async_confirm(pairing.pairing_id, pairing.code, now=10_000)
     assert status == "gone"
+
+
+async def test_probe_results_are_kept_for_diagnostics(hass, setup_entry, hass_client_no_auth, hass_storage):
+    from homeassistant.const import EVENT_HOMEASSISTANT_FINAL_WRITE
+
+    from custom_components.wristwand.const import DOMAIN, PROBES_KEPT, TOKEN_HEADER
+    from custom_components.wristwand.diagnostics import async_get_device_diagnostics
+
+    watches = setup_entry.runtime_data
+    one, token_one = await _paired(setup_entry)
+    two, _ = await _paired(setup_entry)
+    client = await hass_client_no_auth()
+    # a body can't pose as another watch
+    res = await client.post(
+        "/api/wristwand/probe",
+        headers={TOKEN_HEADER: token_one},
+        json={"test": "tilt", "watch_id": two["id"], "raw": {"rows": [[1, 2]]}},
+    )
+    assert res.status == 200
+    watches.add_probe(two, {"test": "latency"})
+
+    diag = await async_get_config_entry_diagnostics(hass, setup_entry)
+    assert [p["test"] for p in diag["probes"]] == ["tilt", "latency"]
+    assert diag["probes"][0]["watch_id"] == one["id"]
+    assert diag["probes"][0]["raw"] == {"rows": [[1, 2]]}
+    assert "received" in diag["probes"][0]
+
+    device = dr.async_get(hass).async_get_device_by_identifier((DOMAIN, one["id"]), setup_entry.entry_id)
+    per_watch = await async_get_device_diagnostics(hass, setup_entry, device)
+    assert per_watch["watch"]["token_hash"] == "**REDACTED**"
+    assert [p["test"] for p in per_watch["probes"]] == ["tilt"]
+
+    # saved (after a short delay, or when Home Assistant stops) and loaded again after a restart
+    assert "wristwand.probes" not in hass_storage
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
+    await hass.async_block_till_done()
+    fresh = Watches(hass, setup_entry.entry_id)
+    await fresh.async_load()
+    assert [p["test"] for p in fresh.probes_for()] == ["tilt", "latency"]
+
+    # only the newest are kept
+    for i in range(PROBES_KEPT + 5):
+        watches.add_probe(two, {"test": "rates", "i": i})
+    assert len(watches.probes_for()) == PROBES_KEPT
+    assert watches.probes_for()[-1]["i"] == PROBES_KEPT + 4
+
+    # unpairing a watch drops its results
+    await watches.async_remove([two["id"]])
+    assert watches.probes_for() == []
+    other = dr.async_get(hass).async_get_or_create(config_entry_id=setup_entry.entry_id, identifiers={("other", "x")})
+    assert (await async_get_device_diagnostics(hass, setup_entry, other))["probes"] == []

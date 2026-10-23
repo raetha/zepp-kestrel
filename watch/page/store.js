@@ -21,9 +21,12 @@ function write(key, value) {
 export const targets = () => read('targets', [])
 export const saveTargets = (list) => write('targets', list)
 
-/** { [targetId]: [spot, ...] } */
-export const paints = () => read('paints', {})
-export const savePaints = (p) => write('paints', p)
+/**
+ * { [targetId]: [spot, ...] }. 'paints2': spots hold the forearm's heading.
+ * Spots from earlier builds ('paints') held 12 o'clock's heading and are dropped.
+ */
+export const paints = () => read('paints2', {})
+export const savePaints = (p) => write('paints2', p)
 
 /** Painted devices in the shape the classifier wants, joined with target info. */
 export function paintedDevices() {

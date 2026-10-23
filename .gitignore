@@ -12,3 +12,4 @@ watch-dev/
 tools/.emu*/
 .venv/
 .pytest_cache/
+.coverage

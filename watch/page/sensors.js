@@ -43,9 +43,16 @@ export const gyro = () => vectorSensor(Gyroscope)
 export function compass() {
   let s = null
   return {
-    // Compass has no frequency mode; the mode argument is ignored.
-    start(_mode, onReading) {
+    // Compass frequency modes arrive in API 4.0; older firmware ignores the mode.
+    start(mode, onReading) {
       s = new Compass()
+      if (mode && typeof s.setFreqMode === 'function') {
+        try {
+          s.setFreqMode(MODES[mode])
+        } catch (e) {
+          // not supported here
+        }
+      }
       s.onChange(() => onReading(compassReading(s)))
       s.start()
     },

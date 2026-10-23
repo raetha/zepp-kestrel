@@ -12,7 +12,7 @@ export const latencyProbe = {
   title: 'Latency',
   start(ctx) {
     const once = guard()
-    ctx.status(`Times ${ROUNDS} round trips to the phone, then ${ROUNDS} to Home Assistant via the phone.\n\nSet the HA URL and token in the app's settings in Zepp first.`)
+    ctx.status(`Times ${ROUNDS} round trips to the phone, then ${ROUNDS} to Home Assistant via the phone.\n\nPair with Home Assistant first.`)
     ctx.primary('Run', () =>
       once(async () => {
         const bt = []
@@ -21,6 +21,7 @@ export const latencyProbe = {
         let haError = null
 
         for (let i = 0; i < ROUNDS; i++) {
+          if (!ctx.alive()) return
           ctx.status(`Phone ${i + 1}/${ROUNDS}`)
           const t0 = Date.now()
           try {
@@ -33,6 +34,7 @@ export const latencyProbe = {
         }
 
         for (let i = 0; i < ROUNDS; i++) {
+          if (!ctx.alive()) return
           ctx.status(`Home Assistant ${i + 1}/${ROUNDS}`)
           const t0 = Date.now()
           const res = await ctx.request(METHOD.HA_PING, {}).catch((e) => ({ error: String(e && e.message) }))
@@ -57,7 +59,14 @@ export const latencyProbe = {
         }
         ctx.status(lines.join('\n'))
         ctx.primary('Run again')
-        ctx.log({ watchPhoneMs: b, phoneHaMs: haError ? null : summarize(ha, 0), totalMs: haError ? null : summarize(total, 0), haError })
+        ctx.log({
+          watchPhoneMs: b,
+          phoneHaMs: haError ? null : summarize(ha, 0),
+          totalMs: haError ? null : summarize(total, 0),
+          haError,
+          // each round in order, to see whether Bluetooth speeds up once busy
+          raw: { watchPhone: bt, phoneHa: ha, total },
+        })
       }),
     )
   },

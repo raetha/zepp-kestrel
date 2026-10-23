@@ -13,6 +13,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
@@ -20,6 +21,9 @@ from .const import (
     PAIR_WINDOW,
     PAIRING_MAX_ATTEMPTS,
     PAIRING_TTL,
+    PROBES_KEPT,
+    PROBES_SAVE_DELAY,
+    PROBES_STORAGE_KEY,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
@@ -42,23 +46,29 @@ class Pairing:
 
 @dataclass
 class Watches:
-    """Paired watches (persisted, one device each) plus pairings in progress (memory only)."""
+    """Paired watches (persisted, one device each), pairings in progress (memory only)
+    and recent probe results (persisted, for diagnostics downloads)."""
 
     hass: HomeAssistant
     entry_id: str
     version: str = ""
     store: Store = field(init=False)
+    probe_store: Store = field(init=False)
     watches: dict[str, dict[str, Any]] = field(default_factory=dict)
     pairings: dict[str, Pairing] = field(default_factory=dict)
     starts: dict[str, deque] = field(default_factory=dict)
     seen_seqs: dict[str, deque] = field(default_factory=dict)
+    probes: deque = field(default_factory=lambda: deque(maxlen=PROBES_KEPT))
 
     def __post_init__(self) -> None:  # noqa: D105
         self.store = Store(self.hass, STORAGE_VERSION, STORAGE_KEY)
+        self.probe_store = Store(self.hass, STORAGE_VERSION, PROBES_STORAGE_KEY)
 
     async def async_load(self) -> None:
         data = await self.store.async_load() or {}
         self.watches = data.get("watches", {})
+        probes = await self.probe_store.async_load() or {}
+        self.probes.extend(probes.get("probes", []))
 
     async def _async_save(self) -> None:
         await self.store.async_save({"watches": self.watches})
@@ -129,7 +139,27 @@ class Watches:
         for wid in watch_ids:
             self.watches.pop(wid, None)
             self.seen_seqs.pop(wid, None)
+        kept = [p for p in self.probes if p.get("watch_id") not in watch_ids]
+        if len(kept) != len(self.probes):
+            self.probes.clear()
+            self.probes.extend(kept)
+            self._save_probes()
         await self._async_save()
+
+    # ------------------------------------------------------------ probe results
+    def add_probe(self, watch: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+        """Keep a probe result (the newest PROBES_KEPT) and return the event data for it."""
+        # the watch's own fields win over anything in the body with the same name
+        record = {**result, "watch_id": watch["id"], "watch_name": watch["name"], "received": dt_util.utcnow().isoformat()}
+        self.probes.append(record)
+        self._save_probes()
+        return record
+
+    def probes_for(self, watch_id: str | None = None) -> list[dict[str, Any]]:
+        return [p for p in self.probes if watch_id is None or p.get("watch_id") == watch_id]
+
+    def _save_probes(self) -> None:
+        self.probe_store.async_delay_save(lambda: {"probes": list(self.probes)}, PROBES_SAVE_DELAY)
 
     # ------------------------------------------------------------ devices
     def _device(self, watch: dict[str, Any]) -> dr.DeviceEntry:
@@ -153,7 +183,9 @@ class Watches:
 
     async def async_clear(self) -> None:
         self.watches = {}
+        self.probes.clear()
         await self.store.async_remove()
+        await self.probe_store.async_remove()
 
     def first_time(self, watch_id: str, seq: Any) -> bool:
         """True the first time a command sequence number is seen (retries are dropped)."""

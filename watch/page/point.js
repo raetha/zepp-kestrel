@@ -4,9 +4,8 @@
 
 import { BasePage } from '@zeppos/zml/base-page'
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
-import { onKey, offKey, KEY_SELECT, KEY_EVENT_CLICK } from '@zos/interaction'
 import { event as uiEvent } from '@zos/ui'
-import { text, setText, button, clear, circle, setColor, fit, ask, COLOR } from './ui.js'
+import { text, setText, button, clear, circle, setColor, fit, ask, listenKeys, COLOR } from './ui.js'
 import { startAim } from './aim.js'
 import { paintedDevices } from './store.js'
 import { Aimer, STATE } from '../lib/classifier.js'
@@ -53,15 +52,7 @@ Page(
       // tapping the circle (or its labels) triggers too
       for (const w of [this.ring, this.nameW, this.hintW]) w.addEventListener(uiEvent.CLICK_UP, () => this.trigger())
 
-      onKey({
-        callback: (key, ev) => {
-          if (key === KEY_SELECT && ev === KEY_EVENT_CLICK) {
-            this.trigger()
-            return true
-          }
-          return false
-        },
-      })
+      this.unkeys = listenKeys(() => this.trigger())
 
       this.aim = startAim((a) => this.onAim(a))
     },
@@ -137,7 +128,7 @@ Page(
 
     onDestroy() {
       if (this.aim) this.aim.stop()
-      offKey()
+      this.unkeys && this.unkeys()
       resetDropWristScreenOff()
     },
   }),

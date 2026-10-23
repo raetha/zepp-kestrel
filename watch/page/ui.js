@@ -3,6 +3,8 @@
 
 import { createWidget, deleteWidget, widget, align, prop, text_style } from '@zos/ui'
 import { px } from '@zos/utils'
+import { onKey, offKey, KEY_SELECT, KEY_BACK, KEY_EVENT_CLICK } from '@zos/interaction'
+import { back } from '@zos/router'
 
 export const COLOR = {
   bg: 0x000000,
@@ -85,4 +87,27 @@ export function fit(s, n = 18) {
 /** page.request with a timeout, so a missing phone fails fast instead of hanging. */
 export function ask(page, method, params, timeout = 6000) {
   return page.request({ method, params }, { timeout })
+}
+
+/**
+ * Physical buttons for a page: SELECT runs onSelect (when given), BACK goes
+ * back a page. Back is handled here rather than left to the system, because
+ * on the Balance 3 a page that listens to keys was closing the whole app.
+ * Call the returned function in onDestroy.
+ */
+export function listenKeys(onSelect) {
+  onKey({
+    callback: (key, event) => {
+      if (key === KEY_SELECT && onSelect) {
+        if (event === KEY_EVENT_CLICK) onSelect()
+        return event === KEY_EVENT_CLICK
+      }
+      if (key === KEY_BACK) {
+        if (event === KEY_EVENT_CLICK) back()
+        return event === KEY_EVENT_CLICK
+      }
+      return false
+    },
+  })
+  return () => offKey()
 }

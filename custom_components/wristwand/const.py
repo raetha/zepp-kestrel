@@ -15,6 +15,9 @@ PAIR_WINDOW = 600
 
 STORAGE_KEY = "wristwand.watches"
 STORAGE_VERSION = 1
+PROBES_STORAGE_KEY = "wristwand.probes"  # recent probe results, for diagnostics downloads
+PROBES_KEPT = 200
+PROBES_SAVE_DELAY = 10  # seconds; probe results arrive in bursts
 
 SUPPORTED_DOMAINS = (
     "light",

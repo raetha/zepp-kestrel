@@ -14,4 +14,15 @@ All notable changes to the WristWand watch app. The format is based on
 - Paint a device: pick it from the synced list, then sweep your arm across it for 15 seconds. Painting again from other places you use it improves aim. Unsteady compass readings are rejected with a hint.
 - Point: hold your arm out at a painted device; the circle turns amber while aiming, green when the watch has a device in mind, and bright green when it's sure. Press the select button or tap the circle to toggle it. Locks ask for a confirming tap. Short buzzes confirm sent, done and failed.
 - Home screen with Point, Paint, Sync, Probes and Unpair. The M0 probes moved under Probes.
+- Probes report on screen whether each result reached Home Assistant.
 - Licence: CC BY-NC-SA 4.0 for the watch app (share and adapt non-commercially, with credit, but don't sell it).
+
+### Changed
+
+- Aim uses where your forearm points, not where the watch's 12 o'clock points, and allows for the wrist turning a little. Devices painted with earlier test builds need painting again.
+- Compass tilt probe: two short guided recordings (up and down along one line; wrist turned in and out) instead of single captures.
+- Sensor rates probe also measures the compass in each speed mode.
+
+### Fixed
+
+- The back button on a probe screen (and on Paint and Point) returns to the previous screen instead of closing the app.

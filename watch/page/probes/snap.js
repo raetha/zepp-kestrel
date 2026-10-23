@@ -61,11 +61,13 @@ export const snapProbe = {
         for (let s = 3; s > 0; s--) {
           ctx.status(`${gesture()} in ${s}…`)
           await sleep(700)
+          if (!ctx.alive()) return
         }
         buzz()
         ctx.status(`Now: ${gesture()}!`)
         const t0 = Date.now()
         await sleep(WINDOW_MS)
+        if (!ctx.alive()) return
         const aw = aBuf.filter((s) => s.t >= t0)
         const gw = gBuf.filter((s) => s.t >= t0)
 

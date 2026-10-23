@@ -203,7 +203,7 @@ class FireView(_WatchView):
 
 
 class ProbeView(_WatchView):
-    """Measurement results from the watch's Probes, as wristwand_probe events."""
+    """Measurement results from the watch's Probes: kept for diagnostics and fired as wristwand_probe events."""
 
     url = "/api/wristwand/probe"
     name = "api:wristwand:probe"
@@ -212,14 +212,14 @@ class ProbeView(_WatchView):
         auth = self._authorize(request)
         if isinstance(auth, web.Response):
             return auth
-        hass, _, watch = auth
+        hass, watches, watch = auth
         try:
             body = await request.json()
         except ValueError:
             return _error("Bad request", HTTPStatus.BAD_REQUEST)
         if not isinstance(body, dict):
             return _error("Bad request", HTTPStatus.BAD_REQUEST)
-        hass.bus.async_fire(EVENT_PROBE, {"watch_id": watch["id"], "watch_name": watch["name"], **body})
+        hass.bus.async_fire(EVENT_PROBE, watches.add_probe(watch, body))
         return web.json_response({"ok": True})
 
 

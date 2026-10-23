@@ -43,14 +43,21 @@ Direct mode filters entities with an HA label `wristwand` (all supported entitie
 
 ## Pointing model
 
-- Aim = compass heading (`getDirectionAngle()`) plus forearm pitch from the accelerometer's gravity vector. Roll is used for the dimming twist.
-- Aim gate: the arm must be still (gyro under about 30°/s for 300 ms), pitch between −30° and +70°, compass calibrated.
+- Aim = the forearm's compass heading plus its pitch, from the accelerometer's gravity vector and the compass (`attitude()` in `watch/lib/aim.js`). The forearm runs along the watch's 3–9 o'clock axis (x), and the compass reports where 12 o'clock points, so the heading is corrected for that and for wrist roll. Roll is also used for the dimming twist.
+- Aim gate: the arm must be still (gyro under about 30°/s for 300 ms), pitch within ±70°, roll within ±50° (beyond that 12 o'clock points too steeply for its compass heading to mean much), compass calibrated. The limits are symmetric, so the left wrist works without a setting.
 - A paint stores, per device and room, one or more spots: circular mean heading and spread, mean pitch and spread, and up to 60 samples. Heading maths is always circular (`lib/circular.js`).
 - Classification scores each spot with a 2D Gaussian; states are resting, aiming, candidate (show the name) and locked (margin over the runner-up). A wrong guess offers the runner-up; corrections reweight spots.
 
 ## Triggers
 
-Pluggable: `start()`, `stop()`, `onFire(cb)`. Snap (accelerometer spike), wrist flick (gyro burst), physical button, screen tap. M0 decides the default from measured sensor rates and recordings.
+Pluggable: `start()`, `stop()`, `onFire(cb)`. Snap (accelerometer spike), wrist flick (gyro burst), physical button, screen tap. M0 decides the default from measured sensor rates and recordings. With motion sensors at 25 Hz (see below), a snap is recognised by the wrist movement that comes with it, not by its click, so gesture triggers are calibrated per person on the watch: record your gesture a few times and some ordinary movement, and the watch sets its own thresholds.
+
+## What the real watch measured (M0, Balance 3)
+
+- **Motion sensors: 25 Hz.** The accelerometer and gyro deliver about 25 readings a second even in HIGH mode (snap recordings). Zepp OS has no batched or faster API. A finger snap's click lasts about 10 ms and falls between readings; the wrist's turn during a snap (a gyro swing of roughly 200°/s over 200 ms) does show.
+- **Axes.** Raising and lowering the arm moves gravity along x, so the forearm is the 3–9 o'clock axis (y, 12 o'clock, points across the wrist).
+- **Compass.** Apps get the heading of 12 o'clock (`getDirectionAngle()`), at about 2 readings a second by default (faster modes from API 4.0), and no raw magnetic field. Whether that heading is tilt-compensated is being measured (Compass tilt probe). If it isn't, aim will steer with the gyro between compass readings taken with the arm level.
+- **Latency.** Watch ↔ phone over Bluetooth: median 0.6 s, 90th percentile 0.9 s. Phone ↔ Home Assistant: median 0.12 s (over a VPN). Bluetooth dominates, so the watch buzzes as soon as a command is sent rather than waiting for the result.
 
 ## Milestones
 

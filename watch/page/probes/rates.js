@@ -1,6 +1,6 @@
 // How fast does each sensor really report in each frequency mode?
 // Zepp OS documents LOW / NORMAL / HIGH but not their Hz. A snap detector
-// needs roughly 50 Hz or more from the accelerometer.
+// needs roughly 50 Hz or more from the accelerometer. Compass modes need API 4.0.
 
 import { SENSORS } from '../sensors.js'
 import { RateMeter } from '../../../lib/rate.js'
@@ -14,7 +14,9 @@ const RUNS = [
   ['gyro', 'LOW'],
   ['gyro', 'NORMAL'],
   ['gyro', 'HIGH'],
-  ['compass', null],
+  ['compass', 'LOW'],
+  ['compass', 'NORMAL'],
+  ['compass', 'HIGH'],
 ]
 
 export const ratesProbe = {
@@ -31,14 +33,15 @@ export const ratesProbe = {
         const results = []
         for (let i = 0; i < RUNS.length; i++) {
           const [kind, mode] = RUNS[i]
-          const label = mode ? `${kind} ${mode}` : kind
+          const label = `${kind} ${mode}`
           ctx.status(`${lines.join('\n')}\n\n${i + 1}/${RUNS.length}  ${label}…`)
           const meter = new RateMeter()
           active = SENSORS[kind]()
           active.start(mode, (r) => meter.tick(r.t, kind === 'compass' ? r.angle : [r.x, r.y, r.z]))
           await sleep(RUN_MS)
-          active.stop()
+          if (active) active.stop()
           active = null
+          if (!ctx.alive()) return
           const rep = meter.report(RUN_MS)
           results.push({ sensor: kind, mode, ...rep })
           lines.push(`${label}: ${rep.hz} Hz (${rep.distinctHz} new)`)

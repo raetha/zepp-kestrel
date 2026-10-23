@@ -37,13 +37,13 @@ If your phone can't find Home Assistant (another port, or a name other than `hom
 
 ### Running the M0 probes
 
-Under **Probes** on the watch. Results show on the watch, and once the watch is paired each result (raw sensor traces included) also arrives in Home Assistant as a `wristwand_probe` event: open Developer tools → Events, enter `wristwand_probe` under "Listen to events", press **Start listening**, then run the probes and copy what arrives. The select button presses the main button on every probe screen.
+Under **Probes** on the watch. Results show on the watch, and once the watch is paired each one (raw sensor traces included) also goes to Home Assistant; the probe screen says whether it got there. To hand results over, download them in one file: Settings → Devices & services → WristWand → your watch's device → ⋮ → **Download diagnostics**. Home Assistant keeps the newest 200 results. Each also fires a `wristwand_probe` event, for watching live in Developer tools → Events. The select button presses the main button on every probe screen; back returns to the list.
 
 | Probe | What to do | What it answers |
 | --- | --- | --- |
-| Sensor rates | Start, then keep the watch moving gently for 35 s | Real rates of the accelerometer and gyro in each mode, and the compass |
+| Sensor rates | Start, then keep the watch moving gently for 45 s | Real rates of the accelerometer and gyro in each mode, and the compass |
 | Snap recorder | Arm out, pick a gesture, Record, gesture after the buzz. About 10 each of snap, finger tap, wrist flick, arm wave, nothing | Whether a snap leaves a spike that stands apart from other movement |
-| Compass tilt | Point at one fixed spot; Capture in each pose | Whether the heading holds as the wrist rotates, and how noisy it is indoors |
+| Compass tilt | **Up and down**: point along one vertical line (a door frame or wall edge), following the buzzes: level, higher, lower, level. **Wrist roll**: point at one spot, turn the wrist in, then out. 12 s each | Whether the compass heading holds as the arm tilts and the wrist turns |
 | BLE scan | In each room, pick a label and Scan | How many steady Bluetooth devices each room has |
 | Latency | Run, with HA set up | Watch ↔ phone and phone ↔ HA round trips (target: under 500 ms) |
 

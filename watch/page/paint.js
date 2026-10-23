@@ -3,8 +3,7 @@
 
 import { BasePage } from '@zeppos/zml/base-page'
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
-import { onKey, offKey, KEY_SELECT, KEY_EVENT_CLICK } from '@zos/interaction'
-import { text, setText, button, clear, fit, COLOR } from './ui.js'
+import { text, setText, button, clear, fit, listenKeys, COLOR } from './ui.js'
 import { startAim } from './aim.js'
 import { targets, paints, savePaints } from './store.js'
 import { makeSpot, addSpot, spotProblem, MAX_SPOTS } from '../lib/paint.js'
@@ -27,15 +26,7 @@ Page(
     build() {
       this.titleW = text({ y: 34, h: 40, size: 28, value: 'Paint' })
       this.msgW = text({ x: 60, y: 80, w: 360, h: 200, size: 21, value: '' })
-      onKey({
-        callback: (key, event) => {
-          if (key === KEY_SELECT && event === KEY_EVENT_CLICK && this.onSelect) {
-            this.onSelect()
-            return true
-          }
-          return false
-        },
-      })
+      this.unkeys = listenKeys(() => this.onSelect && this.onSelect())
       this.list()
     },
 
@@ -109,7 +100,7 @@ Page(
       let calibrated = true
       this.aim = startAim((a) => {
         calibrated = a.calibrated
-        if (this.recording && a.calibrated && a.pitch > -60 && a.pitch < 80) {
+        if (this.recording && a.calibrated && a.heading !== null && Math.abs(a.pitch) <= 75 && Math.abs(a.roll) <= 50) {
           samples.push({ heading: a.heading, pitch: a.pitch })
         }
       })
@@ -160,7 +151,7 @@ Page(
 
     onDestroy() {
       if (this.aim) this.aim.stop()
-      offKey()
+      this.unkeys && this.unkeys()
       resetDropWristScreenOff()
     },
   }),
