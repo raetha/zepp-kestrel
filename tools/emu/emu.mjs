@@ -102,11 +102,13 @@ async function setup() {
 
 // ------------------------------------------------------------------ start / stop
 async function waitForPort(seconds) {
-  for (let i = 0; i < seconds; i++) {
+  const until = Date.now() + seconds * 1000;
+  while (Date.now() < until) {
     const ok = await new Promise((resolve) => {
       const ws = new WebSocket(`ws://localhost:${PORT}/SIMULATOR`);
-      ws.on('open', () => { ws.close(); resolve(true); });
-      ws.on('error', () => resolve(false));
+      const t = setTimeout(() => { ws.terminate(); resolve(false); }, 3000); // a reset can leave it hanging
+      ws.on('open', () => { clearTimeout(t); ws.close(); resolve(true); });
+      ws.on('error', () => { clearTimeout(t); resolve(false); });
     });
     if (ok) return true;
     await sleep(1000);
@@ -114,7 +116,22 @@ async function waitForPort(seconds) {
   return false;
 }
 
-async function start(args) {
+// Newer firmware takes its address from QEMU's DHCP (10.0.2.15); older images (Zepp OS 3.x,
+// e.g. GTS 4) use a fixed 192.168.166.188, so the port forward must point there.
+function guestIp() {
+  try {
+    const m = [...fs.readFileSync(path.join(EMU, 'serial.log'), 'latin1').matchAll(/Get IP: (\d+\.\d+\.\d+\.\d+)/g)]
+    return m.length ? m[m.length - 1][1] : null
+  } catch { return null }
+}
+
+function nic(ip) {
+  if (!ip || ip.startsWith('10.0.2.')) return `user,id=usernet,hostfwd=tcp::${PORT}-:${PORT},model=lan9118`;
+  const net = ip.split('.').slice(0, 3).join('.');
+  return `user,id=usernet,net=${net}.0/24,host=${net}.2,hostfwd=tcp::${PORT}-${ip}:${PORT},model=lan9118`;
+}
+
+async function start(args, ip = null) {
   const timeIdx = args.indexOf('--time');
   const rtc = timeIdx >= 0 ? ['-rtc', `base=${args[timeIdx + 1]}`] : [];
   if (!fs.existsSync(FLASH)) fs.copyFileSync(path.join(EMU, 'fw/norflash.bin'), FLASH);
@@ -128,7 +145,7 @@ async function start(args) {
     '-M', 'mps2-an521', '-semihosting',
     '-drive', `file=${FLASH},bus=0,unit=0,format=raw`,
     '-kernel', path.join(EMU, 'fw/main.elf'),
-    '-nic', `user,id=usernet,hostfwd=tcp::${PORT}-:${PORT},model=lan9118`,
+    '-nic', nic(ip),
     '-display', 'gtk,show-cursor=on', '-name', 'Zepp OS Simulator',
     '-monitor', `unix:${MON},server,nowait`,
     '-serial', `file:${path.join(EMU, 'serial.log')}`,
@@ -139,7 +156,16 @@ async function start(args) {
   });
   qemu.unref();
   console.log('booting (about 40 s)...');
-  if (!(await waitForPort(150))) throw new Error('emulator did not come up; see tools/.emu/serial.log');
+  if (!(await waitForPort(ip ? 150 : 100))) {
+    const seen = guestIp();
+    if (!ip && seen && !seen.startsWith('10.0.2.')) {
+      console.log(`firmware uses a fixed address (${seen}): restarting with the port forwarded there`);
+      await monitor('quit').catch(() => {});
+      await sleep(2000);
+      return start(args, seen);
+    }
+    throw new Error('emulator did not come up; see tools/.emu/serial.log');
+  }
   await sleep(8000);                         // let the launcher finish drawing
   console.log(`emulator ready. Firmware log: ${path.relative(REPO, path.join(EMU, 'serial.log'))}`);
 }

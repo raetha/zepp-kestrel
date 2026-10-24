@@ -70,7 +70,10 @@ jobs:
           (cd watch && zeus build)
           mkdir -p out/watch
           python3 tools/extract_zpk.py watch/dist "out/watch/kestrel-$version.zpk"
+          # the multi-watch bundle for the Zepp store, and one package per screen for QR installs
           cp watch/dist/*.zab "out/watch/kestrel-$version.zab"
+          python3 tools/packages.py watch/dist out/packages
+          (cd out/packages && zip -q "../watch/kestrel-$version-packages.zip" ./*)
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -94,6 +97,8 @@ jobs:
           python3 tools/make_dev_variant.py "$GITHUB_RUN_NUMBER" "$short"
           (cd watch-dev && zeus build)
           python3 tools/extract_zpk.py watch-dev/dist "$out/watch/kestrel.zpk"
+          python3 tools/packages.py watch-dev/dist "$out/watch"
+          cp watch-dev/dist/*.zab "$out/watch/kestrel-dev.zab"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
@@ -162,7 +167,7 @@ jobs:
           while IFS=$'\t' read -r component version tag title; do
             python3 tools/release_notes.py "$component" "$version" > notes.md
             if [ "$component" = watch ]; then
-              assets="out/watch/kestrel-$version.zpk out/watch/kestrel-$version.zab"
+              assets="out/watch/kestrel-$version.zpk out/watch/kestrel-$version.zab out/watch/kestrel-$version-packages.zip"
             else
               assets=""
             fi
@@ -232,6 +237,10 @@ jobs:
           if [ -n "$tag" ]; then
             gh release download "watch-v$tag" --pattern "*.zpk" --dir site/watch
             mv "site/watch/kestrel-$tag.zpk" site/watch/kestrel.zpk
+            # one package per screen, for the watch picker (releases before it have none)
+            if gh release download "watch-v$tag" --pattern "*-packages.zip" --dir /tmp/pk 2>/dev/null; then
+              unzip -q /tmp/pk/*-packages.zip -d site/watch
+            fi
             echo "$tag" > site/watch/version.txt
             echo "watch: publishing $tag"
           else

@@ -13,7 +13,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from components import GITHUB, REPO, WATCH_ZPK, watch_meta  # noqa: E402
+from components import GITHUB, PAGES, REPO, WATCH_ZPK, watch_meta  # noqa: E402
+from model_picker import picker  # noqa: E402
 
 site = Path(sys.argv[1] if len(sys.argv) > 1 else "site")
 meta = watch_meta()
@@ -28,9 +29,8 @@ if (watch / WATCH_ZPK).exists():
     <p class="ver">v{html.escape(version)}</p>
     <div class="row">
       <img class="face" src="watch/preview.png" alt="{html.escape(meta["appName"])} on the watch">
-      <img class="qr" src="watch/install-qr.png" alt="Install QR code for {html.escape(meta["appName"])}">
+      <div>{picker(watch, f"{PAGES}/watch") if (watch / "packages.json").exists() else f'<img class="qr" src="watch/install-qr.png" alt="Install QR code"><p><a href="watch/{WATCH_ZPK}">Download {WATCH_ZPK}</a></p>'}</div>
     </div>
-    <p><a href="watch/{WATCH_ZPK}">Download {WATCH_ZPK}</a></p>
   </section>'''
 else:
     body = '<section><p>No release yet. Follow the project on GitHub to hear about the first one.</p></section>'
@@ -54,6 +54,7 @@ else:
   img.qr {{ width: 200px; max-width: 70vw; background: #fff; padding: 8px; border-radius: 8px; }}
   ol {{ text-align: left; display: inline-block; line-height: 1.6; }}
   a {{ color: #9fd4ff; }}
+  select {{ font-size: 1rem; padding: 6px; margin: 8px; max-width: 90vw; }}
 </style>
 </head>
 <body>
@@ -63,8 +64,8 @@ else:
   <ol>
     <li>In the Zepp app, turn on Developer Mode: Profile → Settings → About, tap the Zepp logo 7 times.</li>
     <li>Profile → your watch → Developer Mode → tap the scan icon (top right).</li>
-    <li>Scan the QR code and confirm the install.</li>
-    <li>Open Kestrel's settings in the Zepp app and enter your Home Assistant URL and token.</li>
+    <li>Pick your watch below, scan its QR code and confirm the install.</li>
+    <li>Install the Kestrel integration in Home Assistant (HACS), then on the watch choose Pair with HA and type the code Home Assistant shows.</li>
   </ol>
   {body}
   <p style="margin-top:40px"><a href="{GITHUB}">Source on GitHub</a></p>

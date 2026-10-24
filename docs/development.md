@@ -41,6 +41,16 @@ uv pip install --python .venv/bin/python -r ha/requirements_test.txt
 4. Run it on the emulator (below): open the screens you changed, look at screenshots, and check `tools/.emu/serial.log` for `Mini Program Error`.
 5. Push to `dev` and test on the watch from the test-build page.
 
+### Checking other watch models
+
+`python3 tools/compat/make_variant.py`, `(cd watch-compat && zeus build)`, then `node tools/compat/sweep.mjs [model ...]` runs the app on each model's emulator image that Zeus builds a package for (Zepp publishes images for about 30 models). Each model gets its firmware downloaded into `tools/.emu-m/<model>/` (deleted afterwards), the package for its screen installed, and the app opened from the app list; `watch-compat` then logs what the firmware offers (`KCOMPAT cap ...`: sensors start, display and Bluetooth APIs) and walks itself through Home, Point, Paint and More. Results and screenshots land in `tools/compat/out/` (not committed). About 10–25 minutes per model, unattended. The emulator feeds made-up sensor data on every model, so whether a watch really has a compass or gyroscope comes from its specifications. Record the outcome in `watch/models.json` (the README table and the install pages' watch picker come from it); a model marked `tested` or `emulator` needn't be checked again.
+
+Older firmware (Zepp OS 3.x) gives itself a fixed address (192.168.166.188) instead of taking QEMU's; `emu.mjs start` notices and restarts with the port forwarded there.
+
+### Packages per watch
+
+A QR install sends one `.zpk`, and the Zepp app can't install a `.zab`, so CI splits the build into one package per screen and chip (`tools/packages.py`, with `packages.json` listing the device IDs each is for). The install pages list the models from `watch/models.json` and show the QR code of the package for the one picked (`tools/model_picker.py`). The `.zab` itself is what the Zepp store takes: releases attach it (`kestrel-<version>.zab`, the one to submit), and the test page links the DEV one.
+
 ### Replaying diagnostics
 
 `node tools/replay.mjs <diagnostics.json>` (the integration's diagnostics download) runs the current `watch/lib` against what a real watch recorded: each room calibration scan against all rooms, rooms that sound alike, each paint and what crowds it, each trigger's aim trace through the Aimer (which device it would pick today, and its lead), learned spots, and battery use per hour of pointing. In Home Assistant, each watch's Paint map image shows the same paints as compass dials per room. Use it before and after changing the classifier or room matching; turn a case worth keeping into a test (`watch/test/m1.test.mjs` has one from a real kitchen).

@@ -9,7 +9,10 @@ site/
 out/
 out-dev/
 watch-dev/
+watch-compat/
+tools/.emu-m/
 tools/.emu*/
 .venv/
 .pytest_cache/
 .coverage
+tools/compat/out/

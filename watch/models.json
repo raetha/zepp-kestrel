@@ -1,0 +1,6 @@
+{
+  "about": "Watch models for the README table and the install pages' watch picker. status: tested (on a real watch), emulator (ran on its emulator image), partial (ran with limits), untested (no emulator image), unsupported. Filled from tools/compat/sweep.mjs (emulator) and specifications (sensors).",
+  "models": [
+    {"name": "Balance 3", "screen": "round 480", "api": "4.4", "sources": [11141376, 11141377, 11141379, 11145472, 11145473, 11145475], "status": "tested", "compass": "yes", "gyro": "yes"}
+  ]
+}
