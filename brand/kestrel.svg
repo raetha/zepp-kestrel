@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#27384f"/><stop offset="1" stop-color="#111924"/>
+    </linearGradient>
+    <linearGradient id="rufous" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffb46a"/><stop offset="1" stop-color="#d25427"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+  <circle cx="424" cy="152" r="24" fill="none" stroke="#ffd6ae" stroke-width="8"/>
+  <circle cx="424" cy="152" r="7.5" fill="#ffd6ae"/>
+  <g transform="translate(4 26)">
+    <path d="M318 246 C290 274 246 298 196 316 C240 324 282 308 308 280 Z" fill="#b8481f"/>
+    <g fill="url(#rufous)">
+      <path d="M330 162 C344 150 362 150 372 160 L390 166 C390 176 382 182 372 181
+               C368 204 350 230 324 254 C290 286 250 312 218 330 L150 408 C134 406 116 394 108 382 L190 316
+               C226 274 262 232 296 196 C306 184 318 170 330 162 Z"/>
+      <path d="M314 190 C266 128 180 92 78 92 C150 126 212 186 240 266 C262 244 284 222 302 204 Z"/>
+    </g>
+  </g>
+</svg>

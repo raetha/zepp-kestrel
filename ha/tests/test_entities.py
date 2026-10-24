@@ -7,7 +7,7 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 from homeassistant.util import dt as dt_util
 
-from custom_components.wristwand.const import DOMAIN, TOKEN_HEADER
+from custom_components.kestrel.const import DOMAIN, TOKEN_HEADER
 
 SPOT = {"heading": 12.5, "headingSpread": 4, "pitch": 3, "pitchSpread": 2, "n": 30}
 
@@ -46,7 +46,7 @@ async def test_requests_report_last_seen_address_version_and_room(
     watch, token = await _token(hass, setup_entry)
     client = await hass_client_no_auth()
     h = {TOKEN_HEADER: token}
-    await client.get("/api/wristwand/sync?v=0.1.0-dev.37", headers=h)
+    await client.get("/api/kestrel/sync?v=0.1.0-dev.37", headers=h)
     await hass.async_block_till_done()
 
     address = hass.states.get(_entity(hass, watch["id"], "address", "sensor")).state
@@ -56,19 +56,19 @@ async def test_requests_report_last_seen_address_version_and_room(
     device = dr.async_get(hass).async_get_device_by_identifier((DOMAIN, watch["id"]), setup_entry.entry_id)
     assert device.sw_version == "0.1.0-dev.37"
 
-    await client.get(f"/api/wristwand/room?here={kitchen.id}", headers=h)
-    await client.get("/api/wristwand/room?here=nowhere", headers=h)  # unknown areas are ignored
+    await client.get(f"/api/kestrel/room?here={kitchen.id}", headers=h)
+    await client.get("/api/kestrel/room?here=nowhere", headers=h)  # unknown areas are ignored
     await hass.async_block_till_done()
     room = hass.states.get(_entity(hass, watch["id"], "room", "sensor"))
     assert room.state == "Kitchen" and room.attributes["area_id"] == kitchen.id
 
     # "last seen" alone moves on at most once a minute
     freezer.tick(timedelta(seconds=10))
-    await client.get("/api/wristwand/room", headers=h)
+    await client.get("/api/kestrel/room", headers=h)
     await hass.async_block_till_done()
     assert hass.states.get(_entity(hass, watch["id"], "last_seen", "sensor")).state == seen
     freezer.tick(timedelta(seconds=60))
-    await client.get("/api/wristwand/room", headers=h)
+    await client.get("/api/kestrel/room", headers=h)
     await hass.async_block_till_done()
     assert hass.states.get(_entity(hass, watch["id"], "last_seen", "sensor")).state != seen
 
@@ -79,7 +79,7 @@ async def test_last_triggered_and_counts(hass, setup_entry, hass_client_no_auth)
     watch, token = await _token(hass, setup_entry)
     client = await hass_client_no_auth()
     body = {"target": "light.pendants", "action": "toggle", "via": "flick", "room": kitchen.id, "seq": 1}
-    res = await client.post("/api/wristwand/fire", json=body, headers={TOKEN_HEADER: token})
+    res = await client.post("/api/kestrel/fire", json=body, headers={TOKEN_HEADER: token})
     assert (await res.json())["ok"]
     await hass.async_block_till_done()
 

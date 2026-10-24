@@ -1,1 +1,1 @@
-"""Tests for the WristWand Home Assistant component."""
+"""Tests for the Kestrel Home Assistant component."""

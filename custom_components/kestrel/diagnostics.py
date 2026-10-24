@@ -1,6 +1,6 @@
 """Diagnostics: paired watches (tokens redacted), pairings in progress, and
 recent probe results, so a tester can download one file instead of copying
-wristwand_probe events. Per watch from its device page, or all at once."""
+kestrel_probe events. Per watch from its device page, or all at once."""
 
 from __future__ import annotations
 
@@ -10,15 +10,15 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
-from . import WristWandConfigEntry
+from . import KestrelConfigEntry
 from .const import DOMAIN
 from .targets import list_targets
 
 TO_REDACT = {"token_hash"}
 
 
-async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: WristWandConfigEntry) -> dict[str, Any]:
-    """Return diagnostics for the WristWand entry."""
+async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: KestrelConfigEntry) -> dict[str, Any]:
+    """Return diagnostics for the Kestrel entry."""
     watches = entry.runtime_data
     return {
         "version": watches.version,
@@ -30,7 +30,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: WristWa
 
 
 async def async_get_device_diagnostics(
-    hass: HomeAssistant, entry: WristWandConfigEntry, device: dr.DeviceEntry
+    hass: HomeAssistant, entry: KestrelConfigEntry, device: dr.DeviceEntry
 ) -> dict[str, Any]:
     """Return diagnostics for one paired watch."""
     watches = entry.runtime_data

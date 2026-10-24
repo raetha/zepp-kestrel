@@ -1,4 +1,4 @@
-"""Config flow: one WristWand entry. Watches pair from the watch afterwards.
+"""Config flow: one Kestrel entry. Watches pair from the watch afterwards.
 
 The options flow (Configure) manages what each paired watch keeps in sync:
 painted devices (remove a bad paint, point a paint at another entity), room
@@ -34,8 +34,8 @@ from .watches import Watches
 PAINT_ACTIONS = ("remove_last", "remove_all", "reassign")
 
 
-class WristWandConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Add WristWand. Paired watches show up as devices; delete a device to unpair it."""
+class KestrelConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Add Kestrel. Paired watches show up as devices; delete a device to unpair it."""
 
     VERSION = 1
 
@@ -47,9 +47,9 @@ class WristWandConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> WristWandOptionsFlow:
+    def async_get_options_flow(config_entry: ConfigEntry) -> KestrelOptionsFlow:
         """Manage paired watches."""
-        return WristWandOptionsFlow()
+        return KestrelOptionsFlow()
 
 
 def _select(options: list[tuple[str, str]], translation_key: str | None = None) -> SelectSelector:
@@ -62,7 +62,7 @@ def _select(options: list[tuple[str, str]], translation_key: str | None = None) 
     return SelectSelector(config)
 
 
-class WristWandOptionsFlow(OptionsFlow):
+class KestrelOptionsFlow(OptionsFlow):
     """Paints, rooms and settings of each paired watch."""
 
     def __init__(self) -> None:

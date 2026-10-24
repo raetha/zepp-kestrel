@@ -37,7 +37,7 @@ Page(
       },
 
       build() {
-        text({ y: 30, h: 46, size: SIZE.title, value: 'WristWand' })
+        text({ y: 30, h: 46, size: SIZE.title, value: 'Kestrel' })
         // the build, so it's clear which test build is running
         text({ x: 90, y: 414, w: 300, h: 36, size: 26, color: COLOR.quiet, value: appVersion() })
         this.statusW = text({ x: 50, y: 78, w: 380, h: 64, size: SIZE.small, color: COLOR.quiet, value: 'Checking…' })

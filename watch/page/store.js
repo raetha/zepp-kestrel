@@ -1,4 +1,4 @@
-// What the watch keeps between runs. Home Assistant (with the WristWand
+// What the watch keeps between runs. Home Assistant (with the Kestrel
 // integration) holds the master copy of paints, rooms and settings; see
 // page/sync.js and lib/sync.js for how they're kept in step.
 

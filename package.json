@@ -1,8 +1,8 @@
 {
-  "name": "zepp-wristwand",
+  "name": "zepp-kestrel",
   "version": "0.0.0",
   "private": true,
-  "description": "Wristwand: point at a smart-home device with an Amazfit / Zepp OS watch and trigger it",
+  "description": "Kestrel: point at a smart-home device with an Amazfit / Zepp OS watch and trigger it",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "test": "node --test lib/test/*.test.mjs watch/test/*.test.mjs",

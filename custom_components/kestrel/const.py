@@ -1,21 +1,21 @@
-"""Constants for the WristWand integration."""
+"""Constants for the Kestrel integration."""
 
-DOMAIN = "wristwand"
-NAME = "WristWand"
+DOMAIN = "kestrel"
+NAME = "Kestrel"
 
-TOKEN_HEADER = "X-WristWand-Token"
-EVENT_FIRED = "wristwand_fired"
-EVENT_PROBE = "wristwand_probe"  # M0 measurement results from a watch
-LABEL_NAME = "wristwand"  # entities (or their devices) with this label are offered to watches
+TOKEN_HEADER = "X-Kestrel-Token"
+EVENT_FIRED = "kestrel_fired"
+EVENT_PROBE = "kestrel_probe"  # M0 measurement results from a watch
+LABEL_NAME = "kestrel"  # entities (or their devices) with this label are offered to watches
 
 PAIRING_TTL = 600  # seconds a pairing code stays valid
 PAIRING_MAX_ATTEMPTS = 5  # wrong codes before a pairing is cancelled
 PAIR_STARTS_PER_WINDOW = 10  # pairing requests per client address per window
 PAIR_WINDOW = 600
 
-STORAGE_KEY = "wristwand.watches"
+STORAGE_KEY = "kestrel.watches"
 STORAGE_VERSION = 1
-PROBES_STORAGE_KEY = "wristwand.probes"  # recent probe results, for diagnostics downloads
+PROBES_STORAGE_KEY = "kestrel.probes"  # recent probe results, for diagnostics downloads
 PROBES_KEPT = 500
 PROBES_SAVE_DELAY = 10  # seconds; probe results arrive in bursts
 STATUS_SAVE_DELAY = 30  # seconds; what watches report (last seen, room...) is saved lazily

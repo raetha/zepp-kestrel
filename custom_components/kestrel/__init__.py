@@ -1,9 +1,9 @@
-"""WristWand: point an Amazfit / Zepp OS watch at a device and trigger it.
+"""Kestrel: point an Amazfit / Zepp OS watch at a device and trigger it.
 
 The integration gives watches a small API of their own (see http.py): pairing
 with a code shown in Home Assistant, the list of things they can point at, and
 running an action. Each paired watch is a device; deleting the device unpairs
-it. Every action fires a `wristwand_fired` event for automations. Each watch's
+it. Every action fires a `kestrel_fired` event for automations. Each watch's
 device has sensors (last triggered, room, last seen...) and switches (gesture
 trigger, away mode).
 """
@@ -21,7 +21,7 @@ from .const import DOMAIN
 from .http import VIEWS
 from .watches import Watches
 
-type WristWandConfigEntry = ConfigEntry[Watches]
+type KestrelConfigEntry = ConfigEntry[Watches]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 PLATFORMS = [Platform.SENSOR, Platform.SWITCH]
@@ -34,7 +34,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: WristWandConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: KestrelConfigEntry) -> bool:
     """Load paired watches and their devices."""
     integration = await async_get_integration(hass, DOMAIN)
     watches = Watches(hass, entry.entry_id, version=str(integration.version or ""))
@@ -45,18 +45,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: WristWandConfigEntry) ->
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: WristWandConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: KestrelConfigEntry) -> bool:
     """Unload the entities; the API checks for a loaded entry on every request."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def async_remove_entry(hass: HomeAssistant, entry: WristWandConfigEntry) -> None:
+async def async_remove_entry(hass: HomeAssistant, entry: KestrelConfigEntry) -> None:
     """Removing the integration forgets every paired watch."""
     await Watches(hass, entry.entry_id).async_clear()
 
 
 async def async_remove_config_entry_device(
-    hass: HomeAssistant, entry: WristWandConfigEntry, device: dr.DeviceEntry
+    hass: HomeAssistant, entry: KestrelConfigEntry, device: dr.DeviceEntry
 ) -> bool:
     """Deleting a watch's device unpairs that watch."""
     watch_ids = [ident for domain, ident in device.identifiers if domain == DOMAIN]

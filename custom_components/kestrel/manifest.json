@@ -1,6 +1,6 @@
 {
-  "domain": "wristwand",
-  "name": "WristWand",
+  "domain": "kestrel",
+  "name": "Kestrel",
   "codeowners": [
     "@raetha"
   ],
@@ -8,10 +8,10 @@
   "dependencies": [
     "http"
   ],
-  "documentation": "https://github.com/raetha/zepp-wristwand",
+  "documentation": "https://github.com/raetha/zepp-kestrel",
   "integration_type": "hub",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/raetha/zepp-wristwand/issues",
+  "issue_tracker": "https://github.com/raetha/zepp-kestrel/issues",
   "requirements": [],
   "single_config_entry": true,
   "version": "0.1.0"

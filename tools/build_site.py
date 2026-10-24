@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assemble the GitHub Pages install site.
 
-Expects site/watch/wristwand.zpk (the latest watch release, downloaded by CI) and
+Expects site/watch/kestrel.zpk (the latest watch release, downloaded by CI) and
 site/watch/version.txt when a release exists. Before the first release the page says so
 and points nowhere else (test builds are on the unlisted /dev/ page).
 
@@ -40,7 +40,7 @@ else:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WristWand</title>
+<title>Kestrel</title>
 <style>
   :root {{ color-scheme: dark; }}
   body {{ margin: 0; font-family: system-ui, sans-serif; background: #0e0b1a; color: #ece9f6; }}
@@ -58,13 +58,13 @@ else:
 </head>
 <body>
 <main>
-  <h1>WristWand</h1>
+  <h1>Kestrel</h1>
   <p>Point your Amazfit watch at a smart-home device and trigger it, with Home Assistant.</p>
   <ol>
     <li>In the Zepp app, turn on Developer Mode: Profile → Settings → About, tap the Zepp logo 7 times.</li>
     <li>Profile → your watch → Developer Mode → tap the scan icon (top right).</li>
     <li>Scan the QR code and confirm the install.</li>
-    <li>Open WristWand's settings in the Zepp app and enter your Home Assistant URL and token.</li>
+    <li>Open Kestrel's settings in the Zepp app and enter your Home Assistant URL and token.</li>
   </ol>
   {body}
   <p style="margin-top:40px"><a href="{GITHUB}">Source on GitHub</a></p>

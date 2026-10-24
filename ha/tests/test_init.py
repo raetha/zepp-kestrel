@@ -4,9 +4,9 @@ from http import HTTPStatus
 
 from homeassistant.helpers import device_registry as dr
 
-from custom_components.wristwand.const import DOMAIN, TOKEN_HEADER
-from custom_components.wristwand.diagnostics import async_get_config_entry_diagnostics
-from custom_components.wristwand.watches import Watches
+from custom_components.kestrel.const import DOMAIN, TOKEN_HEADER
+from custom_components.kestrel.diagnostics import async_get_config_entry_diagnostics
+from custom_components.kestrel.watches import Watches
 
 
 async def _paired(entry, name="Balance 3"):
@@ -26,14 +26,14 @@ async def test_each_paired_watch_is_a_device(hass, setup_entry):
 
 
 async def test_deleting_the_device_unpairs_the_watch(hass, setup_entry, hass_client_no_auth):
-    from custom_components.wristwand import async_remove_config_entry_device
+    from custom_components.kestrel import async_remove_config_entry_device
 
     hass.states.async_set("light.lamp", "off")
     watch, token = await _paired(setup_entry)
     device = dr.async_get(hass).async_get_device_by_identifier((DOMAIN, watch["id"]), setup_entry.entry_id)
     assert await async_remove_config_entry_device(hass, setup_entry, device)
     client = await hass_client_no_auth()
-    res = await client.get("/api/wristwand/targets", headers={TOKEN_HEADER: token})
+    res = await client.get("/api/kestrel/targets", headers={TOKEN_HEADER: token})
     assert res.status == HTTPStatus.UNAUTHORIZED
 
 
@@ -52,8 +52,8 @@ async def test_stale_devices_are_removed_on_setup(hass, setup_entry):
 async def test_unloaded_entry_answers_404(hass, setup_entry, hass_client_no_auth):
     assert await hass.config_entries.async_unload(setup_entry.entry_id)
     client = await hass_client_no_auth()
-    for method, path in (("get", "/api/wristwand/info"), ("post", "/api/wristwand/pair"),
-                         ("post", "/api/wristwand/pair/confirm"), ("get", "/api/wristwand/targets")):
+    for method, path in (("get", "/api/kestrel/info"), ("post", "/api/kestrel/pair"),
+                         ("post", "/api/kestrel/pair/confirm"), ("get", "/api/kestrel/targets")):
         res = await getattr(client, method)(path)
         assert res.status == HTTPStatus.NOT_FOUND, path
 
@@ -88,8 +88,8 @@ async def test_pairings_expire(hass, setup_entry):
 async def test_probe_results_are_kept_for_diagnostics(hass, setup_entry, hass_client_no_auth, hass_storage):
     from homeassistant.const import EVENT_HOMEASSISTANT_FINAL_WRITE
 
-    from custom_components.wristwand.const import DOMAIN, PROBES_KEPT, TOKEN_HEADER
-    from custom_components.wristwand.diagnostics import async_get_device_diagnostics
+    from custom_components.kestrel.const import DOMAIN, PROBES_KEPT, TOKEN_HEADER
+    from custom_components.kestrel.diagnostics import async_get_device_diagnostics
 
     watches = setup_entry.runtime_data
     one, token_one = await _paired(setup_entry)
@@ -97,7 +97,7 @@ async def test_probe_results_are_kept_for_diagnostics(hass, setup_entry, hass_cl
     client = await hass_client_no_auth()
     # a body can't pose as another watch
     res = await client.post(
-        "/api/wristwand/probe",
+        "/api/kestrel/probe",
         headers={TOKEN_HEADER: token_one},
         json={"test": "tilt", "watch_id": two["id"], "raw": {"rows": [[1, 2]]}},
     )
@@ -116,7 +116,7 @@ async def test_probe_results_are_kept_for_diagnostics(hass, setup_entry, hass_cl
     assert [p["test"] for p in per_watch["probes"]] == ["tilt"]
 
     # saved (after a short delay, or when Home Assistant stops) and loaded again after a restart
-    assert "wristwand.probes" not in hass_storage
+    assert "kestrel.probes" not in hass_storage
     hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
     await hass.async_block_till_done()
     fresh = Watches(hass, setup_entry.entry_id)

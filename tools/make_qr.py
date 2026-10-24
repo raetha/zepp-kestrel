@@ -4,8 +4,8 @@
 The Zepp app accepts `zpkd1://<host>/<path>.zpk` and downloads the package over HTTPS.
 CI publishes packages to GitHub Pages at fixed URLs, so the codes never change:
 
-  release   zpkd1://raetha.github.io/zepp-wristwand/watch/wristwand.zpk   -> watch/docs/install-qr.png
-  test      zpkd1://raetha.github.io/zepp-wristwand/dev/watch/wristwand.zpk
+  release   zpkd1://raetha.github.io/zepp-kestrel/watch/kestrel.zpk   -> watch/docs/install-qr.png
+  test      zpkd1://raetha.github.io/zepp-kestrel/dev/watch/kestrel.zpk
 
   python3 tools/make_qr.py                 # the committed release QR code
   python3 tools/make_qr.py <out.png> <url> # any other

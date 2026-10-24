@@ -1,5 +1,5 @@
 // Side service: runs inside the Zepp app on the phone. The only part of
-// WristWand that talks to Home Assistant (lib/ha-client.js does the work).
+// Kestrel that talks to Home Assistant (lib/ha-client.js does the work).
 
 import { BaseSideService } from '@zeppos/zml/base-side'
 import { METHOD, Dedupe } from '../lib/protocol.js'
@@ -101,7 +101,7 @@ AppSideService(
       const st = this.ha.status()
       if (st.mode === 'component') {
         const t0 = Date.now()
-        await this.ha.component('/api/wristwand/targets')
+        await this.ha.component('/api/kestrel/targets')
         return { ok: true, haMs: Date.now() - t0 }
       }
       const cfg = haConfig(this.settings)
@@ -120,12 +120,12 @@ AppSideService(
       let error = null
       try {
         if (this.ha.status().mode === 'component') {
-          await this.ha.component('/api/wristwand/probe', { method: 'POST', body: entry })
+          await this.ha.component('/api/kestrel/probe', { method: 'POST', body: entry })
           forwarded = true
         } else {
           const cfg = haConfig(this.settings)
           if (cfg && this.settings.getItem('forwardToHa') === 'true') {
-            forwarded = !!(await fireEvent(this, cfg, 'wristwand_probe', entry))
+            forwarded = !!(await fireEvent(this, cfg, 'kestrel_probe', entry))
           }
         }
       } catch (e) {
@@ -171,7 +171,7 @@ AppSideService(
             msg = p.error
           } else {
             const comp = await detectComponent(this, cfg)
-            msg = `Connected in ${p.haMs} ms. ${comp ? `WristWand component ${comp.version || ''} found: pair from the watch.` : 'Direct mode (component not installed).'}`
+            msg = `Connected in ${p.haMs} ms. ${comp ? `Kestrel component ${comp.version || ''} found: pair from the watch.` : 'Direct mode (component not installed).'}`
           }
         } catch (e) {
           msg = `Could not reach HA: ${(e && e.message) || e}`

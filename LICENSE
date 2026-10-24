@@ -1,4 +1,4 @@
-Licensing for raetha/zepp-wristwand
+Licensing for raetha/zepp-kestrel
 ===================================
 
 This repository uses different licences for different parts. The dividing
@@ -8,13 +8,13 @@ non-commercial; everything else is MIT.
 1. MIT (see LICENSES/MIT.txt)
    - lib/            (generic helpers with no tie to watches: circular
                       statistics, summary statistics, a rate meter)
-   - custom_components/wristwand/ and ha/
+   - custom_components/kestrel/ and ha/
                      (the Home Assistant component, its tests and changelog)
    - tools/          (packaging, release, site and emulator scripts)
    - .github/        (CI configuration)
    - repository-level docs and config files (README.md, docs/, package.json, ...)
 
-2. The WristWand watch app: CC BY-NC-SA 4.0 (see LICENSES/CC-BY-NC-SA-4.0.txt)
+2. The Kestrel watch app: CC BY-NC-SA 4.0 (see LICENSES/CC-BY-NC-SA-4.0.txt)
    Everything inside watch/ - the watch app and its pointing, gesture and
    room-detection logic (watch/lib/), the side service, the settings page,
    the icon, screenshots and documentation - is licensed under Creative
@@ -24,10 +24,11 @@ non-commercial; everything else is MIT.
    store.
 
 3. Names and logos are not licensed
-   The name "WristWand" and its icon are not licensed for reuse under either
+   The name "Kestrel" and its logo and icons (brand/, the watch icon and
+   custom_components/kestrel/brand/) are not licensed for reuse under either
    licence. Derivatives must use a different name.
 
 The author (raetha) holds the copyright in all original material and may
-distribute WristWand under other terms, including in paid app stores.
+distribute Kestrel under other terms, including in paid app stores.
 
 Copyright (c) 2026 raetha

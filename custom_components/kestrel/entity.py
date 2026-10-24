@@ -16,7 +16,7 @@ from .const import DOMAIN, SIGNAL_WATCH_ADDED, signal_watch_updated
 from .watches import Watches
 
 
-class WristWandEntity(Entity):
+class KestrelEntity(Entity):
     """Something about one watch. Updated by dispatcher signals, never polled."""
 
     _attr_has_entity_name = True

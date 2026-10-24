@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .entity import WristWandEntity, add_per_watch
+from .entity import KestrelEntity, add_per_watch
 from .watches import Watches
 
 PARALLEL_UPDATES = 0
@@ -92,7 +92,7 @@ async def async_setup_entry(
     )
 
 
-class WatchSensor(WristWandEntity, SensorEntity):
+class WatchSensor(KestrelEntity, SensorEntity):
     entity_description: WatchSensorDescription
 
     @property

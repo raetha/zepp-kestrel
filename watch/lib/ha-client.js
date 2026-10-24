@@ -3,7 +3,7 @@
 // Node tests can drive it with fakes.
 //
 // Two backends:
-//  - component: the WristWand HA component's /api/wristwand/* endpoints, with a
+//  - component: the Kestrel HA component's /api/kestrel/* endpoints, with a
 //    per-watch token from pairing (preferred; no long-lived HA token needed).
 //  - direct: HA core REST API with a long-lived token from the settings page
 //    (store installs that don't use the component).
@@ -46,7 +46,7 @@ const KEY = {
   haToken: 'haToken',
 }
 
-const TOKEN_HEADER = 'X-WristWand-Token'
+const TOKEN_HEADER = 'X-Kestrel-Token'
 const LOCAL_TIMEOUT = 2500
 const REMOTE_TIMEOUT = 8000
 
@@ -109,7 +109,7 @@ export class HaClient {
   }
 
   // ---------------------------------------------------------------- discovery and pairing
-  /** Probe likely local addresses (and any saved ones) for the WristWand component. */
+  /** Probe likely local addresses (and any saved ones) for the Kestrel component. */
   async discover(extra = []) {
     extra = extra.flatMap((a) => expandAddress(a))
     const p = this.pairing()
@@ -119,9 +119,9 @@ export class HaClient {
     const results = await Promise.all(
       urls.map(async (url) => {
         try {
-          const res = await this.fetch({ url: `${url}/api/wristwand/info`, method: 'GET', timeout: LOCAL_TIMEOUT })
+          const res = await this.fetch({ url: `${url}/api/kestrel/info`, method: 'GET', timeout: LOCAL_TIMEOUT })
           const info = parseBody(res)
-          if (res.status === 200 && info && info.name === 'WristWand') {
+          if (res.status === 200 && info && info.name === 'Kestrel') {
             return { url, haName: info.ha_name || 'Home Assistant', version: info.version }
           }
         } catch (e) {
@@ -138,7 +138,7 @@ export class HaClient {
   async pairStart(url, watchName) {
     url = normalizeUrl(url)
     const res = await this.fetch({
-      url: `${url}/api/wristwand/pair`,
+      url: `${url}/api/kestrel/pair`,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ watch_name: watchName || 'Amazfit watch' }),
@@ -152,7 +152,7 @@ export class HaClient {
   async pairConfirm(url, pairingId, code) {
     url = normalizeUrl(url)
     const res = await this.fetch({
-      url: `${url}/api/wristwand/pair/confirm`,
+      url: `${url}/api/kestrel/pair/confirm`,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pairing_id: pairingId, code: String(code) }),
@@ -238,7 +238,7 @@ export class HaClient {
   /** Targets the watch can paint: [{ id, name, domain, area, dimmable, confirm }] */
   async targets() {
     if (this.status().mode === 'component') {
-      const b = await this.component('/api/wristwand/targets')
+      const b = await this.component('/api/kestrel/targets')
       return (b && b.targets) || []
     }
     // direct mode: every supported entity, no areas (the component adds labels and areas)
@@ -272,22 +272,22 @@ export class HaClient {
       if (only) q.push(`only=${only.join(',')}`)
       if (have) q.push(`have=${Object.keys(have).map((k) => `${k}:${have[k]}`).join(',')}`)
       if (version) q.push(`v=${encodeURIComponent(version)}`)
-      return (await this.component(`/api/wristwand/sync${q.length ? `?${q.join('&')}` : ''}`)) || {}
+      return (await this.component(`/api/kestrel/sync${q.length ? `?${q.join('&')}` : ''}`)) || {}
     }
     return { targets: only ? undefined : await this.targets() }
   }
 
   /** Send one section after a change on the watch: paints, rooms (component only). -> { ok, rev } */
   async saveSection(section, value) {
-    if (this.status().mode !== 'component') return { ok: false, error: 'Needs the WristWand integration' }
-    const b = await this.component(`/api/wristwand/${section}`, { method: 'POST', body: { [section]: value } })
+    if (this.status().mode !== 'component') return { ok: false, error: 'Needs the Kestrel integration' }
+    const b = await this.component(`/api/kestrel/${section}`, { method: 'POST', body: { [section]: value } })
     return { ok: true, rev: b && b.rev }
   }
 
   /** Send the gesture calibration. -> { ok, rev, settings } */
   async saveGesture(gesture) {
-    if (this.status().mode !== 'component') return { ok: false, error: 'Needs the WristWand integration' }
-    const b = await this.component('/api/wristwand/gesture', { method: 'POST', body: { gesture } })
+    if (this.status().mode !== 'component') return { ok: false, error: 'Needs the Kestrel integration' }
+    const b = await this.component('/api/kestrel/gesture', { method: 'POST', body: { gesture } })
     return { ok: true, rev: b && b.rev, settings: b && b.settings }
   }
 
@@ -295,14 +295,14 @@ export class HaClient {
   /** The room from a Home Assistant sensor; `here` reports the room the watch placed itself in. */
   async room(here = null) {
     if (this.status().mode !== 'component') return null
-    const b = await this.component(`/api/wristwand/room${here ? `?here=${encodeURIComponent(here)}` : ''}`)
+    const b = await this.component(`/api/kestrel/room${here ? `?here=${encodeURIComponent(here)}` : ''}`)
     return (b && b.room) || null
   }
 
   /** Run an action on a target. Returns { ok, state, needsConfirm, error } */
   async fire({ target, action = 'toggle', value, seq, confirmed = false, via, room }) {
     if (this.status().mode === 'component') {
-      return this.component('/api/wristwand/fire', {
+      return this.component('/api/kestrel/fire', {
         method: 'POST',
         body: { target, action, value, seq, confirmed, via, room },
       })

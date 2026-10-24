@@ -9,7 +9,7 @@ name: Build and publish
 # Push to main or dev (and manual runs): builds a "DEV" test build of the watch app from
 # the tip of `dev` (own app ID, installs next to the release) and redeploys the Pages site:
 # the install site from the latest release, plus the unlisted test-build page
-# https://raetha.github.io/zepp-wristwand/dev/.
+# https://raetha.github.io/zepp-kestrel/dev/.
 #
 # Adapted from raetha/zepp-watch-faces.
 
@@ -69,12 +69,12 @@ jobs:
           version=$(python3 -c "import json;print(json.load(open('watch/app.json'))['app']['version']['name'])")
           (cd watch && zeus build)
           mkdir -p out/watch
-          python3 tools/extract_zpk.py watch/dist "out/watch/wristwand-$version.zpk"
-          cp watch/dist/*.zab "out/watch/wristwand-$version.zab"
+          python3 tools/extract_zpk.py watch/dist "out/watch/kestrel-$version.zpk"
+          cp watch/dist/*.zab "out/watch/kestrel-$version.zab"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: wristwand
+          name: kestrel
           path: out/
 
       - name: Build the DEV test build (from the tip of dev)
@@ -93,16 +93,16 @@ jobs:
           mkdir -p "$out/watch" && echo "$short" > "$out/SOURCE_SHA"
           python3 tools/make_dev_variant.py "$GITHUB_RUN_NUMBER" "$short"
           (cd watch-dev && zeus build)
-          python3 tools/extract_zpk.py watch-dev/dist "$out/watch/wristwand.zpk"
+          python3 tools/extract_zpk.py watch-dev/dist "$out/watch/kestrel.zpk"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
         with:
-          name: wristwand-dev
+          name: kestrel-dev
           path: out-dev/
 
   ha-tests:
-    # The Home Assistant component (custom_components/wristwand), tested against a real HA core.
+    # The Home Assistant component (custom_components/kestrel), tested against a real HA core.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -116,7 +116,7 @@ jobs:
 
       - name: Component tests (95% coverage required, quality scale Silver)
         working-directory: ha
-        run: pytest -q --cov=custom_components.wristwand --cov-report=term-missing --cov-fail-under=95
+        run: pytest -q --cov=custom_components.kestrel --cov-report=term-missing --cov-fail-under=95
 
   validate:
     # Home Assistant's own manifest/translation checks and the HACS repository checks.
@@ -146,7 +146,7 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: wristwand
+          name: kestrel
           path: out
 
       - name: Create a GitHub release per changed component
@@ -159,7 +159,7 @@ jobs:
           while IFS=$'\t' read -r component version tag title; do
             python3 tools/release_notes.py "$component" "$version" > notes.md
             if [ "$component" = watch ]; then
-              assets="out/watch/wristwand-$version.zpk out/watch/wristwand-$version.zab"
+              assets="out/watch/kestrel-$version.zpk out/watch/kestrel-$version.zab"
             else
               assets=""
             fi
@@ -167,7 +167,7 @@ jobs:
           done
 
   # Each push to dev publishes the HA component as a GitHub pre-release (ha-v<version>-dev.<run>),
-  # so HACS can install test builds once "beta versions" is on for WristWand. Older dev
+  # so HACS can install test builds once "beta versions" is on for Kestrel. Older dev
   # pre-releases (and their tags) are deleted; real releases are never touched.
   ha-dev-release:
     needs: [build, ha-tests, validate]
@@ -183,11 +183,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          version=$(python3 -c "import json;print(json.load(open('custom_components/wristwand/manifest.json'))['version'])")
+          version=$(python3 -c "import json;print(json.load(open('custom_components/kestrel/manifest.json'))['version'])")
           tag="ha-v${version}-dev.${GITHUB_RUN_NUMBER}"
           gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
-            --title "WristWand HA component ${version} test build ${GITHUB_RUN_NUMBER}" \
-            --notes "Test build of the Home Assistant component from dev (${GITHUB_SHA::7}). Install through HACS with beta versions turned on for WristWand. See ha/CHANGELOG.md → Unreleased."
+            --title "Kestrel HA component ${version} test build ${GITHUB_RUN_NUMBER}" \
+            --notes "Test build of the Home Assistant component from dev (${GITHUB_SHA::7}). Install through HACS with beta versions turned on for Kestrel. See ha/CHANGELOG.md → Unreleased."
           gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' |
             grep -E '^ha-v.*-dev\.[0-9]+$' | grep -vx "$tag" | while read -r old; do
               gh release delete "$old" --yes --cleanup-tag
@@ -228,7 +228,7 @@ jobs:
           tag=$(gh release list --limit 200 --json tagName --jq '.[].tagName' | grep -E '^watch-v[0-9]' | sed 's/^watch-v//' | sort -V | tail -1 || true)
           if [ -n "$tag" ]; then
             gh release download "watch-v$tag" --pattern "*.zpk" --dir site/watch
-            mv "site/watch/wristwand-$tag.zpk" site/watch/wristwand.zpk
+            mv "site/watch/kestrel-$tag.zpk" site/watch/kestrel.zpk
             echo "$tag" > site/watch/version.txt
             echo "watch: publishing $tag"
           else
@@ -238,7 +238,7 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: wristwand-dev
+          name: kestrel-dev
           path: site/dev
 
       - name: Add the unlisted test-build page
@@ -248,7 +248,7 @@ jobs:
           {
             echo "### Test build (run $GITHUB_RUN_NUMBER)"
             echo ""
-            echo "Scan from: https://raetha.github.io/zepp-wristwand/dev/"
+            echo "Scan from: https://raetha.github.io/zepp-kestrel/dev/"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

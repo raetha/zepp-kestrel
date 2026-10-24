@@ -67,7 +67,7 @@ Page(
         setText(
           this.msgW,
           error ||
-            'No Home Assistant with WristWand found. Is the phone on the home Wi-Fi, and the integration added in HA? Or type its address.',
+            'No Home Assistant with Kestrel found. Is the phone on the home Wi-Fi, and the integration added in HA? Or type its address.',
         )
         this.add(button({ x: 110, w: 260, y: 300, h: 58, label: 'Try again', primary: true, onClick: () => this.discover() }))
         this.add(button({ x: 120, w: 240, y: 368, h: 54, size: SIZE.body, label: 'Type address', onClick: () => this.addressPad() }))

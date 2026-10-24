@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the WristWand watch app. The format is based on
+All notable changes to the Kestrel watch app. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
@@ -9,8 +9,8 @@ All notable changes to the WristWand watch app. The format is based on
 ### Added
 
 - M0 measurement build: probes for sensor rates, snap/tap/flick recordings, compass tilt, Bluetooth scans per room, and watch → phone → Home Assistant latency.
-- Settings page in the Zepp app for the Home Assistant URL and token, with a connection test, a list of probe results, and an option to send results to Home Assistant as `wristwand_probe` events.
-- Pairing with Home Assistant (needs the WristWand integration): the phone finds Home Assistant on the home Wi-Fi (`homeassistant.local` on port 80 or 8123; other addresses can be typed on the watch), Home Assistant shows a 6-digit code, and you type it on the watch. Afterwards it also works away from home through your Home Assistant's remote address (for example Nabu Casa).
+- Settings page in the Zepp app for the Home Assistant URL and token, with a connection test, a list of probe results, and an option to send results to Home Assistant as `kestrel_probe` events.
+- Pairing with Home Assistant (needs the Kestrel integration): the phone finds Home Assistant on the home Wi-Fi (`homeassistant.local` on port 80 or 8123; other addresses can be typed on the watch), Home Assistant shows a 6-digit code, and you type it on the watch. Afterwards it also works away from home through your Home Assistant's remote address (for example Nabu Casa).
 - Paint a device: pick it from the synced list, then sweep your arm across it for 15 seconds. Painting again from other places you use it improves aim. Unsteady compass readings are rejected with a hint.
 - Point: hold your arm out at a painted device; the circle turns amber while aiming, green when the watch has a device in mind, and bright green when it's sure. Press the select button or tap the circle to toggle it. Locks ask for a confirming tap. Short buzzes confirm sent, done and failed.
 - Home screen with Point, Paint, Sync, Probes and Unpair. The M0 probes moved under Probes.
@@ -28,7 +28,7 @@ All notable changes to the WristWand watch app. The format is based on
 - Point keeps the screen on while you're pointing: every time your arm is held out, or something is triggered, the screen gets another 30 seconds. Lowering your wrist lets it go off as usual.
 - When the compass needs calibrating, Paint asks you to turn the watch in a circle (as the Compass app does) and waits, instead of recording a sweep that fails; Point says the same.
 - Tells Home Assistant its version, the room it placed itself in, and how each trigger happened, for the watch's sensors there.
-- When Home Assistant has more devices than it sends, Sync says so ("1000 of 1240 devices"); the `wristwand` label narrows the list.
+- When Home Assistant has more devices than it sends, Sync says so ("1000 of 1240 devices"); the `kestrel` label narrows the list.
 - Pairing again keeps the watch's paints and room calibrations and sends them to Home Assistant.
 - One QR code on the test-build page; it never expires.
 - Corrections: after a trigger, "Not it?" offers the next most likely device for 5 seconds. Choosing it undoes the first where possible, toggles the right one, and teaches the watch where you aimed.
@@ -38,6 +38,7 @@ All notable changes to the WristWand watch app. The format is based on
 
 ### Changed
 
+- Renamed from WristWand to Kestrel, with a new icon. Test builds install as "Kestrel DEV" and need pairing again with the renamed Home Assistant integration.
 - Aim uses where your forearm points (the watch's compass heading turned by 90°). Keep the palm roughly down: with the wrist turned more than about 45° the compass drifts, so aim waits until it has settled. Devices painted with earlier test builds need painting again.
 - Point reopens when you raise your wrist again after the screen went off, instead of the watch returning to the watch face.
 - Compass tilt probe: two short guided recordings (up and down along one line; wrist turned in and out) instead of single captures. Each step is announced by 1 to 4 buzzes, so you needn't read the screen, and all steps are shown before you start.

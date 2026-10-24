@@ -14,7 +14,7 @@ from homeassistant.helpers import (
 
 from .const import CONFIRM_DOMAINS, LABEL_NAME, SUPPORTED_DOMAINS
 
-# Sent to a watch at most; the rest are left out (the wristwand label narrows the list).
+# Sent to a watch at most; the rest are left out (the kestrel label narrows the list).
 MAX_TARGETS = 1000
 
 
@@ -28,7 +28,7 @@ def _label_id(hass: HomeAssistant) -> str | None:
 def list_targets(hass: HomeAssistant, limit: int | None = MAX_TARGETS) -> list[dict[str, Any]]:
     """Entities a watch can paint.
 
-    If any entity (or its device) carries the `wristwand` label, only labelled ones;
+    If any entity (or its device) carries the `kestrel` label, only labelled ones;
     otherwise every supported entity that isn't hidden, disabled, or a device's
     configuration or diagnostic entity (restart buttons, firmware switches).
     Grouped by area; at most `limit` (None for all).

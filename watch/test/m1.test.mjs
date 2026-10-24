@@ -98,10 +98,10 @@ test('normalizeUrl trims slashes and spaces', () => {
 })
 
 test('discover finds the component and de-duplicates by HA name', async () => {
-  const info = async () => ({ status: 200, body: JSON.stringify({ name: 'WristWand', ha_name: 'Home', version: '0.1.0' }) })
+  const info = async () => ({ status: 200, body: JSON.stringify({ name: 'Kestrel', ha_name: 'Home', version: '0.1.0' }) })
   const fetch = fakeFetch({
-    'GET http://homeassistant.local:8123/api/wristwand/info': info,
-    'GET http://homeassistant:8123/api/wristwand/info': info,
+    'GET http://homeassistant.local:8123/api/kestrel/info': info,
+    'GET http://homeassistant:8123/api/kestrel/info': info,
   })
   const ha = new HaClient({ fetch, store: memStore() })
   const found = await ha.discover()
@@ -111,11 +111,11 @@ test('discover finds the component and de-duplicates by HA name', async () => {
 
 test('pairing stores the token and every address HA reports', async () => {
   const fetch = fakeFetch({
-    'POST http://homeassistant.local:8123/api/wristwand/pair': async (r) => {
+    'POST http://homeassistant.local:8123/api/kestrel/pair': async (r) => {
       assert.equal(JSON.parse(r.body).watch_name, 'Balance 3')
       return { status: 200, body: { pairing_id: 'p1', expires_in: 600 } }
     },
-    'POST http://homeassistant.local:8123/api/wristwand/pair/confirm': async (r) => {
+    'POST http://homeassistant.local:8123/api/kestrel/pair/confirm': async (r) => {
       const b = JSON.parse(r.body)
       if (b.code !== '123456') return { status: 403, body: { message: 'Wrong code' } }
       return {
@@ -140,8 +140,8 @@ test('component requests fall back from local to Nabu Casa, then remember what w
     'ww.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123', 'https://abc.ui.nabu.casa'] }),
   })
   const fetch = fakeFetch({
-    'GET https://abc.ui.nabu.casa/api/wristwand/targets': async (r) => {
-      assert.equal(r.headers['X-WristWand-Token'], 'tok')
+    'GET https://abc.ui.nabu.casa/api/kestrel/targets': async (r) => {
+      assert.equal(r.headers['X-Kestrel-Token'], 'tok')
       return { status: 200, body: { targets: [{ id: 'light.lamp' }] } }
     },
   })
@@ -155,7 +155,7 @@ test('component requests fall back from local to Nabu Casa, then remember what w
 
 test('a 401 from the component unpairs the watch', async () => {
   const store = memStore({ 'ww.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123'] }) })
-  const fetch = fakeFetch({ 'GET http://homeassistant.local:8123/api/wristwand/targets': async () => ({ status: 401, body: {} }) })
+  const fetch = fakeFetch({ 'GET http://homeassistant.local:8123/api/kestrel/targets': async () => ({ status: 401, body: {} }) })
   const ha = new HaClient({ fetch, store })
   await assert.rejects(ha.targets(), /pair again/)
   assert.equal(ha.status().paired, false)
@@ -207,7 +207,7 @@ test('discovery tries port 80 and 8123, and typed addresses', async () => {
   assert.deepEqual(expandAddress('192.168.1.20:9000'), ['http://192.168.1.20:9000'])
   assert.deepEqual(expandAddress('https://ha.example/'), ['https://ha.example'])
   const fetch = fakeFetch({
-    'GET http://192.168.1.20:9000/api/wristwand/info': async () => ({ status: 200, body: { name: 'WristWand', ha_name: 'Lab' } }),
+    'GET http://192.168.1.20:9000/api/kestrel/info': async () => ({ status: 200, body: { name: 'Kestrel', ha_name: 'Lab' } }),
   })
   const found = await new HaClient({ fetch, store: memStore() }).discover(['192.168.1.20:9000'])
   assert.deepEqual(found, [{ url: 'http://192.168.1.20:9000', haName: 'Lab', version: undefined }])
@@ -235,15 +235,15 @@ test('sync, section saves, gesture and room go to the component', async () => {
   const url = 'http://homeassistant.local'
   const store = memStore({ 'ww.pairing': JSON.stringify({ token: 'tok', urls: [url] }) })
   const fetch = fakeFetch({
-    [`GET ${url}/api/wristwand/sync`]: async () => ({ status: 200, body: { targets: [], paints: {}, paints_rev: 2 } }),
-    [`GET ${url}/api/wristwand/sync?only=paints`]: async () => ({ status: 200, body: { paints: {}, paints_rev: 2 } }),
-    [`GET ${url}/api/wristwand/sync?have=targets:abc,paints:2`]: async () => ({ status: 200, body: { paints_rev: 2 } }),
-    [`POST ${url}/api/wristwand/paints`]: async (r) => {
+    [`GET ${url}/api/kestrel/sync`]: async () => ({ status: 200, body: { targets: [], paints: {}, paints_rev: 2 } }),
+    [`GET ${url}/api/kestrel/sync?only=paints`]: async () => ({ status: 200, body: { paints: {}, paints_rev: 2 } }),
+    [`GET ${url}/api/kestrel/sync?have=targets:abc,paints:2`]: async () => ({ status: 200, body: { paints_rev: 2 } }),
+    [`POST ${url}/api/kestrel/paints`]: async (r) => {
       assert.deepEqual(JSON.parse(r.body), { paints: { 'light.a': [] } })
       return { status: 200, body: { ok: true, rev: 3 } }
     },
-    [`POST ${url}/api/wristwand/gesture`]: async () => ({ status: 200, body: { ok: true, rev: 4, settings: { gesture: { gyro: 500 } } } }),
-    [`GET ${url}/api/wristwand/room`]: async () => ({ status: 200, body: { room: { id: 'office', name: 'Office' } } }),
+    [`POST ${url}/api/kestrel/gesture`]: async () => ({ status: 200, body: { ok: true, rev: 4, settings: { gesture: { gyro: 500 } } } }),
+    [`GET ${url}/api/kestrel/room`]: async () => ({ status: 200, body: { room: { id: 'office', name: 'Office' } } }),
   })
   const ha = new HaClient({ fetch, store })
   assert.equal((await ha.sync()).paints_rev, 2)

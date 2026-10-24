@@ -2,12 +2,12 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add WristWand",
-        "description": "WristWand lets an Amazfit / Zepp OS watch control things you point at. After adding it, open WristWand on the watch and choose Pair: Home Assistant will show a pairing code to enter on the watch. Each paired watch appears as a device; delete the device to unpair it."
+        "title": "Add Kestrel",
+        "description": "Kestrel lets an Amazfit / Zepp OS watch control things you point at. After adding it, open Kestrel on the watch and choose Pair: Home Assistant will show a pairing code to enter on the watch. Each paired watch appears as a device; delete the device to unpair it."
       }
     },
     "abort": {
-      "single_instance_allowed": "WristWand is already set up. Pair more watches from the watch itself."
+      "single_instance_allowed": "Kestrel is already set up. Pair more watches from the watch itself."
     }
   },
   "options": {
@@ -77,7 +77,7 @@
       }
     },
     "abort": {
-      "no_watches": "No watches are paired yet. Open WristWand on the watch and choose Pair with HA.",
+      "no_watches": "No watches are paired yet. Open Kestrel on the watch and choose Pair with HA.",
       "no_paints": "This watch hasn't painted any devices yet.",
       "no_rooms": "This watch hasn't calibrated any rooms yet. Calibrate them on the watch under More → Rooms."
     },

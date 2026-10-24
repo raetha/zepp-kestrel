@@ -15,7 +15,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .entity import WristWandEntity, add_per_watch
+from .entity import KestrelEntity, add_per_watch
 from .watchdata import settings_of
 from .watches import Watches
 
@@ -48,7 +48,7 @@ async def async_setup_entry(
     )
 
 
-class WatchSwitch(WristWandEntity, SwitchEntity):
+class WatchSwitch(KestrelEntity, SwitchEntity):
     entity_description: WatchSwitchDescription
 
     @property

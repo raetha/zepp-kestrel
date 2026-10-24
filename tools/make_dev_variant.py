@@ -2,7 +2,7 @@
 """Make a side-by-side test build of the watch app: watch-dev/ with its own app ID.
 
 The copy sits next to watch/ (so ../node_modules resolution keeps working), installs
-alongside the released app as "WristWand DEV", and carries a dev version. Its side
+alongside the released app as "Kestrel DEV", and carries a dev version. Its side
 service and settings are separate too, so enter the HA URL and token for it once.
 
   python3 tools/make_dev_variant.py <build-number> [<short-sha>]

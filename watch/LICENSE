@@ -1,4 +1,4 @@
-WristWand watch app
+Kestrel watch app
 Copyright (c) 2026 raetha
 
 Everything in this directory (watch/), including the pointing, gesture and
@@ -7,12 +7,12 @@ Attribution-NonCommercial-ShareAlike 4.0 International licence (CC BY-NC-SA
 4.0). Full text: ../LICENSES/CC-BY-NC-SA-4.0.txt or
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-- Attribution: credit "WristWand by raetha" with a link to
-  https://github.com/raetha/zepp-wristwand
+- Attribution: credit "Kestrel by raetha" with a link to
+  https://github.com/raetha/zepp-kestrel
 - NonCommercial: no selling of this app or adaptations of it, in any store.
 - ShareAlike: adaptations must use this same licence.
 
-The name "WristWand" and its icon are not licensed for reuse; adaptations must
+The name "Kestrel" and its icon are not licensed for reuse; adaptations must
 use a different name.
 
 The generic helpers this app imports from ../lib/ are MIT licensed (see the

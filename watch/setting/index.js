@@ -53,7 +53,7 @@ AppSettingsPage({
           },
         }),
         Toggle({
-          label: 'Send probe results to HA as wristwand_probe events',
+          label: 'Send probe results to HA as kestrel_probe events',
           value: s.getItem('forwardToHa') === 'true',
           onChange: (v) => s.setItem('forwardToHa', v ? 'true' : 'false'),
         }),

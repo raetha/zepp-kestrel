@@ -1,3 +1,3 @@
-# Home Assistant test harness for the WristWand component (Python 3.14).
+# Home Assistant test harness for the Kestrel component (Python 3.14).
 pytest-homeassistant-custom-component==0.13.373
 pytest-cov==7.1.0

@@ -1,23 +1,23 @@
-"""HTTP API used by the WristWand phone service.
+"""HTTP API used by the Kestrel phone service.
 
 Every request a watch makes also updates what Home Assistant shows about it
 (last seen, the address it used; see sensor.py).
 
 Watches don't use Home Assistant user tokens. Pairing gives each watch its own
-token, sent as X-WristWand-Token, which only works on these endpoints.
+token, sent as X-Kestrel-Token, which only works on these endpoints.
 
-  GET  /api/wristwand/info            no auth: lets the phone find this HA
-  POST /api/wristwand/pair            no auth, rate limited: start pairing (HA shows a code)
-  POST /api/wristwand/pair/confirm    no auth, limited attempts: code -> watch token
-  GET  /api/wristwand/targets         watch token: what can be painted
-  GET  /api/wristwand/sync            watch token: targets, areas, settings, paints, rooms (with revisions); ?v=<app version>
-  POST /api/wristwand/paints          watch token: the watch's paints after a change
-  POST /api/wristwand/rooms           watch token: the watch's room fingerprints after calibrating
-  POST /api/wristwand/gesture         watch token: gesture calibration
-  GET  /api/wristwand/room            watch token: the current room from a sensor, if configured; ?here=<area id> reports
+  GET  /api/kestrel/info            no auth: lets the phone find this HA
+  POST /api/kestrel/pair            no auth, rate limited: start pairing (HA shows a code)
+  POST /api/kestrel/pair/confirm    no auth, limited attempts: code -> watch token
+  GET  /api/kestrel/targets         watch token: what can be painted
+  GET  /api/kestrel/sync            watch token: targets, areas, settings, paints, rooms (with revisions); ?v=<app version>
+  POST /api/kestrel/paints          watch token: the watch's paints after a change
+  POST /api/kestrel/rooms           watch token: the watch's room fingerprints after calibrating
+  POST /api/kestrel/gesture         watch token: gesture calibration
+  GET  /api/kestrel/room            watch token: the current room from a sensor, if configured; ?here=<area id> reports
                                       the room the watch placed itself in
-  POST /api/wristwand/fire            watch token: run an action on a target (away mode applies)
-  POST /api/wristwand/probe           watch token: a measurement result -> wristwand_probe event
+  POST /api/kestrel/fire            watch token: run an action on a target (away mode applies)
+  POST /api/kestrel/probe           watch token: a measurement result -> kestrel_probe event
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _watches(hass: HomeAssistant) -> Watches | None:
-    """The loaded entry's paired watches, or None while WristWand isn't set up."""
+    """The loaded entry's paired watches, or None while Kestrel isn't set up."""
     entries = hass.config_entries.async_loaded_entries(DOMAIN)
     return entries[0].runtime_data if entries else None
 
@@ -88,7 +88,7 @@ class _WatchView(HomeAssistantView):
         hass = request.app[KEY_HASS]
         watches = _watches(hass)
         if watches is None:
-            return _error("WristWand is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
+            return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
         watch = watches.by_token(request.headers.get(TOKEN_HEADER))
         if watch is None:
             return _error("Unknown watch: pair it again", HTTPStatus.UNAUTHORIZED)
@@ -97,28 +97,28 @@ class _WatchView(HomeAssistantView):
 
 
 class InfoView(HomeAssistantView):
-    url = "/api/wristwand/info"
-    name = "api:wristwand:info"
+    url = "/api/kestrel/info"
+    name = "api:kestrel:info"
     requires_auth = False
 
     async def get(self, request: web.Request) -> web.Response:
         hass = request.app[KEY_HASS]
         if _watches(hass) is None:
-            return _error("WristWand is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
+            return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
         watches = _watches(hass)
         return web.json_response({"name": NAME, "version": watches.version, "ha_name": hass.config.location_name})
 
 
 class PairView(HomeAssistantView):
-    url = "/api/wristwand/pair"
-    name = "api:wristwand:pair"
+    url = "/api/kestrel/pair"
+    name = "api:kestrel:pair"
     requires_auth = False
 
     async def post(self, request: web.Request) -> web.Response:
         hass = request.app[KEY_HASS]
         watches = _watches(hass)
         if watches is None:
-            return _error("WristWand is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
+            return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
         if not watches.allow_start(request.remote or "?"):
             return _error("Too many pairing requests: wait a few minutes", HTTPStatus.TOO_MANY_REQUESTS)
         try:
@@ -129,26 +129,26 @@ class PairView(HomeAssistantView):
         persistent_notification.async_create(
             hass,
             (
-                f"The watch **{pairing.watch_name}** wants to pair with WristWand.\n\n"
+                f"The watch **{pairing.watch_name}** wants to pair with Kestrel.\n\n"
                 f"Enter this code on the watch: **{pairing.code}**\n\n"
                 f"The code works for {PAIRING_TTL // 60} minutes. If you didn't start this, ignore it."
             ),
-            title="WristWand pairing code",
+            title="Kestrel pairing code",
             notification_id=_notification_id(pairing.pairing_id),
         )
         return web.json_response({"pairing_id": pairing.pairing_id, "expires_in": PAIRING_TTL})
 
 
 class PairConfirmView(HomeAssistantView):
-    url = "/api/wristwand/pair/confirm"
-    name = "api:wristwand:pair:confirm"
+    url = "/api/kestrel/pair/confirm"
+    name = "api:kestrel:pair:confirm"
     requires_auth = False
 
     async def post(self, request: web.Request) -> web.Response:
         hass = request.app[KEY_HASS]
         watches = _watches(hass)
         if watches is None:
-            return _error("WristWand is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
+            return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
         try:
             body = await request.json()
         except ValueError:
@@ -173,8 +173,8 @@ class PairConfirmView(HomeAssistantView):
 
 
 class TargetsView(_WatchView):
-    url = "/api/wristwand/targets"
-    name = "api:wristwand:targets"
+    url = "/api/kestrel/targets"
+    name = "api:kestrel:targets"
 
     async def get(self, request: web.Request) -> web.Response:
         auth = self._authorize(request)
@@ -205,8 +205,8 @@ class SyncView(_WatchView):
     it was paired again and start over.
     """
 
-    url = "/api/wristwand/sync"
-    name = "api:wristwand:sync"
+    url = "/api/kestrel/sync"
+    name = "api:kestrel:sync"
 
     async def get(self, request: web.Request) -> web.Response:
         auth = self._authorize(request)
@@ -281,8 +281,8 @@ class _SectionView(_WatchView):
 class PaintsView(_SectionView):
     """The watch's painted spots, after painting or a correction."""
 
-    url = "/api/wristwand/paints"
-    name = "api:wristwand:paints"
+    url = "/api/kestrel/paints"
+    name = "api:kestrel:paints"
     key = "paints"
 
     async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
@@ -292,8 +292,8 @@ class PaintsView(_SectionView):
 class RoomsView(_SectionView):
     """The watch's room fingerprints, after calibrating a room."""
 
-    url = "/api/wristwand/rooms"
-    name = "api:wristwand:rooms"
+    url = "/api/kestrel/rooms"
+    name = "api:kestrel:rooms"
     key = "rooms"
 
     async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
@@ -303,8 +303,8 @@ class RoomsView(_SectionView):
 class GestureView(_SectionView):
     """The watch's gesture calibration. Other settings are changed in the integration's options."""
 
-    url = "/api/wristwand/gesture"
-    name = "api:wristwand:gesture"
+    url = "/api/kestrel/gesture"
+    name = "api:kestrel:gesture"
     key = "gesture"
 
     async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
@@ -317,8 +317,8 @@ class GestureView(_SectionView):
 class RoomView(_WatchView):
     """The current room, when a sensor provides it (settings: room source = sensor)."""
 
-    url = "/api/wristwand/room"
-    name = "api:wristwand:room"
+    url = "/api/kestrel/room"
+    name = "api:kestrel:room"
 
     async def get(self, request: web.Request) -> web.Response:
         auth = self._authorize(request)
@@ -332,8 +332,8 @@ class RoomView(_WatchView):
 
 
 class FireView(_WatchView):
-    url = "/api/wristwand/fire"
-    name = "api:wristwand:fire"
+    url = "/api/kestrel/fire"
+    name = "api:kestrel:fire"
 
     async def post(self, request: web.Request) -> web.Response:
         auth = self._authorize(request)
@@ -391,10 +391,10 @@ class FireView(_WatchView):
 
 
 class ProbeView(_WatchView):
-    """Measurement results from the watch's Probes: kept for diagnostics and fired as wristwand_probe events."""
+    """Measurement results from the watch's Probes: kept for diagnostics and fired as kestrel_probe events."""
 
-    url = "/api/wristwand/probe"
-    name = "api:wristwand:probe"
+    url = "/api/kestrel/probe"
+    name = "api:kestrel:probe"
 
     async def post(self, request: web.Request) -> web.Response:
         auth = self._authorize(request)

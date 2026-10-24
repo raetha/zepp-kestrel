@@ -1,4 +1,4 @@
-# Integration quality scale: where WristWand stands on each rule.
+# Integration quality scale: where Kestrel stands on each rule.
 # https://developers.home-assistant.io/docs/core/integration-quality-scale/
 # status: done | todo | exempt (with a comment saying why). Review before each release;
 # rule list checked against home-assistant/core script/hassfest/quality_scale.py (2026-10).
@@ -11,8 +11,8 @@ rules:
     status: exempt
     comment: No polling: watches push requests, and entities update from them.
   brands:
-    status: todo
-    comment: Add brand images (home-assistant/brands or the custom integration brand folder) before the first release.
+    status: done
+    comment: Brand images ship with the integration (custom_components/kestrel/brand/); HA serves them locally.
   common-modules:
     status: done
   config-flow:
@@ -38,7 +38,7 @@ rules:
     status: todo
   docs-triggers:
     status: todo
-    comment: Document the wristwand_fired and wristwand_probe events (device triggers planned).
+    comment: Document the kestrel_fired and kestrel_probe events (device triggers planned).
   entity-event-setup:
     status: done
     comment: Entities subscribe to dispatcher signals in async_added_to_hass, removed with async_on_remove.
@@ -108,7 +108,7 @@ rules:
     comment: No data is fetched.
   docs-examples:
     status: todo
-    comment: Automation examples with wristwand_fired.
+    comment: Automation examples with kestrel_fired.
   docs-known-limitations:
     status: todo
   docs-supported-devices:

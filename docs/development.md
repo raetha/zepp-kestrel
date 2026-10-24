@@ -1,4 +1,4 @@
-# Developing WristWand
+# Developing Kestrel
 
 This is the canonical guide for the repository. Read it before changing anything. The working model (branches, test builds, release pull requests) follows [raetha/zepp-watch-faces](https://github.com/raetha/zepp-watch-faces).
 
@@ -16,7 +16,7 @@ This is the canonical guide for the repository. Read it before changing anything
 | `lib/` | Generic helpers with no tie to watches (MIT): circular statistics, summary statistics, a rate meter. Tests in `lib/test/`. Watch code imports them by relative path. |
 | `watch/docs/` | Install QR code and emulator screenshots. |
 | `watch/CHANGELOG.md` | The watch app's version history; its sections become release notes. |
-| `custom_components/wristwand/` | The Home Assistant component (MIT): the watch API (`http.py`), paired watches and their devices (`watches.py`), targets and service mapping (`targets.py`), config flow, diagnostics, and `quality_scale.yaml` (the status of every quality-scale rule). At the repo root because HACS expects it there. |
+| `custom_components/kestrel/` | The Home Assistant component (MIT): the watch API (`http.py`), paired watches and their devices (`watches.py`), targets and service mapping (`targets.py`), config flow, diagnostics, and `quality_scale.yaml` (the status of every quality-scale rule). At the repo root because HACS expects it there. |
 | `ha/` | The component's tests (`ha/tests/`, pytest against a real HA core), `CHANGELOG.md`, `requirements_test.txt` and `DRAFT`. |
 | `hacs.json` | HACS metadata for installing the component as a custom repository. |
 | `tools/` | Packaging, release and site helpers, and `emu/` (the emulator). |
@@ -58,9 +58,9 @@ Prefer a maintained library over our own code; write our own when nothing mainta
 
 ## The Home Assistant component and the quality scale
 
-We aim for the [integration quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/) as we go, so the final compliance check finds little to change. `custom_components/wristwand/quality_scale.yaml` lists every rule as done, todo or exempt (with the reason); update it in the same change as the code. Rules that shape everyday code:
+We aim for the [integration quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/) as we go, so the final compliance check finds little to change. `custom_components/kestrel/quality_scale.yaml` lists every rule as done, todo or exempt (with the reason); update it in the same change as the code. Rules that shape everyday code:
 
-- State lives on the config entry (`entry.runtime_data`, typed `WristWandConfigEntry`), never in `hass.data`. The HTTP views find it with `hass.config_entries.async_loaded_entries(DOMAIN)`.
+- State lives on the config entry (`entry.runtime_data`, typed `KestrelConfigEntry`), never in `hass.data`. The HTTP views find it with `hass.config_entries.async_loaded_entries(DOMAIN)`.
 - Each paired watch is a device (`identifiers={(DOMAIN, watch_id)}`); deleting it unpairs the watch (`async_remove_config_entry_device`), and setup removes devices of watches that are gone.
 - Tests run with HA's deprecation checks, which raise on deprecated APIs (for example `async_get_device` and `DeviceEntry.config_entries`, replaced in 2026 by `async_get_device_by_identifier` and `config_entry_id`). Fix them rather than silencing them.
 - Coverage stays at or above 95% (CI fails below).
@@ -84,7 +84,7 @@ Everyday commands (`npm run emu -- <command>` works too):
 ```bash
 node tools/emu/emu.mjs install watch          # zeus build + install (or watch-dev for a test build)
 node tools/emu/emu.mjs apps                   # open the app list
-node tools/emu/emu.mjs tap 240 362            # WristWand's row (below Settings on a fresh watch)
+node tools/emu/emu.mjs tap 240 362            # Kestrel's row (below Settings on a fresh watch)
 node tools/emu/emu.mjs tap 240 148            # tap anything; long-press: tap x y 2.5
 node tools/emu/emu.mjs swipe 5 240 300 240    # back
 node tools/emu/emu.mjs key backspace          # lower button
@@ -115,7 +115,7 @@ cd "$(npm root -g)/@zeppos/zeus-cli" && npm i axios@latest --no-save
 | Branch | What goes there | What a push does |
 | --- | --- | --- |
 | `main` | One squash-merged commit per release. Never pushed to directly. | Releases every component whose version has no tag yet, and rebuilds the install site. |
-| `dev` | Work that's been adopted, ready for the next release. The changelogs' `## [Unreleased]` sections are kept up to date here. | Publishes the DEV test build on the [test-build page](https://raetha.github.io/zepp-wristwand/dev/). |
+| `dev` | Work that's been adopted, ready for the next release. The changelogs' `## [Unreleased]` sections are kept up to date here. | Publishes the DEV test build on the [test-build page](https://raetha.github.io/zepp-kestrel/dev/). |
 | `try/<topic>` | Experiments that may be dropped. Branched from `dev`. | CI checks only (tests and Zeus build). |
 
 Day to day:
@@ -128,7 +128,7 @@ Day to day:
 Releasing (only when the owner asks):
 
 1. On `dev`, for each component being released: rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` (with a fresh empty `## [Unreleased]` above it) and set the version (`watch/app.json`: `version.name` = `X.Y.Z`, `version.code` + 1). For the first watch release, also delete `watch/DRAFT`.
-2. Open a pull request from `dev` into `main`, titled with what it releases ("WristWand 0.2.0"). The description is the new changelog sections.
+2. Open a pull request from `dev` into `main`, titled with what it releases ("Kestrel 0.2.0"). The description is the new changelog sections.
 3. The owner squash-merges it, keeping the title as the commit message and the changelog sections as its body.
 4. CI on `main` creates each release (tag `watch-vX.Y.Z`, with the `.zpk` and `.zab` attached), then resets `dev` to `main` (the `sync-dev` job) if `dev` has no newer work. If it does, reset by hand once that work is released: `git checkout dev && git reset --hard origin/main && git push --force-with-lease`.
 
@@ -151,11 +151,11 @@ Repository settings (owner, one time):
 
 ### Test builds
 
-Every push to `dev` (or `main`) publishes a test build on an unlisted page: **https://raetha.github.io/zepp-wristwand/dev/** (not linked from the main site, `noindex`, blocked in `robots.txt`).
+Every push to `dev` (or `main`) publishes a test build on an unlisted page: **https://raetha.github.io/zepp-kestrel/dev/** (not linked from the main site, `noindex`, blocked in `robots.txt`).
 
-- `tools/make_dev_variant.py` copies `watch/` to `watch-dev/` (ignored by git) with its own app ID (release ID + 1,000,000 = 2132466), the name "WristWand DEV" and the version `<X.Y.Z>-dev.<run number>`.
+- `tools/make_dev_variant.py` copies `watch/` to `watch-dev/` (ignored by git) with its own app ID (release ID + 1,000,000 = 2132466), the name "Kestrel DEV" and the version `<X.Y.Z>-dev.<run number>`.
 - It installs **next to** the released app. Its settings in the Zepp app are separate, so enter the HA URL and token for it once.
-- Its QR code (`zpkd1://raetha.github.io/zepp-wristwand/dev/watch/wristwand.zpk`) never changes: bookmark the page and rescan after each push. The Zepp app shows the build number. GitHub Pages can cache files for up to 10 minutes.
+- Its QR code (`zpkd1://raetha.github.io/zepp-kestrel/dev/watch/kestrel.zpk`) never changes: bookmark the page and rescan after each push. The Zepp app shows the build number. GitHub Pages can cache files for up to 10 minutes.
 
 ### Preview installs and the Settings page
 
@@ -163,9 +163,9 @@ Every push to `dev` (or `main`) publishes a test build on an unlisted page: **ht
 
 Since the preview service gave nothing the plain `.zpk` doesn't, CI no longer uploads to it: the test-build page has one QR code, for our own `.zpk`, which never expires and always installs the newest build. (The upload tool, `tools/zepp_preview.py`, is in the git history if the store route ever needs it; it used the owner's Zepp developer login, which no longer needs to be kept as repository secrets.)
 
-Test builds install only as "WristWand DEV" (app ID 2132466). An earlier experiment also offered the build under the registered app ID 1132466 (shown as "WristWand"); it showed no Settings page either and was removed. Uninstall a leftover "WristWand" test install from the watch: it has its own storage and pairing and no longer updates.
+Test builds install only as "Kestrel DEV" (app ID 2132466). An earlier experiment also offered the build under the registered app ID 1132466 (shown as "Kestrel"); it showed no Settings page either and was removed. Uninstall a leftover "Kestrel" test install from the watch: it has its own storage and pairing and no longer updates.
 
-The release QR code (`watch/docs/install-qr.png`) encodes `zpkd1://raetha.github.io/zepp-wristwand/watch/wristwand.zpk`. Regenerate with `npm run qr` if the repo moves.
+The release QR code (`watch/docs/install-qr.png`) encodes `zpkd1://raetha.github.io/zepp-kestrel/watch/kestrel.zpk`. Regenerate with `npm run qr` if the repo moves.
 
 ## Licensing
 
@@ -174,16 +174,16 @@ Open source, but nobody else may sell the watch app. The dividing line is whethe
 | Path | Licence | Why |
 | --- | --- | --- |
 | `watch/` (including `watch/lib/`) | CC BY-NC-SA 4.0 | The app, and the pointing, gesture, room-detection and protocol logic that would let someone build a paid copy. Zepp and other watch brands have paid stores. |
-| `custom_components/wristwand/`, `ha/` (the HA component) | MIT | Home Assistant's ecosystem is free, with no paid store. |
+| `custom_components/kestrel/`, `ha/` (the HA component) | MIT | Home Assistant's ecosystem is free, with no paid store. |
 | `lib/` | MIT | Generic helpers an unrelated project could use. |
 | `tools/`, `.github/`, repo docs and config | MIT | Tooling. |
 
-When adding code: generic with no tie to watches goes in `lib/`; anything watch- or Zepp-specific goes in `watch/`. The name "WristWand" and its icon aren't licensed for reuse. See the root `LICENSE`.
+When adding code: generic with no tie to watches goes in `lib/`; anything watch- or Zepp-specific goes in `watch/`. The name "Kestrel" and its icon aren't licensed for reuse. See the root `LICENSE`.
 
 ## Packaging for delivery
 
 Sessions normally commit and push. When a session has only read access, deliver the repo as a zip instead:
 
 ```bash
-zip -r zepp-wristwand.zip . -x ".git/*" "node_modules/*" "*/dist/*" "tools/.emu*/*" "*/__pycache__/*" "site/*" "out/*" "out-dev/*" "watch-dev/*"
+zip -r zepp-kestrel.zip . -x ".git/*" "node_modules/*" "*/dist/*" "tools/.emu*/*" "*/__pycache__/*" "site/*" "out/*" "out-dev/*" "watch-dev/*"
 ```

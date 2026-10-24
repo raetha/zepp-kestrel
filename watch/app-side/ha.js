@@ -2,7 +2,7 @@
 //
 // Two backends will live here:
 //  - direct: HA core REST API with a long-lived token (works everywhere)
-//  - component: the optional `wristwand` custom component's /api/wristwand/*
+//  - component: the optional `kestrel` custom component's /api/kestrel/*
 // detect() picks one; M0 only needs ping and event forwarding.
 
 export function haConfig(settings) {
@@ -39,7 +39,7 @@ export async function haPing(svc, cfg) {
 /** Is the optional custom component installed? (404 = no) */
 export async function detectComponent(svc, cfg) {
   try {
-    const res = await svc.fetch({ url: `${cfg.url}/api/wristwand/info`, method: 'GET', headers: headers(cfg) })
+    const res = await svc.fetch({ url: `${cfg.url}/api/kestrel/info`, method: 'GET', headers: headers(cfg) })
     return res.status === 200 ? bodyJson(res) : null
   } catch (e) {
     return null

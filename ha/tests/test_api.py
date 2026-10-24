@@ -6,7 +6,7 @@ from pytest_homeassistant_custom_component.common import async_capture_events, a
 
 from homeassistant.helpers import area_registry as ar, entity_registry as er, label_registry as lr
 
-from custom_components.wristwand.const import DOMAIN, EVENT_FIRED, TOKEN_HEADER
+from custom_components.kestrel.const import DOMAIN, EVENT_FIRED, TOKEN_HEADER
 
 
 def _watches(hass):
@@ -14,11 +14,11 @@ def _watches(hass):
 
 
 async def _pair(hass, client, name="Balance 3"):
-    res = await client.post("/api/wristwand/pair", json={"watch_name": name})
+    res = await client.post("/api/kestrel/pair", json={"watch_name": name})
     assert res.status == HTTPStatus.OK
     pairing_id = (await res.json())["pairing_id"]
     code = _watches(hass).pairings[pairing_id].code
-    res = await client.post("/api/wristwand/pair/confirm", json={"pairing_id": pairing_id, "code": code})
+    res = await client.post("/api/kestrel/pair/confirm", json={"pairing_id": pairing_id, "code": code})
     assert res.status == HTTPStatus.OK
     return await res.json()
 
@@ -28,24 +28,24 @@ async def test_info_without_setup_is_404(hass, hass_client_no_auth):
 
     assert await async_setup_component(hass, "http", {})
     client = await hass_client_no_auth()
-    res = await client.get("/api/wristwand/info")
+    res = await client.get("/api/kestrel/info")
     assert res.status == HTTPStatus.NOT_FOUND
 
 
 async def test_info(hass, setup_entry, hass_client_no_auth):
     hass.config.location_name = "Home"
     client = await hass_client_no_auth()
-    res = await client.get("/api/wristwand/info")
+    res = await client.get("/api/kestrel/info")
     assert res.status == HTTPStatus.OK
     body = await res.json()
-    assert body["name"] == "WristWand"
+    assert body["name"] == "Kestrel"
     assert body["ha_name"] == "Home"
     assert body["version"] == "0.1.0"
 
 
 async def test_pairing_shows_a_code_and_issues_a_token(hass, setup_entry, hass_client_no_auth):
     client = await hass_client_no_auth()
-    res = await client.post("/api/wristwand/pair", json={"watch_name": "Balance 3"})
+    res = await client.post("/api/kestrel/pair", json={"watch_name": "Balance 3"})
     pairing_id = (await res.json())["pairing_id"]
     pairing = _watches(hass).pairings[pairing_id]
     # the code is shown to the HA user as a notification
@@ -54,40 +54,40 @@ async def test_pairing_shows_a_code_and_issues_a_token(hass, setup_entry, hass_c
     shown = persistent_notification._async_get_or_create_notifications(hass)  # noqa: SLF001
     assert any(pairing.code in n["message"] for n in shown.values())
 
-    res = await client.post("/api/wristwand/pair/confirm", json={"pairing_id": pairing_id, "code": "000000x"})
+    res = await client.post("/api/kestrel/pair/confirm", json={"pairing_id": pairing_id, "code": "000000x"})
     assert res.status == HTTPStatus.FORBIDDEN
-    res = await client.post("/api/wristwand/pair/confirm", json={"pairing_id": pairing_id, "code": pairing.code})
+    res = await client.post("/api/kestrel/pair/confirm", json={"pairing_id": pairing_id, "code": pairing.code})
     assert res.status == HTTPStatus.OK
     body = await res.json()
     assert body["token"] and body["watch_id"]
     assert set(body["urls"]) == {"internal", "external"}
     # the code works once, and the notification is gone
-    res = await client.post("/api/wristwand/pair/confirm", json={"pairing_id": pairing_id, "code": pairing.code})
+    res = await client.post("/api/kestrel/pair/confirm", json={"pairing_id": pairing_id, "code": pairing.code})
     assert res.status == HTTPStatus.GONE
     assert not any(pairing.code in n["message"] for n in shown.values())
 
 
 async def test_too_many_wrong_codes_cancels_the_pairing(hass, setup_entry, hass_client_no_auth):
     client = await hass_client_no_auth()
-    res = await client.post("/api/wristwand/pair", json={"watch_name": "W"})
+    res = await client.post("/api/kestrel/pair", json={"watch_name": "W"})
     pairing_id = (await res.json())["pairing_id"]
     code = _watches(hass).pairings[pairing_id].code
     for _ in range(5):
-        await client.post("/api/wristwand/pair/confirm", json={"pairing_id": pairing_id, "code": "x"})
-    res = await client.post("/api/wristwand/pair/confirm", json={"pairing_id": pairing_id, "code": code})
+        await client.post("/api/kestrel/pair/confirm", json={"pairing_id": pairing_id, "code": "x"})
+    res = await client.post("/api/kestrel/pair/confirm", json={"pairing_id": pairing_id, "code": code})
     assert res.status == HTTPStatus.GONE
 
 
 async def test_pairing_requests_are_rate_limited(hass, setup_entry, hass_client_no_auth):
     client = await hass_client_no_auth()
-    statuses = [(await client.post("/api/wristwand/pair", json={})).status for _ in range(11)]
+    statuses = [(await client.post("/api/kestrel/pair", json={})).status for _ in range(11)]
     assert statuses[-1] == HTTPStatus.TOO_MANY_REQUESTS
     assert statuses[:10] == [HTTPStatus.OK] * 10
 
 
 async def test_targets_need_a_watch_token(hass, setup_entry, hass_client_no_auth):
     client = await hass_client_no_auth()
-    res = await client.get("/api/wristwand/targets", headers={TOKEN_HEADER: "nope"})
+    res = await client.get("/api/kestrel/targets", headers={TOKEN_HEADER: "nope"})
     assert res.status == HTTPStatus.UNAUTHORIZED
 
 
@@ -107,7 +107,7 @@ async def test_targets_list_supported_entities_by_area(hass, setup_entry, hass_c
 
     client = await hass_client_no_auth()
     paired = await _pair(hass, client)
-    res = await client.get("/api/wristwand/targets", headers={TOKEN_HEADER: paired["token"]})
+    res = await client.get("/api/kestrel/targets", headers={TOKEN_HEADER: paired["token"]})
     targets = (await res.json())["targets"]
     by_id = {t["id"]: t for t in targets}
     assert set(by_id) == {"light.lamp", "switch.fan", "lock.door"}  # no configuration entities
@@ -120,8 +120,8 @@ async def test_targets_list_supported_entities_by_area(hass, setup_entry, hass_c
     assert targets[0]["id"] == "light.lamp"  # areas first, unassigned last
 
 
-async def test_the_wristwand_label_narrows_the_list(hass, setup_entry, hass_client_no_auth):
-    label = lr.async_get(hass).async_create("WristWand")
+async def test_the_kestrel_label_narrows_the_list(hass, setup_entry, hass_client_no_auth):
+    label = lr.async_get(hass).async_create("Kestrel")
     ent_reg = er.async_get(hass)
     entry = ent_reg.async_get_or_create("light", "test", "lamp", suggested_object_id="lamp")
     ent_reg.async_update_entity(entry.entity_id, labels={label.label_id})
@@ -130,7 +130,7 @@ async def test_the_wristwand_label_narrows_the_list(hass, setup_entry, hass_clie
 
     client = await hass_client_no_auth()
     paired = await _pair(hass, client)
-    res = await client.get("/api/wristwand/targets", headers={TOKEN_HEADER: paired["token"]})
+    res = await client.get("/api/kestrel/targets", headers={TOKEN_HEADER: paired["token"]})
     assert [t["id"] for t in (await res.json())["targets"]] == ["light.lamp"]
 
 
@@ -142,9 +142,9 @@ async def test_fire_toggles_fires_an_event_and_drops_retries(hass, setup_entry, 
     paired = await _pair(hass, client)
     headers = {TOKEN_HEADER: paired["token"]}
 
-    res = await client.post("/api/wristwand/fire", headers=headers, json={"target": "light.lamp", "seq": 1})
+    res = await client.post("/api/kestrel/fire", headers=headers, json={"target": "light.lamp", "seq": 1})
     assert (await res.json())["ok"] is True
-    res = await client.post("/api/wristwand/fire", headers=headers, json={"target": "light.lamp", "seq": 1})
+    res = await client.post("/api/kestrel/fire", headers=headers, json={"target": "light.lamp", "seq": 1})
     assert (await res.json())["duplicate"] is True
     await hass.async_block_till_done()
     assert len(calls) == 1
@@ -160,7 +160,7 @@ async def test_dim_steps_brightness(hass, setup_entry, hass_client_no_auth):
     client = await hass_client_no_auth()
     paired = await _pair(hass, client)
     await client.post(
-        "/api/wristwand/fire",
+        "/api/kestrel/fire",
         headers={TOKEN_HEADER: paired["token"]},
         json={"target": "light.lamp", "action": "dim", "value": -20, "seq": 9},
     )
@@ -173,10 +173,10 @@ async def test_locks_need_confirmation(hass, setup_entry, hass_client_no_auth):
     client = await hass_client_no_auth()
     paired = await _pair(hass, client)
     headers = {TOKEN_HEADER: paired["token"]}
-    res = await client.post("/api/wristwand/fire", headers=headers, json={"target": "lock.door", "seq": 1})
+    res = await client.post("/api/kestrel/fire", headers=headers, json={"target": "lock.door", "seq": 1})
     assert await res.json() == {"ok": False, "needsConfirm": True}
     res = await client.post(
-        "/api/wristwand/fire", headers=headers, json={"target": "lock.door", "seq": 2, "confirmed": True}
+        "/api/kestrel/fire", headers=headers, json={"target": "lock.door", "seq": 2, "confirmed": True}
     )
     assert (await res.json())["ok"] is True
     assert len(calls) == 1
@@ -186,7 +186,7 @@ async def test_unknown_target(hass, setup_entry, hass_client_no_auth):
     client = await hass_client_no_auth()
     paired = await _pair(hass, client)
     res = await client.post(
-        "/api/wristwand/fire", headers={TOKEN_HEADER: paired["token"]}, json={"target": "sensor.temp"}
+        "/api/kestrel/fire", headers={TOKEN_HEADER: paired["token"]}, json={"target": "sensor.temp"}
     )
     assert res.status == HTTPStatus.NOT_FOUND
 
@@ -197,18 +197,18 @@ async def test_paired_watches_survive_a_reload(hass, setup_entry, hass_client_no
     paired = await _pair(hass, client)
     assert await hass.config_entries.async_reload(setup_entry.entry_id)
     await hass.async_block_till_done()
-    res = await client.get("/api/wristwand/targets", headers={TOKEN_HEADER: paired["token"]})
+    res = await client.get("/api/kestrel/targets", headers={TOKEN_HEADER: paired["token"]})
     assert res.status == HTTPStatus.OK
 
 
 async def test_probe_results_become_events(hass, setup_entry, hass_client_no_auth):
-    from custom_components.wristwand.const import EVENT_PROBE
+    from custom_components.kestrel.const import EVENT_PROBE
 
     events = async_capture_events(hass, EVENT_PROBE)
     client = await hass_client_no_auth()
     paired = await _pair(hass, client)
     res = await client.post(
-        "/api/wristwand/probe", headers={TOKEN_HEADER: paired["token"]}, json={"test": "rates", "results": [1]}
+        "/api/kestrel/probe", headers={TOKEN_HEADER: paired["token"]}, json={"test": "rates", "results": [1]}
     )
     assert (await res.json())["ok"] is True
     await hass.async_block_till_done()

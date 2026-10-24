@@ -15,8 +15,8 @@ export const COLOR = {
   bg: 0x000000,
   text: 0xffffff,
   quiet: 0xc8c8c8, // secondary text; darker greys fade out in night mode
-  accent: 0x7c5cff,
-  accentPressed: 0x5a3fd6,
+  accent: 0xd9622b, // the logo's rufous orange
+  accentPressed: 0xa84718,
   button: 0x2a2a2a,
   buttonPressed: 0x444444,
   good: 0x3ddc84,
