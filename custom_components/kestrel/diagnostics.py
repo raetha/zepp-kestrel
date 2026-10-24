@@ -24,7 +24,8 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: Kestrel
         "version": watches.version,
         "watches": async_redact_data(list(watches.watches.values()), TO_REDACT),
         "pairings_in_progress": len(watches.pairings),
-        "targets": len(list_targets(hass, limit=None)),
+        "targets": len(list_targets(hass, limit=None, offered=watches.offered)),
+        "offered": {"devices": sorted(watches.offered.devices), "entities": sorted(watches.offered.entities)},
         "probes": watches.probes_for(),
     }
 

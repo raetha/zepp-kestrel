@@ -60,7 +60,7 @@ async def test_pairing_shows_a_code_and_issues_a_token(hass, setup_entry, hass_c
     assert res.status == HTTPStatus.OK
     body = await res.json()
     assert body["token"] and body["watch_id"]
-    assert set(body["urls"]) == {"internal", "external"}
+    assert set(body["urls"]) == {"internal"}
     # the code works once, and the notification is gone
     res = await client.post("/api/kestrel/pair/confirm", json={"pairing_id": pairing_id, "code": pairing.code})
     assert res.status == HTTPStatus.GONE
@@ -125,20 +125,6 @@ async def test_targets_list_supported_entities_by_area(hass, setup_entry, hass_c
     assert by_id["switch.fan"]["area_id"] is None
     assert by_id["lock.door"]["confirm"] is True
     assert targets[0]["id"] == "light.lamp"  # areas first, unassigned last
-
-
-async def test_the_kestrel_label_narrows_the_list(hass, setup_entry, hass_client_no_auth):
-    label = lr.async_get(hass).async_create("Kestrel")
-    ent_reg = er.async_get(hass)
-    entry = ent_reg.async_get_or_create("light", "test", "lamp", suggested_object_id="lamp")
-    ent_reg.async_update_entity(entry.entity_id, labels={label.label_id})
-    hass.states.async_set("light.lamp", "off")
-    hass.states.async_set("switch.heater", "off")
-
-    client = await hass_client_no_auth()
-    paired = await _pair(hass, client)
-    res = await client.get("/api/kestrel/targets", headers={TOKEN_HEADER: paired["token"]})
-    assert [t["id"] for t in (await res.json())["targets"]] == ["light.lamp"]
 
 
 async def test_fire_toggles_fires_an_event_and_drops_retries(hass, setup_entry, hass_client_no_auth):
@@ -258,17 +244,15 @@ async def test_pairing_names_are_plain_and_pending_pairings_are_capped(hass, set
 
 
 async def test_fire_only_targets_the_watch_is_offered(hass, setup_entry, hass_client_no_auth):
-    label = lr.async_get(hass).async_create("Kestrel")
     ent_reg = er.async_get(hass)
-    lamp = ent_reg.async_get_or_create("light", "test", "lamp", suggested_object_id="lamp")
-    ent_reg.async_update_entity(lamp.entity_id, labels={label.label_id})
-    hass.states.async_set("light.lamp", "off")
-    hass.states.async_set("lock.front", "locked")  # not labelled: not offered
+    hidden = ent_reg.async_get_or_create("lock", "test", "back", suggested_object_id="back")
+    ent_reg.async_update_entity(hidden.entity_id, hidden_by=er.RegistryEntryHider.USER)
+    hass.states.async_set(hidden.entity_id, "locked")  # hidden: not offered
     async_mock_service(hass, "lock", "unlock")
     client = await hass_client_no_auth()
     paired = await _pair(hass, client)
     res = await client.post(
-        "/api/kestrel/fire", headers={TOKEN_HEADER: paired["token"]}, json={"target": "lock.front", "confirmed": True}
+        "/api/kestrel/fire", headers={TOKEN_HEADER: paired["token"]}, json={"target": hidden.entity_id, "confirmed": True}
     )
     assert res.status == HTTPStatus.NOT_FOUND
 
@@ -284,7 +268,7 @@ async def test_probe_results_have_a_size_limit(hass, setup_entry, hass_client_no
 
 
 async def test_is_offered_matches_the_target_list(hass, setup_entry):
-    from custom_components.kestrel.targets import is_offered, list_targets
+    from custom_components.kestrel.targets import Offered, is_offered, list_targets
 
     dev_reg = dr.async_get(hass)
     ent_reg = er.async_get(hass)
@@ -292,22 +276,16 @@ async def test_is_offered_matches_the_target_list(hass, setup_entry):
     hass.states.async_set("sensor.temp", "1")
     restart = ent_reg.async_get_or_create("button", "t", "r", suggested_object_id="r", entity_category=er.EntityCategory.CONFIG)
     hass.states.async_set(restart.entity_id, "unknown")
-
-    def same() -> None:
-        offered = {t["id"] for t in list_targets(hass, limit=None)}
-        for entity_id in hass.states.async_entity_ids():
-            assert is_offered(hass, entity_id) == (entity_id in offered), entity_id
-        assert not is_offered(hass, "light.missing")
-
-    same()  # no label: everything supported
-    label = lr.async_get(hass).async_create("Kestrel")
-    same()  # a label nobody uses yet changes nothing
     entry = MockConfigEntry(domain="test")
     entry.add_to_hass(hass)
     device = dev_reg.async_get_or_create(config_entry_id=entry.entry_id, identifiers={("test", "d")})
     lamp = ent_reg.async_get_or_create("light", "t", "b", suggested_object_id="b", device_id=device.id)
     hass.states.async_set(lamp.entity_id, "off")
-    dev_reg.async_update_device(device.id, labels={label.label_id})
-    same()  # labelled through its device: only that one
-    ent_reg.async_update_entity(restart.entity_id, labels={label.label_id})
-    same()  # a labelled configuration entity isn't offered
+    ent_reg.async_update_entity(restart.entity_id, device_id=device.id)
+
+    for offered in (Offered(), Offered(devices=[device.id]), Offered(entities=["light.a"]), Offered([device.id], ["light.a"])):
+        listed = {t["id"] for t in list_targets(hass, limit=None, offered=offered)}
+        for entity_id in hass.states.async_entity_ids():
+            assert is_offered(hass, entity_id, offered) == (entity_id in listed), (entity_id, offered.devices, offered.entities)
+        assert not is_offered(hass, "light.missing", offered)
+    assert {t["id"] for t in list_targets(hass, limit=None, offered=Offered(devices=[device.id]))} == {lamp.entity_id}

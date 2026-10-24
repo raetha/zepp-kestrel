@@ -15,12 +15,12 @@ Paint a device once (sweep your arm across it for about 15 seconds), then point 
 
 ## Pairing
 
-Sideloaded apps get no Settings page in the Zepp app, and typing a Nabu Casa address or a token on a watch is impractical, so the watch pairs with the component instead:
+Sideloaded apps get no Settings page in the Zepp app, and typing an address or a token on a watch is impractical, so the watch pairs with the component instead:
 
 1. **Find.** The phone tries `http://homeassistant.local:8123`, `http://homeassistant:8123` and `https://homeassistant.local:8123` (plus any saved address) for `GET /api/kestrel/info`. iOS resolves `.local` names itself, so this works on the home Wi-Fi with nothing typed. (Neither the watch nor the phone side has an mDNS API of its own.)
 2. **Code.** The watch asks HA to pair (`POST /api/kestrel/pair` with its name). HA shows a 6-digit code as a notification, valid 10 minutes. Requests are rate-limited per address.
-3. **Confirm.** The code is typed on the watch's keypad (`POST /api/kestrel/pair/confirm`). Five wrong codes cancel the pairing. HA answers with a token for this watch (stored hashed in HA), its own name, and its internal and external (Nabu Casa) URLs.
-4. **Use.** The phone keeps the token and every address; each request tries the last one that worked, then local ones, then remote, so it keeps working away from home. The token only works on `/api/kestrel/*` (sent as `X-Kestrel-Token`, not `Authorization`, so HA's login ban never counts it). A 401 means the watch was removed in HA: the phone forgets the pairing.
+3. **Confirm.** The code is typed on the watch's keypad (`POST /api/kestrel/pair/confirm`). Five wrong codes cancel the pairing. HA answers with a token for this watch (stored hashed in HA), its own name, and its home-network URL (never a cloud one).
+4. **Use.** The phone keeps the token and the home addresses; each request tries the last one that worked first. Kestrel works on the home network only (or a VPN into it): every endpoint refuses requests through Home Assistant Cloud or from a public address, because the point is the device in front of you, and a lost token is then useless from outside. The token only works on `/api/kestrel/*` (sent as `X-Kestrel-Token`, not `Authorization`, so HA's login ban never counts it). A 401 means the watch was removed in HA: the phone forgets the pairing.
 
 A store install can still type a URL in the Settings page and pair with a code, or use direct mode with a token.
 
@@ -33,13 +33,13 @@ The side service calls `GET /api/kestrel/info` at startup; a 404 means direct mo
 | What you can paint | Entities | Targets: an entity, a script, or a virtual target that only fires an event |
 | What a trigger does | Fixed per-domain action | Per-target action, set in the HA UI |
 | Automations | Wrap logic in scripts | `kestrel_fired` event and device triggers |
-| Safety | Enforced on the watch | Enforced in HA: confirm-required domains, away mode (person not home: only allowed entities) |
+| Safety | Enforced on the watch | Enforced in HA: home network only, only the devices chosen for watches, confirm-required domains |
 | Paints, rooms, settings | On the watch only | Master copy in HA (`watchdata.py`), editable in the integration's options; the watch syncs by revision (`watch/lib/sync.js`) |
 | Room | Watch Bluetooth fingerprint | Watch fingerprint, or HA presence (Bermuda, ESPHome proxies, room sensors) |
 | Round trip | Service call | `POST /api/kestrel/fire` returns the new state |
 | Setup | Settings page: URL + long-lived token (store installs only) | Pairing code; nothing to copy |
 
-Direct mode filters entities with an HA label `kestrel` (all supported entities if no entity has it) and groups them by Area; entities without an Area show under "Unassigned".
+With the integration, the devices and entities chosen under Configure → Devices for watches are offered (everything, if nothing is chosen), grouped by area; direct mode offers every supported entity. Entities without an area show under "No area".
 
 ## Pointing model
 
@@ -60,7 +60,6 @@ Physical button, screen tap, and a gesture: wrist flick, finger snap or finger t
 - **Corrections**: after a trigger, "Not it?" offers the runner-up for 5 s. It toggles the first device back where that undoes it (lights, switches, fans, input booleans, media players, covers), toggles the runner-up, and adds a small correction spot where the arm was. A device keeps at most two correction spots apart from its painted ones.
 - **Aim traces**: each trigger sends the aim of the seconds before it (heading, pitch, roll, state, best guess) to Home Assistant as a `point` probe result, for replaying the classifier offline.
 - **Sync**: Home Assistant holds the master copy of each watch's paints, rooms and settings, each with a revision. The watch sends a section right after changing it, and syncs when the app starts and on Sync: if Home Assistant didn't change, the watch's copy stands; if it did (edited in the options), Home Assistant's copy wins, plus whatever the watch changed since. At launch the watch says what it has (each section's revision and a hash of the target and area lists) and Home Assistant leaves out what didn't change, so an ordinary launch moves a few dozen bytes; the Sync button fetches everything. Targets travel compactly (id, name, area_id, flags only when set). A changed `watch_id` (paired again) resets the revisions; the watch's own paints and rooms are sent to the new pairing.
-- **Away mode** (Home Assistant): while the chosen person isn't home, `fire` refuses all but the allowed entities.
 
 ## What the real watch measured (M0, Balance 3)
 
@@ -77,5 +76,5 @@ Physical button, screen tap, and a gesture: wrist flick, finger snap or finger t
 1. **M0 Spike**: measurement probes. Done.
 2. **M1 One lamp**: pairing, side service, entity sync, paint, button trigger, haptic acknowledgement. Built; home test pending.
 3. **M2 Whole room**: classifier, aim states, corrections, the HA component, paint backup, aim traces (replay tests to come with real traces). Built.
-4. **M3 Whole house**: room fingerprints, gestures, lock confirmation, dimming, away mode, management in Home Assistant. Built; home test pending.
+4. **M3 Whole house**: room fingerprints, gestures, lock confirmation, dimming, management in Home Assistant. Built; home test pending.
 5. **M4 Ship it**: polish, battery, other round Zepp watches, first release.

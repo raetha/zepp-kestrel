@@ -13,9 +13,24 @@
   "options": {
     "step": {
       "init": {
-        "title": "Choose a watch",
+        "title": "Kestrel",
+        "description": "Kestrel works on your home network (or a VPN into it), never through Home Assistant Cloud.",
+        "menu_options": {
+          "offered": "Devices for watches",
+          "watch": "Manage {watch}",
+          "pick_watch": "Manage a watch"
+        }
+      },
+      "offered": {
+        "title": "Devices for watches",
+        "description": "Choose what watches can paint and trigger: whole devices, or single entities (for example one light of a fixture). Leave both empty to offer everything that a watch can trigger. Configuration and diagnostic entities, and hidden or disabled ones, are never offered. Watches get the new list when they next sync.",
         "data": {
-          "watch": "Watch"
+          "devices": "Devices",
+          "entities": "Entities"
+        },
+        "data_description": {
+          "devices": "Every light, switch, lock and so on of these devices.",
+          "entities": "Single entities, on top of the devices."
         }
       },
       "watch": {
@@ -60,9 +75,6 @@
           "gesture_kind": "Gesture",
           "gesture_gyro": "Gyro threshold (°/s) for the current gesture",
           "gesture_jolt": "Jolt threshold for the current gesture",
-          "away_block": "Away mode",
-          "away_person": "Person",
-          "away_allowed": "Allowed while away",
           "room_source": "Current room from",
           "room_sensor": "Room sensor",
           "dwell_enabled": "Instant toggle",
@@ -71,23 +83,25 @@
         "data_description": {
           "gesture_gyro": "How fast the wrist must turn. Leave empty to not use the gyro.",
           "gesture_jolt": "How sharp a jolt the accelerometer must feel. Leave empty to not use it.",
-          "away_block": "While the person below isn't home, the watch can only trigger the entities allowed while away. This keeps a pointing arm at work from switching things at home.",
-          "away_allowed": "Entities that work wherever you are.",
           "room_source": "The watch's own Bluetooth room calibration, or a sensor whose state is an area name (for example from Bermuda).",
           "room_sensor": "A sensor whose state is the name of the area the watch (or you) is in.",
           "gesture_kind": "Switches at once to that gesture's own calibration. Snaps and taps need calibrating on the watch first.",
           "dwell_enabled": "Trigger a device just by holding the aim on it, with no button or gesture. Locks still need a press.",
           "dwell_seconds": "How long to hold the aim before it triggers. Longer means fewer accidents."
         }
+      },
+      "pick_watch": {
+        "title": "Choose a watch",
+        "data": {
+          "watch": "Watch"
+        }
       }
     },
     "abort": {
-      "no_watches": "No watches are paired yet. Open Kestrel on the watch and choose Pair with HA.",
       "no_paints": "This watch hasn't painted any devices yet.",
       "no_rooms": "This watch hasn't calibrated any rooms yet. Calibrate them on the watch under More → Rooms."
     },
     "error": {
-      "person_needed": "Choose the person whose presence decides away mode.",
       "sensor_needed": "Choose the sensor that says which room you're in."
     }
   },
@@ -160,9 +174,6 @@
       "gesture": {
         "name": "Gesture trigger"
       },
-      "away_mode": {
-        "name": "Away mode"
-      },
       "instant_toggle": {
         "name": "Instant toggle"
       }
@@ -182,12 +193,6 @@
           "watch": "Watch (Bluetooth)",
           "sensor": "Home Assistant sensor"
         }
-      },
-      "away_person": {
-        "name": "Away mode follows",
-        "state": {
-          "none": "Nobody"
-        }
       }
     },
     "number": {
@@ -205,12 +210,6 @@
   "exceptions": {
     "watch_unpaired": {
       "message": "This watch is no longer paired with Kestrel. Pair it again from the watch."
-    }
-  },
-  "issues": {
-    "no_external_url": {
-      "title": "Kestrel watches only work at home",
-      "description": "Home Assistant has no address that works away from home (a Home Assistant Cloud remote connection or an external URL), so paired watches can only reach it on your home network. Set one under Settings → System → Network, or ignore this if that's what you want; the watch picks the address up when it next pairs."
     }
   }
 }

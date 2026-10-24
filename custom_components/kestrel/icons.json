@@ -21,9 +21,6 @@
       "gesture": {
         "default": "mdi:gesture"
       },
-      "away_mode": {
-        "default": "mdi:home-export-outline"
-      },
       "instant_toggle": {
         "default": "mdi:timer-play-outline"
       }
@@ -34,9 +31,6 @@
       },
       "room_source": {
         "default": "mdi:map-marker-radius"
-      },
-      "away_person": {
-        "default": "mdi:account-arrow-right"
       }
     },
     "number": {

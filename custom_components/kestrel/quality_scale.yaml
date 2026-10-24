@@ -76,12 +76,12 @@ rules:
     comment: The config flow has no fields.
   entity-unavailable:
     status: done
-    comment: Unavailable once the watch is unpaired. A watch away from Home Assistant isn't unavailable: Last seen shows that.
+    comment: Unavailable once the watch is unpaired. A watch that's away isn't unavailable: Last seen shows when it last talked.
   integration-owner:
     status: done
   log-when-unavailable:
     status: exempt
-    comment: Nothing is polled or connected to; a watch away from home isn't unavailable (Last seen shows when it last talked).
+    comment: Nothing is polled or connected to; a watch that's away isn't unavailable (Last seen shows when it last talked).
   parallel-updates:
     status: done
     comment: PARALLEL_UPDATES = 0 on every platform: entities are pushed, and actions only change stored settings.
@@ -150,8 +150,8 @@ rules:
     status: exempt
     comment: Nothing to reconfigure.
   repair-issues:
-    status: done
-    comment: no_external_url: watches paired but no address that works away from home (issues.py).
+    status: exempt
+    comment: Nothing for the user to repair: Kestrel needs no outside address (it works on the home network only), and every setting has a clear place in Configure.
   stale-devices:
     status: done
     comment: Devices of watches no longer paired are removed at setup; deleting a device unpairs the watch.

@@ -53,14 +53,14 @@ async def test_a_failing_service_is_reported(hass, setup_entry, hass_client_no_a
     assert await res.json() == {"ok": False, "error": "Lamp unreachable"}
 
 
-async def test_info_reports_addresses_when_configured(hass, setup_entry, hass_client_no_auth):
+async def test_pairing_reports_only_the_home_address(hass, setup_entry, hass_client_no_auth):
     await hass.config.async_update(internal_url="http://192.168.1.5:8123", external_url="https://abc.ui.nabu.casa")
     client = await hass_client_no_auth()
     res = await client.post("/api/kestrel/pair", json={"watch_name": "W"})
     pairing_id = (await res.json())["pairing_id"]
     code = setup_entry.runtime_data.pairings[pairing_id].code
     res = await client.post("/api/kestrel/pair/confirm", json={"pairing_id": pairing_id, "code": code})
-    assert (await res.json())["urls"] == {"internal": "http://192.168.1.5:8123", "external": "https://abc.ui.nabu.casa"}
+    assert (await res.json())["urls"] == {"internal": "http://192.168.1.5:8123"}  # never the Nabu Casa one
 
 
 async def test_hidden_and_disabled_entities_are_left_out(hass, setup_entry, hass_client_no_auth):

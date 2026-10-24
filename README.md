@@ -4,7 +4,7 @@
 
 Point your Amazfit watch at a smart-home device and trigger it. Hold your arm still on the lamp across the room, the way a kestrel hangs still in the wind over its target, then flick your wrist and the light comes on. An open-source pointing remote for Zepp OS watches, built around [Home Assistant](https://www.home-assistant.io/).
 
-> **Status: feature-complete test builds, before release polish.** Pair the watch with Home Assistant, paint devices, point, and trigger with the select button, a tap or a gesture (wrist flick, finger snap or finger tap). Twist to dim lights. Rooms are recognised by Bluetooth (or a Home Assistant sensor). Away mode, paints, rooms and settings are managed in Home Assistant. There is no release yet.
+> **Status: feature-complete test builds, before release polish.** Pair the watch with Home Assistant, paint devices, point, and trigger with the select button, a tap or a gesture (wrist flick, finger snap or finger tap). Twist to dim lights. Rooms are recognised by Bluetooth (or a Home Assistant sensor). Paints, rooms, settings and which devices watches can use are managed in Home Assistant. It works on your home network (or a VPN into it), never through Home Assistant Cloud. There is no release yet.
 
 <p align="center">
   <img src="watch/docs/screenshot-menu.png" width="240" alt="Kestrel probe menu on the watch">
@@ -16,7 +16,7 @@ Point your Amazfit watch at a smart-home device and trigger it. Hold your arm st
 2. **Point** at it. The watch shows what it thinks you mean.
 3. **Trigger**: snap, flick, press a button or tap. A twist dims lights. Locks always ask for a confirming tap.
 
-It works best with the Kestrel Home Assistant component: the watch pairs with a code instead of a copied token, lists your devices by area, keeps working away from home through Nabu Casa, and every action fires a `kestrel_fired` event for automations. Store installs will also be able to use Home Assistant without it (a URL and a long-lived token in the app's settings). See [docs/design.md](docs/design.md).
+It works best with the Kestrel Home Assistant component: the watch pairs with a code instead of a copied token, lists your devices by area, only works on your home network (pointing is for the device in front of you), and every action fires a `kestrel_fired` event for automations. Store installs will also be able to use Home Assistant without it (a URL and a long-lived token in the app's settings). See [docs/design.md](docs/design.md).
 
 ## Try the test build
 
@@ -46,11 +46,12 @@ To test without your own devices nearby (at work, say), create a helper in Home 
 **Managing things in Home Assistant.** Settings → Devices & services → Kestrel → Configure:
 - **Painted devices**: remove a bad paint (the newest spot) or all of a device's paints, or make a paint trigger a different entity.
 - **Rooms**: delete a room's calibration.
-- **Settings**: gesture on or off, which gesture and its thresholds; instant toggle and its delay; **away mode** (while the chosen person isn't home, only the entities you allow work, so pointing at work doesn't switch things at home); where the current room comes from.
+- **Devices for watches**: choose which devices (or single entities) watches can paint and trigger, with Home Assistant's searchable pickers. Leave it empty to offer everything.
+- **Settings** (per watch): gesture on or off, which gesture and its thresholds; instant toggle and its delay; where the current room comes from.
 
 The watch picks changes up on its next Sync (it also syncs quietly each time the app starts). Paints, rooms and settings live in Home Assistant, so a reset or new watch gets them back on Sync.
 
-The watch is offered every supported entity except hidden, disabled, and devices' configuration or diagnostic entities, up to 1000 (Sync shows "1000 of N devices" when some are left out). To offer only some devices, add the label `kestrel` to those entities or devices in Home Assistant, then Sync on the watch. Each paired watch appears in Home Assistant as a device under the Kestrel integration; delete the device to unpair it.
+The watch is offered every supported entity except hidden, disabled, and devices' configuration or diagnostic entities, up to 1000 (Sync shows "1000 of N devices" when some are left out). To offer only some, choose them under Configure → Devices for watches; watches get the new list when they next sync. Each paired watch appears in Home Assistant as a device under the Kestrel integration; delete the device to unpair it.
 
 **On each watch's device page** in Home Assistant:
 
@@ -62,13 +63,12 @@ The watch is offered every supported entity except hidden, disabled, and devices
 | Gesture (select) | Which gesture triggers: wrist flick, finger snap or finger tap. Each keeps its own calibration, so switching is instant; a snap or tap that was never calibrated asks for calibration on the watch. |
 | Instant toggle (switch), Instant toggle delay (number) | Trigger by holding the aim on a device, and for how long (1–10 s). |
 | Gesture gyro threshold, Gesture jolt threshold (numbers, disabled by default) | The current gesture's calibrated thresholds, to nudge if it triggers too easily (raise) or too hard (lower). |
-| Away mode (switch), Away mode follows (select) | Away mode on or off, and whose presence it follows. The entities allowed while away are chosen under Configure. |
 | Room from (select) | The watch's own Bluetooth room calibration, or a Home Assistant sensor (chosen under Configure). |
 | Last seen, Home Assistant address, Painted devices, Calibrated rooms | Diagnostics: when the watch last talked to Home Assistant, the address it used, and what it has set up. |
 
-The device's software version is the watch app's build. Changes reach the watch on its next sync. Every setting is also under Configure; lists of entities (allowed while away, the room sensor) only there.
+The device's software version is the watch app's build. Changes reach the watch on its next sync. Every setting is also under Configure; the room sensor only there.
 
-**In the Zepp app** (store installs: sideloaded test builds get no settings page), the app's settings page shows the same settings (gesture, instant toggle, away mode, room source) and changes them in Home Assistant.
+**In the Zepp app** (store installs: sideloaded test builds get no settings page), the app's settings page shows the same settings (gesture, instant toggle, room source) and changes them in Home Assistant.
 
 If your phone can't find Home Assistant (another port, or a name other than `homeassistant.local`), choose **Type address** on the watch and enter its IP address, with `:port` if it isn't 80 or 8123.
 
@@ -154,14 +154,14 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 - Pointing relies on the watch's compass: it must be calibrated (the watch says when it isn't), and metal nearby bends it. Paint each device from where you use it; repeatable distortion is fine.
 - The watch only works while Kestrel is open on it: Zepp OS doesn't let apps run in the background.
 - Sideloaded test builds get no settings page in the Zepp app (only store installs do); settings are in Home Assistant and on the watch.
-- Without an address that works away from home (Home Assistant Cloud or an external URL), watches only work on the home network. Home Assistant shows a repair notice when that's the case.
-- Up to 1000 entities are offered to a watch; the `kestrel` label narrows the list.
+- Watches only work on your home network, or a VPN into it (WireGuard, Tailscale and the like). Requests through Home Assistant Cloud (Nabu Casa) or from a public address are refused, so a lost watch or phone can't switch things from outside. If your phone drops Wi-Fi for mobile data at home, the watch says Home Assistant isn't reachable until it's back on Wi-Fi.
+- Up to 1000 entities are offered to a watch; choosing devices for watches in Configure narrows the list.
 - Finger snaps and taps move the watch little, so they may not calibrate well; a wrist flick is the most reliable gesture.
 
 ### Troubleshooting
 
 - **"Phone not reachable"**: the Zepp app must be running on the phone (in the background is fine) and connected to the watch over Bluetooth.
-- **"Pair from your home network"**: pairing only works on your home network (for safety, not through Home Assistant Cloud or from outside). Pair at home; afterwards the watch works away from home too.
+- **"Kestrel only works on your home network"** or **"Home Assistant not reachable"**: the phone must be on your home Wi-Fi (or a VPN into it). Kestrel never goes through Home Assistant Cloud.
 - **Pairing can't find Home Assistant**: your phone must be on the home Wi-Fi, with the Kestrel integration added. Choose Type address on the watch and enter Home Assistant's IP (and port, if not 80 or 8123). More shows the address in use once paired.
 - **Nothing locks on when pointing**: calibrate the compass (the Compass app, or turn the watch in a circle when asked), then paint again from where you stand.
 - **Wrong device triggers**: use "Not it?" right after to correct it, or paint again from that spot.

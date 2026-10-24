@@ -6,7 +6,7 @@ calibration) right away. Each section has a revision number that goes up on
 every change, so the watch can tell whether Home Assistant changed something
 (in the integration's options) since it last synced.
 
-  settings  gesture trigger, instant toggle, away mode, where the current room comes from
+  settings  gesture trigger, instant toggle, where the current room comes from
   paints    {entity_id: [spot]} where the user pointed at each device
   rooms     {area_id: {name, fingerprint: {mac: [rssi, seen]}, scans, at}}
 """
@@ -34,8 +34,6 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     # None = channel not used. Uncalibrated, a flick uses FLICK_DEFAULT; snaps
     # and taps need calibrating first.
     "gesture": {"enabled": True, "kind": "flick", "calibrations": {}},
-    # Away mode: while `person` isn't home, only `allowed` entities can be triggered.
-    "away": {"block": False, "person": None, "allowed": []},
     # Where the current room comes from: the watch's Bluetooth calibration, or
     # a sensor whose state is an area (for example from Bermuda).
     "room": {"source": "watch", "sensor": None},
@@ -43,7 +41,6 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "dwell": {"enabled": False, "seconds": 3.0},
 }
 DWELL_SECONDS = (1.0, 10.0)  # allowed range, in half seconds
-AWAY_ALLOWED_MAX = 200
 
 SECTIONS = ("settings", "paints", "rooms")
 
@@ -102,16 +99,6 @@ def clean_settings(values: Any) -> dict[str, dict[str, Any]]:
             low, high = DWELL_SECONDS
             dwell["seconds"] = round(min(max(float(d["seconds"]), low), high) * 2) / 2
         out["dwell"] = dwell
-    if isinstance(a := values.get("away"), dict):
-        away: dict[str, Any] = {}
-        if isinstance(a.get("block"), bool):
-            away["block"] = a["block"]
-        if "person" in a:
-            person = a["person"]
-            away["person"] = person if isinstance(person, str) and person.startswith("person.") else None
-        if isinstance(a.get("allowed"), list):
-            away["allowed"] = [e for e in a["allowed"] if isinstance(e, str) and "." in e][:AWAY_ALLOWED_MAX]
-        out["away"] = away
     if isinstance(r := values.get("room"), dict):
         room: dict[str, Any] = {}
         if r.get("source") in ROOM_SOURCES:
@@ -188,14 +175,3 @@ def current_room(hass: HomeAssistant, settings: dict[str, Any]) -> dict[str, str
         return None
     state = hass.states.get(room["sensor"])
     return area_of_state(hass, state.state if state else None)
-
-
-def away_block(hass: HomeAssistant, settings: dict[str, Any], entity_id: str) -> str | None:
-    """Why away mode blocks this entity right now, or None."""
-    away = settings["away"]
-    if not away["block"] or not away["person"] or entity_id in (away["allowed"] or []):
-        return None
-    state = hass.states.get(away["person"])
-    if state is None or state.state == "home":
-        return None
-    return "Away from home: only the devices allowed away can be used"

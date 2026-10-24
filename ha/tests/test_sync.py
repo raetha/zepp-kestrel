@@ -1,4 +1,4 @@
-"""What watches keep in sync with Home Assistant: paints, rooms, settings, away mode."""
+"""What watches keep in sync with Home Assistant: paints, rooms and settings; home network only."""
 
 from http import HTTPStatus
 
@@ -62,12 +62,12 @@ async def test_paints_rooms_and_gesture_are_saved_per_watch(hass, setup_entry, h
     assert list((await res.json())["rooms"]) == ["office"]
 
     gesture = {"kind": "snap", "calibrations": {"snap": {"gyro": 180, "jolt": 95.5}, "wave": {"gyro": 1}}, "enabled": "x"}
-    changes = {"gesture": gesture, "dwell": {"enabled": True, "seconds": 2.3}, "away": {"person": "light.x"}, "nonsense": {}}
+    changes = {"gesture": gesture, "dwell": {"enabled": True, "seconds": 2.3}, "nonsense": {}}
     res = await client.post("/api/kestrel/settings", headers=h1, json={"settings": changes})
     body = await res.json()
     assert body["settings"]["gesture"] == {"enabled": True, "kind": "snap", "calibrations": {"snap": {"gyro": 180, "jolt": 95.5}}}
     assert body["settings"]["dwell"] == {"enabled": True, "seconds": 2.5}  # half seconds
-    assert body["settings"]["away"]["person"] is None  # only person entities
+    assert "away" not in body["settings"]
 
     # the other watch has its own
     res = await client.get("/api/kestrel/sync", headers={TOKEN_HEADER: two})
@@ -95,8 +95,7 @@ async def test_cleaning_settings():
         "dwell": {"seconds": 10.0},
         "room": {"source": "sensor", "sensor": "sensor.area"},
     }
-    away = clean_settings({"away": {"block": True, "person": "person.me", "allowed": ["light.a", 3, "nodot"]}})
-    assert away == {"away": {"block": True, "person": "person.me", "allowed": ["light.a"]}}
+    assert clean_settings({"away": {"block": True}}) == {}  # no such group (away mode is gone)
     assert clean_settings({"room": {"sensor": "light.no"}}) == {"room": {"sensor": None}}
 
 
@@ -127,30 +126,25 @@ async def test_room_from_a_sensor(hass, setup_entry, hass_client_no_auth):
     assert (await client.get("/api/kestrel/room", headers={TOKEN_HEADER: "nope"})).status == HTTPStatus.UNAUTHORIZED
 
 
-async def test_away_mode_blocks_all_but_allowed(hass, setup_entry, hass_client_no_auth):
+async def test_fire_reports_brightness(hass, setup_entry, hass_client_no_auth):
     hass.states.async_set("light.lamp", "on", {"brightness": 128})
-    hass.states.async_set("input_boolean.test", "off")
-    hass.states.async_set("person.me", "not_home")
     async_mock_service(hass, "homeassistant", "toggle")
-    watch, token = await _token(setup_entry)
-    watches = setup_entry.runtime_data
+    _, token = await _token(setup_entry)
     client = await hass_client_no_auth()
-    h = {TOKEN_HEADER: token}
+    res = await client.post("/api/kestrel/fire", headers={TOKEN_HEADER: token}, json={"target": "light.lamp", "seq": 1})
+    assert (await res.json())["brightness"] == 50
 
-    async def fire(target, seq):
-        return await (await client.post("/api/kestrel/fire", headers=h, json={"target": target, "seq": seq})).json()
 
-    assert (await fire("light.lamp", 1))["brightness"] == 50  # away mode off: works
-    settings = watches.synced(watch["id"])["settings"]
-    settings["away"] = {"block": True, "person": "person.me", "allowed": ["input_boolean.test"]}
-    await watches.async_save_settings(watch["id"], settings)
-    blocked = await fire("light.lamp", 2)
-    assert blocked["ok"] is False and blocked["away"] is True
-    assert (await fire("input_boolean.test", 3))["ok"] is True
-    hass.states.async_set("person.me", "home")
-    assert (await fire("light.lamp", 4))["ok"] is True
-    hass.states.async_remove("person.me")
-    assert (await fire("light.lamp", 5))["ok"] is True  # unknown person: don't block
+async def test_watches_only_work_on_the_home_network(hass, setup_entry, hass_client_no_auth):
+    from unittest.mock import patch
+
+    _, token = await _token(setup_entry)
+    client = await hass_client_no_auth()
+    with patch("custom_components.kestrel.http.is_cloud_connection", return_value=True):
+        for method, path in (("get", "/api/kestrel/sync"), ("post", "/api/kestrel/fire"), ("get", "/api/kestrel/info")):
+            res = await getattr(client, method)(path, headers={TOKEN_HEADER: token}, json={"target": "light.x"})
+            assert res.status == HTTPStatus.FORBIDDEN, path
+            assert (await res.json())["message"] == "Kestrel only works on your home network"
 
 
 async def test_sync_can_skip_the_target_list(hass, setup_entry, hass_client_no_auth):

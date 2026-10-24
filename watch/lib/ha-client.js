@@ -160,7 +160,8 @@ export class HaClient {
     })
     const b = parseBody(res) || {}
     if (res.status !== 200) return { ok: false, error: b.message || `Home Assistant answered ${res.status}` }
-    const urls = [url, b.urls && b.urls.internal, b.urls && b.urls.external].filter(Boolean).map(normalizeUrl)
+    // the address that answered, and Home Assistant's own home-network address (never a cloud one)
+    const urls = [url, b.urls && b.urls.internal].filter(Boolean).map(normalizeUrl)
     this.savePairing({
       token: b.token,
       watchId: b.watch_id,
@@ -181,7 +182,7 @@ export class HaClient {
   }
 
   // ---------------------------------------------------------------- requests
-  /** URLs to try, best first: the last one that worked, then local, then remote. */
+  /** URLs to try, best first: the last one that worked, then the rest (all home-network addresses). */
   candidateUrls() {
     const p = this.pairing()
     const urls = p ? p.urls : []
@@ -208,6 +209,12 @@ export class HaClient {
           this.unpair()
           throw Object.assign(new Error('This watch was removed in Home Assistant: pair again'), { fatal: true })
         }
+        if (res.status === 403) {
+          // reached Home Assistant, but not from the home network (e.g. an old cloud address): try the next one
+          const b = parseBody(res)
+          lastErr = new Error((b && b.message) || 'Kestrel only works on your home network')
+          continue
+        }
         this.remember(url)
         const b = parseBody(res)
         if (res.status !== 200) throw Object.assign(new Error((b && b.message) || `HA answered ${res.status}`), { fatal: true })
@@ -217,7 +224,7 @@ export class HaClient {
         lastErr = e
       }
     }
-    throw new Error(`Home Assistant not reachable${lastErr ? `: ${lastErr.message || lastErr}` : ''}`)
+    throw new Error(`Home Assistant not reachable (Kestrel works on your home network or a VPN)${lastErr ? `: ${lastErr.message || lastErr}` : ''}`)
   }
 
   async direct(path, { method = 'GET', body } = {}) {

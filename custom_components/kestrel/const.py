@@ -6,7 +6,6 @@ NAME = "Kestrel"
 TOKEN_HEADER = "X-Kestrel-Token"
 EVENT_FIRED = "kestrel_fired"
 EVENT_PROBE = "kestrel_probe"  # M0 measurement results from a watch
-LABEL_NAME = "kestrel"  # entities (or their devices) with this label are offered to watches
 
 PAIRING_TTL = 600  # seconds a pairing code stays valid
 PAIRING_MAX_ATTEMPTS = 5  # wrong codes before a pairing is cancelled

@@ -5,7 +5,7 @@ with a code shown in Home Assistant, the list of things they can point at, and
 running an action. Each paired watch is a device; deleting the device unpairs
 it. Every action fires a `kestrel_fired` event for automations. Each watch's
 device has sensors (last triggered, room, last seen...) and switches (gesture
-trigger, away mode).
+trigger, instant toggle).
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN
 from .http import VIEWS
-from .issues import check_external_url
+from .targets import Offered
 from .watches import Watches
 
 type KestrelConfigEntry = ConfigEntry[Watches]
@@ -38,13 +38,18 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: KestrelConfigEntry) -> bool:
     """Load paired watches and their devices."""
     integration = await async_get_integration(hass, DOMAIN)
-    watches = Watches(hass, entry.entry_id, version=str(integration.version or ""))
+    watches = Watches(hass, entry.entry_id, version=str(integration.version or ""), offered=Offered.from_options(entry.options))
     await watches.async_load()
     watches.sync_devices()
     entry.runtime_data = watches
-    check_external_url(hass, bool(watches.watches))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(_async_options_changed))
     return True
+
+
+async def _async_options_changed(hass: HomeAssistant, entry: KestrelConfigEntry) -> None:
+    """The devices for watches changed in Configure: reload so every request uses the new choice."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: KestrelConfigEntry) -> bool:

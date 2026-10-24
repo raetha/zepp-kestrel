@@ -37,7 +37,7 @@ from .const import (
     WATCH_NAME_MAX,
     signal_watch_updated,
 )
-from .issues import check_external_url
+from .targets import Offered
 from .watchdata import PAINTS_MAX_SPOTS, SECTIONS, clean_paints, clean_rooms, clean_settings, settings_of
 
 
@@ -64,6 +64,7 @@ class Watches:
     hass: HomeAssistant
     entry_id: str
     version: str = ""
+    offered: Offered = field(default_factory=Offered)  # devices and entities chosen in Configure
     store: Store[dict[str, Any]] = field(init=False)
     probe_store: Store[dict[str, Any]] = field(init=False)
     watches: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -141,7 +142,6 @@ class Watches:
         self.watches[watch_id] = watch
         await self._async_save()
         self._device(watch)
-        check_external_url(self.hass, True)
         async_dispatcher_send(self.hass, SIGNAL_WATCH_ADDED, watch_id)
         return "ok", watch, token
 

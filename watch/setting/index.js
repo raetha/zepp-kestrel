@@ -40,7 +40,6 @@ function watchSettings(s) {
   }
   const g = cur.gesture || {}
   const d = cur.dwell || {}
-  const a = cur.away || {}
   const r = cur.room || {}
   return Section({ title: 'Watch settings' }, [
     Toggle({ label: 'Gesture trigger', value: !!g.enabled, onChange: (v) => change(s, 'gesture', 'enabled', v) }),
@@ -51,13 +50,8 @@ function watchSettings(s) {
       onChange: (v) => change(s, 'dwell', 'enabled', v),
     }),
     Select({ label: 'Hold for', options: DWELL_SECONDS, value: d.seconds, onChange: (v) => change(s, 'dwell', 'seconds', Number(v)) }),
-    Toggle({
-      label: 'Away mode (who and what is allowed: set in Home Assistant)',
-      value: !!a.block,
-      onChange: (v) => change(s, 'away', 'block', v),
-    }),
     Select({ label: 'Current room from', options: ROOM_SOURCES, value: r.source, onChange: (v) => change(s, 'room', 'source', v) }),
-    row([Text({}, [s.getItem(EDIT_RESULT_KEY) || 'Gesture thresholds, away mode details and the room sensor: Home Assistant → Kestrel → Configure.'])]),
+    row([Text({}, [s.getItem(EDIT_RESULT_KEY) || 'Gesture thresholds and the room sensor: Home Assistant → Kestrel → Configure.'])]),
   ])
 }
 

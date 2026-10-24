@@ -1,4 +1,4 @@
-"""Switches for each paired watch: the gesture trigger, instant toggle and away mode.
+"""Switches for each paired watch: the gesture trigger and instant toggle.
 
 Both are the watch's settings (watchdata.py), also editable in Configure.
 The watch picks up a change on its next sync.
@@ -40,9 +40,6 @@ SWITCHES: tuple[WatchSwitchDescription, ...] = (
         entity_category=EntityCategory.CONFIG,
         group="dwell",
         field="enabled",
-    ),
-    WatchSwitchDescription(
-        key="away_mode", translation_key="away_mode", entity_category=EntityCategory.CONFIG, group="away", field="block"
     ),
 )
 

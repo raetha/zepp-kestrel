@@ -3,10 +3,10 @@
 Every request a watch makes also updates what Home Assistant shows about it
 (last seen, the address it used; see sensor.py).
 
-Pairing only works from the home network (not through Home Assistant Cloud or
-from a public address): a stranger can't keep asking for pairings and guessing
-codes from the internet. Pairing happens at home anyway: the phone finds Home
-Assistant on the local network.
+Kestrel only works on the home network (or a VPN into it): every endpoint
+refuses requests through Home Assistant Cloud or from a public address. The
+point is a device in front of you, so there's no reason to reach it from
+outside, and a stolen watch token is useless from the internet.
 
 Watches don't use Home Assistant user tokens. Pairing gives each watch its own
 token, sent as X-Kestrel-Token, which only works on these endpoints.
@@ -22,7 +22,7 @@ token, sent as X-Kestrel-Token, which only works on these endpoints.
                                       Zepp app's settings page
   GET  /api/kestrel/room            watch token: the current room from a sensor, if configured; ?here=<area id> reports
                                       the room the watch placed itself in
-  POST /api/kestrel/fire            watch token: run an action on a target (away mode applies)
+  POST /api/kestrel/fire            watch token: run an action on a target the watch is offered
   POST /api/kestrel/probe           watch token: a measurement result -> kestrel_probe event
 """
 
@@ -48,7 +48,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, PROBE_MAX_BYTES, SUPPORTED_DOMAINS, TOKEN_HEADER
 from .targets import MAX_TARGETS, is_offered, list_targets, service_call
-from .watchdata import SECTIONS, areas, away_block, current_room
+from .watchdata import SECTIONS, areas, current_room
 from .watches import Watches
 
 _LOGGER = logging.getLogger(__name__)
@@ -62,6 +62,9 @@ def _watches(hass: HomeAssistant) -> Watches | None:
 
 def _error(message: str, status: HTTPStatus) -> web.Response:
     return web.json_response({"message": message}, status=status)
+
+
+NOT_HOME = "Kestrel only works on your home network"
 
 
 def _from_home(hass: HomeAssistant, request: web.Request) -> bool:
@@ -85,16 +88,11 @@ def _notification_id(pairing_id: str) -> str:
 
 
 def _urls(hass: HomeAssistant) -> dict[str, str | None]:
-    out: dict[str, str | None] = {"internal": None, "external": None}
+    """Home Assistant's home-network address, for the phone to keep alongside the one it paired with."""
     try:
-        out["internal"] = get_url(hass, allow_external=False, allow_cloud=False)
+        return {"internal": get_url(hass, allow_external=False, allow_cloud=False)}
     except NoURLAvailableError:
-        pass
-    try:
-        out["external"] = get_url(hass, allow_internal=False, prefer_cloud=True)
-    except NoURLAvailableError:
-        pass
-    return out
+        return {"internal": None}
 
 
 class _WatchView(HomeAssistantView):
@@ -107,6 +105,8 @@ class _WatchView(HomeAssistantView):
         watches = _watches(hass)
         if watches is None:
             return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
+        if not _from_home(hass, request):
+            return _error(NOT_HOME, HTTPStatus.FORBIDDEN)
         watch = watches.by_token(request.headers.get(TOKEN_HEADER))
         if watch is None:
             return _error("Unknown watch: pair it again", HTTPStatus.UNAUTHORIZED)
@@ -124,6 +124,8 @@ class InfoView(HomeAssistantView):
         watches = _watches(hass)
         if watches is None:
             return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
+        if not _from_home(hass, request):
+            return _error(NOT_HOME, HTTPStatus.FORBIDDEN)
         return web.json_response({"name": NAME, "version": watches.version, "ha_name": hass.config.location_name})
 
 
@@ -138,7 +140,7 @@ class PairView(HomeAssistantView):
         if watches is None:
             return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
         if not _from_home(hass, request):
-            return _error("Pair from your home network", HTTPStatus.FORBIDDEN)
+            return _error(NOT_HOME, HTTPStatus.FORBIDDEN)
         if not watches.allow_start(request.remote or "?"):
             return _error("Too many pairing requests: wait a few minutes", HTTPStatus.TOO_MANY_REQUESTS)
         try:
@@ -170,7 +172,7 @@ class PairConfirmView(HomeAssistantView):
         if watches is None:
             return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
         if not _from_home(hass, request):
-            return _error("Pair from your home network", HTTPStatus.FORBIDDEN)
+            return _error(NOT_HOME, HTTPStatus.FORBIDDEN)
         try:
             body = await request.json()
         except ValueError:
@@ -203,8 +205,8 @@ class TargetsView(_WatchView):
         auth = self._authorize(request)
         if isinstance(auth, web.Response):
             return auth
-        hass, _, _ = auth
-        return web.json_response({"targets": list_targets(hass)})
+        hass, watches, _ = auth
+        return web.json_response({"targets": list_targets(hass, offered=watches.offered)})
 
 
 async def _json_object(request: web.Request) -> dict[str, Any] | None:
@@ -252,7 +254,7 @@ class SyncView(_WatchView):
             if have.get(section) != str(rev):
                 body[section] = synced[section]
         if not only:
-            every = list_targets(hass, limit=None)
+            every = list_targets(hass, limit=None, offered=watches.offered)
             targets, area_list = sync_targets(every[:MAX_TARGETS]), areas(hass)
             digest = hashlib.sha1(json.dumps([targets, area_list], sort_keys=True).encode()).hexdigest()[:12]
             body["targets_hash"] = digest
@@ -370,16 +372,13 @@ class FireView(_WatchView):
             return _error("Bad request", HTTPStatus.BAD_REQUEST)
         target = str(body.get("target") or "")
         action = str(body.get("action") or "toggle")
-        # only what the watch is offered: supported, not hidden or disabled, and labelled if labels are used
-        if not is_offered(hass, target):
+        # only what the watch is offered: supported, not hidden or disabled, and chosen in Configure if anything is
+        if not is_offered(hass, target, watches.offered):
             return _error(f"Unknown target {target}", HTTPStatus.NOT_FOUND)
         if not watches.first_time(watch["id"], body.get("seq")):
             state = hass.states.get(target)
             return web.json_response({"ok": True, "duplicate": True, "state": state.state if state else None})
 
-        blocked = away_block(hass, watches.synced(watch["id"])["settings"], target)
-        if blocked:
-            return web.json_response({"ok": False, "away": True, "error": blocked})
         call = service_call(hass, target, action, body.get("value"), bool(body.get("confirmed")))
         if call is None:
             return web.json_response({"ok": False, "needsConfirm": True})

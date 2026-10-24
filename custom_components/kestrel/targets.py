@@ -2,112 +2,93 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import (
-    area_registry as ar,
-    device_registry as dr,
-    entity_registry as er,
-    label_registry as lr,
-)
+from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 
-from .const import CONFIRM_DOMAINS, LABEL_NAME, SUPPORTED_DOMAINS
+from .const import CONFIRM_DOMAINS, SUPPORTED_DOMAINS
 
-# Sent to a watch at most; the rest are left out (the kestrel label narrows the list).
+# Sent to a watch at most; the rest are left out (choosing devices in Configure narrows the list).
 MAX_TARGETS = 1000
 
 
-def _label_id(hass: HomeAssistant) -> str | None:
-    for label in lr.async_get(hass).async_list_labels():
-        if label.name.strip().lower() == LABEL_NAME:
-            return label.label_id
-    return None
+class Offered:
+    """The devices and entities chosen in Configure ("Devices for watches").
+    Nothing chosen: every supported entity is offered."""
+
+    def __init__(self, devices: list[str] | None = None, entities: list[str] | None = None) -> None:
+        self.devices = set(devices or [])
+        self.entities = set(entities or [])
+
+    @classmethod
+    def from_options(cls, options: Mapping[str, Any]) -> Offered:
+        return cls(options.get("devices"), options.get("entities"))
+
+    @property
+    def everything(self) -> bool:
+        return not self.devices and not self.entities
+
+    def includes(self, entity_id: str, device_id: str | None) -> bool:
+        return self.everything or entity_id in self.entities or (device_id is not None and device_id in self.devices)
 
 
-def list_targets(hass: HomeAssistant, limit: int | None = MAX_TARGETS) -> list[dict[str, Any]]:
-    """Entities a watch can paint.
+EVERYTHING = Offered()
 
-    If any entity (or its device) carries the `kestrel` label, only labelled ones;
-    otherwise every supported entity that isn't hidden, disabled, or a device's
-    configuration or diagnostic entity (restart buttons, firmware switches).
-    Grouped by area; at most `limit` (None for all).
+
+def _usable(entry: er.RegistryEntry | None) -> bool:
+    """Not hidden, not disabled, and not a device's configuration or diagnostic entity."""
+    return entry is None or not (entry.disabled_by or entry.hidden_by or entry.entity_category)
+
+
+def list_targets(
+    hass: HomeAssistant, limit: int | None = MAX_TARGETS, offered: Offered = EVERYTHING
+) -> list[dict[str, Any]]:
+    """Entities a watch can paint: every supported entity that isn't hidden, disabled, or a
+    device's configuration or diagnostic entity (restart buttons, firmware switches), narrowed
+    to the chosen devices and entities if any are chosen. Grouped by area; at most `limit`
+    (None for all).
     """
     ent_reg = er.async_get(hass)
     dev_reg = dr.async_get(hass)
     area_reg = ar.async_get(hass)
-    label_id = _label_id(hass)
-
-    def labelled(entry: er.RegistryEntry | None, device_labels: set[str]) -> bool:
-        return bool(label_id) and ((entry is not None and label_id in entry.labels) or label_id in device_labels)
-
-    rows: list[tuple[dict[str, Any], bool]] = []
+    targets: list[dict[str, Any]] = []
     for state in hass.states.async_all(SUPPORTED_DOMAINS):
         entry = ent_reg.async_get(state.entity_id)
-        if entry is not None and (entry.disabled_by or entry.hidden_by or entry.entity_category):
+        if not _usable(entry):
             continue
-        device = dev_reg.async_get(entry.device_id) if entry and entry.device_id else None
+        device_id = entry.device_id if entry else None
+        if not offered.includes(state.entity_id, device_id):
+            continue
+        device = dev_reg.async_get(device_id) if device_id else None
         area_id = (entry.area_id if entry else None) or (device.area_id if device else None)
         area = area_reg.async_get_area(area_id) if area_id else None
         domain = state.domain
         modes = state.attributes.get("supported_color_modes") or []
-        rows.append(
-            (
-                {
-                    "id": state.entity_id,
-                    "name": state.name,
-                    "domain": domain,
-                    "area": area.name if area else None,
-                    "area_id": area.id if area else None,
-                    "dimmable": domain == "light" and any(m != "onoff" for m in modes),
-                    "confirm": domain in CONFIRM_DOMAINS,
-                },
-                labelled(entry, set(device.labels) if device else set()),
-            )
+        targets.append(
+            {
+                "id": state.entity_id,
+                "name": state.name,
+                "domain": domain,
+                "area": area.name if area else None,
+                "area_id": area.id if area else None,
+                "dimmable": domain == "light" and any(m != "onoff" for m in modes),
+                "confirm": domain in CONFIRM_DOMAINS,
+            }
         )
-
-    if any(is_labelled for _, is_labelled in rows):
-        rows = [r for r in rows if r[1]]
-    targets = [t for t, _ in rows]
-    targets.sort(key=lambda t: ((t["area"] or "￿").lower(), t["name"].lower()))
+    targets.sort(key=lambda t: ((t["area"] or "\uffff").lower(), t["name"].lower()))
     return targets if limit is None else targets[:limit]
 
 
-def is_offered(hass: HomeAssistant, entity_id: str) -> bool:
+def is_offered(hass: HomeAssistant, entity_id: str, offered: Offered = EVERYTHING) -> bool:
     """Whether list_targets offers this entity (ignoring the size cap), without building the list:
-    checked on every trigger, so it looks at this entity and the labelled entries only."""
+    checked on every trigger, so it looks at this one entity only."""
     state = hass.states.get(entity_id)
     if state is None or state.domain not in SUPPORTED_DOMAINS:
         return False
-    ent_reg = er.async_get(hass)
-    entry = ent_reg.async_get(entity_id)
-    if entry is not None and (entry.disabled_by or entry.hidden_by or entry.entity_category):
-        return False
-    label_id = _label_id(hass)
-    if not label_id:
-        return True
-    dev_reg = dr.async_get(hass)
-
-    def labelled(e: er.RegistryEntry | None) -> bool:
-        if e is None:
-            return False
-        if label_id in e.labels:
-            return True
-        device = dev_reg.async_get(e.device_id) if e.device_id else None
-        return device is not None and label_id in device.labels
-
-    if labelled(entry):
-        return True
-    # the label narrows the list only if some offered entity carries it (as list_targets does)
-    candidates = list(er.async_entries_for_label(ent_reg, label_id))
-    for device in dr.async_entries_for_label(dev_reg, label_id):
-        candidates.extend(er.async_entries_for_device(ent_reg, device.id))
-    return not any(
-        e.domain in SUPPORTED_DOMAINS
-        and hass.states.get(e.entity_id) is not None
-        and not (e.disabled_by or e.hidden_by or e.entity_category)
-        for e in candidates
-    )
+    entry = er.async_get(hass).async_get(entity_id)
+    return _usable(entry) and offered.includes(entity_id, entry.device_id if entry else None)
 
 
 def service_call(

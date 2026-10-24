@@ -109,7 +109,7 @@ test('discover finds the component and de-duplicates by HA name', async () => {
   assert.equal(found[0].haName, 'Home')
 })
 
-test('pairing stores the token and every address HA reports', async () => {
+test('pairing stores the token and the home addresses, never a cloud one', async () => {
   const fetch = fakeFetch({
     'POST http://homeassistant.local:8123/api/kestrel/pair': async (r) => {
       assert.equal(JSON.parse(r.body).watch_name, 'Balance 3')
@@ -132,25 +132,30 @@ test('pairing stores the token and every address HA reports', async () => {
   assert.equal(ha.status().paired, false)
   assert.deepEqual(await ha.pairConfirm(start.url, 'p1', 123456), { ok: true, haName: 'Home' })
   assert.deepEqual(ha.status(), { paired: true, mode: 'component', haName: 'Home', url: 'http://homeassistant.local:8123' }) // the address that answered
-  assert.deepEqual(ha.pairing().urls, ['http://homeassistant.local:8123', 'http://192.168.1.5:8123', 'https://abc.ui.nabu.casa'])
+  assert.deepEqual(ha.pairing().urls, ['http://homeassistant.local:8123', 'http://192.168.1.5:8123'])
 })
 
-test('component requests fall back from local to Nabu Casa, then remember what worked', async () => {
+test('requests try the next home address, and skip one Home Assistant refuses as not home', async () => {
   const store = memStore({
-    'kestrel.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123', 'https://abc.ui.nabu.casa'] }),
+    'kestrel.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123', 'http://192.168.1.5:8123', 'https://abc.ui.nabu.casa'] }),
+    'kestrel.lastGoodUrl': 'https://abc.ui.nabu.casa', // from an older pairing
   })
   const fetch = fakeFetch({
-    'GET https://abc.ui.nabu.casa/api/kestrel/targets': async (r) => {
+    'GET https://abc.ui.nabu.casa/api/kestrel/targets': async () => ({ status: 403, body: { message: 'Kestrel only works on your home network' } }),
+    'GET http://192.168.1.5:8123/api/kestrel/targets': async (r) => {
       assert.equal(r.headers['X-Kestrel-Token'], 'tok')
       return { status: 200, body: { targets: [{ id: 'light.lamp' }] } }
     },
   })
   const ha = new HaClient({ fetch, store })
   assert.deepEqual(await ha.targets(), [{ id: 'light.lamp' }])
-  assert.equal(fetch.calls[0].url.startsWith('http://homeassistant.local'), true)
-  assert.equal(store.m['kestrel.lastGoodUrl'], 'https://abc.ui.nabu.casa')
+  assert.equal(store.m['kestrel.lastGoodUrl'], 'http://192.168.1.5:8123')
   await ha.targets()
-  assert.equal(fetch.calls[2].url.startsWith('https://abc.ui.nabu.casa'), true)
+  assert.equal(fetch.calls[fetch.calls.length - 1].url.startsWith('http://192.168.1.5'), true)
+
+  // nothing at home answers: say why
+  const away = new HaClient({ fetch: fakeFetch({}), store: memStore({ 'kestrel.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123'] }) }) })
+  await assert.rejects(away.targets(), /home network or a VPN/)
 })
 
 test('a 401 from the component unpairs the watch', async () => {
