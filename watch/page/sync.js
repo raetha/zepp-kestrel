@@ -34,7 +34,22 @@ const SECTIONS = {
  *        says what it has and Home Assistant sends only what changed
  * @returns { ok, targets, areas, paints, rooms, error }
  */
-export async function sync(ask, only = null, { full = false } = {}) {
+export function sync(ask, only = null, opts = {}) {
+  // One sync at a time: two at once over Bluetooth made one fail ("Phone not
+  // reachable") while the other succeeded, e.g. Sync pressed during the quiet
+  // sync at launch. A sync asked for meanwhile runs once the current one ends.
+  const run = () => syncNow(ask, only, opts)
+  const next = running ? running.then(run, run) : run()
+  const mine = next.finally(() => {
+    if (running === mine) running = null
+  })
+  running = mine
+  return mine
+}
+
+let running = null
+
+async function syncNow(ask, only = null, { full = false } = {}) {
   // a gesture calibration that didn't reach Home Assistant yet goes first
   if (syncMeta().gestureDirty) {
     const g = await ask(METHOD.SAVE_GESTURE, { gesture: settings().gesture }, 15000).catch(() => null)
@@ -55,7 +70,7 @@ export async function sync(ask, only = null, { full = false } = {}) {
   // stale; the watch's own paints and rooms are kept and sent to the new one
   if (r.watch_id && syncMeta().watchId && r.watch_id !== syncMeta().watchId) {
     resetSyncMeta()
-    if (!full) return sync(ask, null, { full: true })
+    if (!full) return syncNow(ask, null, { full: true })
   }
   if (r.watch_id) saveSyncMeta({ watchId: r.watch_id })
 

@@ -66,7 +66,8 @@ Page(
           setText(this.statusW, 'Not connected to Home Assistant')
         } else {
           const painted = paintedDevices().length
-          setText(this.statusW, `${st.haName} · ${painted} painted`)
+          this.statusText = `${st.haName} · ${painted} painted`
+          setText(this.statusW, this.statusText)
         }
 
         if (!st.paired && !st.offline) {
@@ -93,13 +94,16 @@ Page(
 
       // Targets, areas, settings, paints and rooms from Home Assistant (page/sync.js).
       // The Sync button fetches everything; the quiet sync at launch only what changed.
+      // Both show Syncing… (a second one waits for the first; page/sync.js).
       sync(quiet = false) {
-        if (!quiet) setText(this.statusW, 'Syncing…')
+        setText(this.statusW, 'Syncing…')
+        this.syncing = (this.syncing || 0) + 1
         sync((m, p, t) => ask(this, m, p, t), null, { full: !quiet })
+          .catch(() => ({ ok: false, error: 'Phone not reachable' }))
           .then((r) => {
-            if (!this.alive) return
+            if (--this.syncing > 0 || !this.alive) return // only the last one shows its result
             if (!r.ok) {
-              if (!quiet) setText(this.statusW, r.error || 'Sync failed')
+              setText(this.statusW, quiet ? this.statusText || '' : r.error || 'Sync failed')
               return
             }
             const parts = [`${r.targets || 0} devices`]
@@ -109,7 +113,6 @@ Page(
             setText(this.statusW, parts.join(' · '))
             if (this.syncW) setLabel(this.syncW, `Sync (${targets().length})`)
           })
-          .catch(() => !quiet && setText(this.statusW, 'Phone not reachable'))
       },
     }),
   ),
