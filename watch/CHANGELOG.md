@@ -9,7 +9,7 @@ All notable changes to the Kestrel watch app. The format is based on
 ### Added
 
 - Open on Point: start the app straight on Point (More → Open on), so assigning Kestrel to the watch's shortcut button goes straight to pointing. Back goes to the home screen. Also in Home Assistant and the Zepp app's settings page.
-- Twist volume: hold and twist at a media player to change its volume, like dimming a light. Home Assistant keeps it safe: one twist changes it by at most 20%, twists are at least a second apart, and twisting never takes it above 60% (both limits can be changed; turning it down always works).
+- Twist volume: hold and twist at a media player to change its volume, like dimming a light. Home Assistant keeps it safe: one twist changes it by at most 20%, twists are at least a second apart, and twisting never takes it above 80% (both limits can be changed; turning it down always works).
 - Scenes, scripts and buttons as virtual spots: Paint → Scenes & more lists them, and you paint any spot you like for each (the sofa for a movie scene). Input buttons can be triggered too.
 - Learning from use (on by default): triggers that locked on clearly and weren't corrected slowly refine where each device is, in up to three learned spots per device next to your paints; room calibrations follow slow changes in what Bluetooth hears.
 - Square watches and more round ones: builds cover every round and square Zepp OS screen (API level 3.6+); layouts are centred on square screens. Watches without a gyroscope use the accelerometer to tell when the arm is still; watches without a compass say so.

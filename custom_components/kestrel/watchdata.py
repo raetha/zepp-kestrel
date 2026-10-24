@@ -44,7 +44,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "start": {"point": False},
     # Twisting at a media player: the volume never goes above `max` percent by
     # twisting (lowering always works), and one twist changes it by at most `step`.
-    "volume": {"max": 60, "step": 20},
+    "volume": {"max": 80, "step": 20},
     # Learn from use: confirmed triggers refine paints, confident room checks refine rooms.
     "learn": {"enabled": True},
 }

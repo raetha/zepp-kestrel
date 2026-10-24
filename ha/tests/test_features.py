@@ -50,20 +50,20 @@ async def test_twisting_volume_is_limited_per_twist_capped_and_spaced(
     r = await _fire(client, token, target="media_player.den", action="volume", value=10, seq=2)
     assert r["ok"] is False and "Too fast" in r["error"]
 
-    # never above the ceiling (60%) by twisting
+    # never above the ceiling (80%) by twisting
     freezer.tick(2)
-    hass.states.async_set("media_player.den", "playing", {"volume_level": 0.55, "supported_features": VOLUME})
+    hass.states.async_set("media_player.den", "playing", {"volume_level": 0.75, "supported_features": VOLUME})
     r = await _fire(client, token, target="media_player.den", action="volume", value=20, seq=3)
-    assert calls[-1].data["volume_level"] == 0.6 and r["limited"] is True and r["volume"] == 60
+    assert calls[-1].data["volume_level"] == 0.8 and r["limited"] is True and r["volume"] == 80
 
     # already above it (set elsewhere): twisting up leaves it, twisting down works
     freezer.tick(2)
-    hass.states.async_set("media_player.den", "playing", {"volume_level": 0.8, "supported_features": VOLUME})
+    hass.states.async_set("media_player.den", "playing", {"volume_level": 0.9, "supported_features": VOLUME})
     await _fire(client, token, target="media_player.den", action="volume", value=10, seq=4)
-    assert calls[-1].data["volume_level"] == 0.8
+    assert calls[-1].data["volume_level"] == 0.9
     freezer.tick(2)
     r = await _fire(client, token, target="media_player.den", action="volume", value=-10, seq=5)
-    assert calls[-1].data["volume_level"] == 0.7 and r["limited"] is False
+    assert calls[-1].data["volume_level"] == 0.8 and r["limited"] is False
 
     # limits come from the watch's settings
     await setup_entry.runtime_data.async_update_settings(watch["id"], {"volume": {"max": 100, "step": 50}})
@@ -100,7 +100,7 @@ async def test_scripts_scenes_and_input_buttons_run(hass, setup_entry, hass_clie
 async def test_new_settings_are_entities_and_cleaned(hass, setup_entry):
     watch, _ = await _token(hass, setup_entry)
     s = settings_of(watch)
-    assert s["start"] == {"point": False} and s["learn"] == {"enabled": True} and s["volume"] == {"max": 60, "step": 20}
+    assert s["start"] == {"point": False} and s["learn"] == {"enabled": True} and s["volume"] == {"max": 80, "step": 20}
 
     await hass.services.async_call(
         "switch", "turn_on", {"entity_id": _entity(hass, watch["id"], "open_on_point", "switch")}, blocking=True

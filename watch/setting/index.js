@@ -43,7 +43,7 @@ function watchSettings(s) {
   const g = cur.gesture || {}
   const d = cur.dwell || {}
   const r = cur.room || {}
-  const v = cur.volume || { max: 60, step: 20 }
+  const v = cur.volume || { max: 80, step: 20 }
   return Section({ title: 'Watch settings' }, [
     Toggle({ label: 'Gesture trigger', value: !!g.enabled, onChange: (v) => change(s, 'gesture', 'enabled', v) }),
     Select({ label: 'Gesture', options: GESTURES, value: g.kind, onChange: (v) => change(s, 'gesture', 'kind', v) }),

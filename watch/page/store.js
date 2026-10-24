@@ -73,7 +73,7 @@ export const DEFAULT_SETTINGS = {
   // open straight on Point when the app starts (for the watch's shortcut key)
   start: { point: false },
   // twisting at a media player: Home Assistant caps it at max %, and one twist at step %
-  volume: { max: 60, step: 20 },
+  volume: { max: 80, step: 20 },
   // learn from use: confirmed triggers refine paints, clear room checks refine rooms (lib/learn.js)
   learn: { enabled: true },
 }
