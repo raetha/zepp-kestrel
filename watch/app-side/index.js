@@ -10,6 +10,11 @@ const LOG_KEY = 'probeLog'
 const LOG_MAX = 40
 const LOG_MAX_CHARS = 20000
 const SUMMARY_MAX_CHARS = 400
+// The settings page (store installs) shows the watch's settings from this copy,
+// kept up to date from every sync, and asks for changes through EDIT_KEY.
+const SETTINGS_KEY = 'kestrel.settings'
+const EDIT_KEY = 'kestrel.settingsEdit'
+const EDIT_RESULT_KEY = 'kestrel.settingsResult'
 
 /** A probe result small enough for phone storage: drop raw traces and trails. */
 function summarize(entry) {
@@ -68,7 +73,7 @@ AppSideService(
             this.ha.unpair()
             return { ok: true }
           case METHOD.SYNC:
-            return this.ha.sync(p.only || null, p.have || null, p.version || null)
+            return this.mirror(await this.ha.sync(p.only || null, p.have || null, p.version || null))
           case METHOD.FIRE:
             // the watch may retry over Bluetooth; never run a command twice
             if (p.seq !== undefined && !dedupe.accept(p.seq)) return { ok: true, duplicate: true }
@@ -77,8 +82,8 @@ AppSideService(
           case METHOD.SAVE:
             if (p.section !== 'paints' && p.section !== 'rooms') throw new Error('unknown section')
             return this.ha.saveSection(p.section, p.value || {})
-          case METHOD.SAVE_GESTURE:
-            return this.ha.saveGesture(p.gesture || {})
+          case METHOD.SAVE_SETTINGS:
+            return this.mirror(await this.ha.saveSettings(p.settings || {}))
           case METHOD.ROOM:
             return { room: await this.ha.room(p.here || null) }
 
@@ -157,6 +162,43 @@ AppSideService(
     onSettingsChange({ key }) {
       if (key === 'haTest') this.testHa()
       if (key === 'clearLog') this.settings.setItem(LOG_KEY, '[]')
+      if (key === EDIT_KEY) this.applySettingsEdit()
+    },
+
+    /** Keep the settings page's copy of the watch's settings current. Never fails the request. */
+    mirror(result) {
+      try {
+        if (result && result.settings) {
+          const text = JSON.stringify(result.settings)
+          if (this.settings.getItem(SETTINGS_KEY) !== text) this.settings.setItem(SETTINGS_KEY, text)
+        }
+      } catch (e) {
+        // the page just shows older values
+      }
+      return result
+    },
+
+    /** A change made on the settings page: send it to Home Assistant; the watch gets it on its next sync. */
+    async applySettingsEdit() {
+      let edit = null
+      try {
+        edit = JSON.parse(this.settings.getItem(EDIT_KEY) || 'null')
+      } catch (e) {
+        edit = null
+      }
+      if (!edit || typeof edit.settings !== 'object') return
+      let msg
+      try {
+        const r = this.mirror(await this.ha.saveSettings(edit.settings))
+        msg = r.ok ? 'Saved. The watch picks it up when it next syncs.' : `Not saved: ${r.error}`
+      } catch (e) {
+        msg = `Not saved: ${(e && e.message) || e}`
+      }
+      try {
+        this.settings.setItem(EDIT_RESULT_KEY, msg)
+      } catch (e) {
+        // nothing more to do
+      }
     },
 
     async testHa() {

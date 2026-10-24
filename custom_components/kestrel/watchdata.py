@@ -6,7 +6,7 @@ calibration) right away. Each section has a revision number that goes up on
 every change, so the watch can tell whether Home Assistant changed something
 (in the integration's options) since it last synced.
 
-  settings  gesture trigger, away mode, where the current room comes from
+  settings  gesture trigger, instant toggle, away mode, where the current room comes from
   paints    {entity_id: [spot]} where the user pointed at each device
   rooms     {area_id: {name, fingerprint: {mac: [rssi, seen]}, scans, at}}
 """
@@ -39,7 +39,11 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     # Where the current room comes from: the watch's Bluetooth calibration, or
     # a sensor whose state is an area (for example from Bermuda).
     "room": {"source": "watch", "sensor": None},
+    # Instant toggle: holding the aim on a device this many seconds triggers it.
+    "dwell": {"enabled": False, "seconds": 3.0},
 }
+DWELL_SECONDS = (1.0, 10.0)  # allowed range, in half seconds
+AWAY_ALLOWED_MAX = 200
 
 SECTIONS = ("settings", "paints", "rooms")
 
@@ -81,6 +85,42 @@ def clean_gesture(values: dict[str, Any]) -> dict[str, Any]:
         cals = {k: clean_thresholds(v) for k, v in values["calibrations"].items() if k in GESTURE_KINDS}
         out["calibrations"] = {k: v for k, v in cals.items() if v}
     return out
+
+
+def clean_settings(values: Any) -> dict[str, dict[str, Any]]:
+    """A partial settings update ({group: {field: value}}), checked field by field."""
+    out: dict[str, dict[str, Any]] = {}
+    if not isinstance(values, dict):
+        return out
+    if isinstance(values.get("gesture"), dict):
+        out["gesture"] = clean_gesture(values["gesture"])
+    if isinstance(d := values.get("dwell"), dict):
+        dwell: dict[str, Any] = {}
+        if isinstance(d.get("enabled"), bool):
+            dwell["enabled"] = d["enabled"]
+        if is_number(d.get("seconds")):
+            low, high = DWELL_SECONDS
+            dwell["seconds"] = round(min(max(float(d["seconds"]), low), high) * 2) / 2
+        out["dwell"] = dwell
+    if isinstance(a := values.get("away"), dict):
+        away: dict[str, Any] = {}
+        if isinstance(a.get("block"), bool):
+            away["block"] = a["block"]
+        if "person" in a:
+            person = a["person"]
+            away["person"] = person if isinstance(person, str) and person.startswith("person.") else None
+        if isinstance(a.get("allowed"), list):
+            away["allowed"] = [e for e in a["allowed"] if isinstance(e, str) and "." in e][:AWAY_ALLOWED_MAX]
+        out["away"] = away
+    if isinstance(r := values.get("room"), dict):
+        room: dict[str, Any] = {}
+        if r.get("source") in ROOM_SOURCES:
+            room["source"] = r["source"]
+        if "sensor" in r:
+            sensor = r["sensor"]
+            room["sensor"] = sensor if isinstance(sensor, str) and sensor.startswith("sensor.") else None
+        out["room"] = room
+    return {group: values for group, values in out.items() if values}
 
 
 def thresholds(gesture: dict[str, Any]) -> dict[str, float | None] | None:

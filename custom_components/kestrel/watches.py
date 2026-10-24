@@ -32,7 +32,7 @@ from .const import (
     STORAGE_VERSION,
     signal_watch_updated,
 )
-from .watchdata import PAINTS_MAX_SPOTS, SECTIONS, clean_gesture, clean_paints, clean_rooms, settings_of
+from .watchdata import PAINTS_MAX_SPOTS, SECTIONS, clean_paints, clean_rooms, clean_settings, settings_of
 
 
 def _hash(token: str) -> str:
@@ -180,10 +180,12 @@ class Watches:
     async def async_save_rooms(self, watch_id: str, rooms: dict[str, Any]) -> int:
         return await self._async_set(watch_id, "rooms", clean_rooms(rooms))
 
-    async def async_update_gesture(self, watch_id: str, values: dict[str, Any]) -> int:
-        """Gesture settings from the watch (calibration). Other settings are changed in the options."""
+    async def async_update_settings(self, watch_id: str, values: dict[str, Any]) -> int:
+        """Some settings changed ({group: {field: value}}, checked here): from the watch,
+        the Zepp app's settings page or an entity. Returns the new revision."""
         settings = settings_of(self.watches[watch_id])
-        settings["gesture"].update(clean_gesture(values))
+        for group, changed in clean_settings(values).items():
+            settings[group].update(changed)
         return await self._async_set(watch_id, "settings", settings)
 
     async def async_save_settings(self, watch_id: str, settings: dict[str, Any]) -> int:

@@ -51,11 +51,14 @@ export function sync(ask, only = null, opts = {}) {
 let running = null
 
 async function syncNow(ask, only = null, { full = false } = {}) {
-  // a gesture calibration that didn't reach Home Assistant yet goes first
-  if (syncMeta().gestureDirty) {
-    const g = await ask(METHOD.SAVE_GESTURE, { gesture: settings().gesture }, 15000).catch(() => null)
+  // settings changed on the watch (gesture, instant toggle) that didn't reach Home Assistant yet go first
+  const dirty = syncMeta().settingsDirty
+  if (dirty.length) {
+    const changed = {}
+    for (const group of dirty) changed[group] = settings()[group]
+    const g = await ask(METHOD.SAVE_SETTINGS, { settings: changed }, 15000).catch(() => null)
     if (g && g.ok) {
-      saveSyncMeta({ gestureDirty: false, settingsRev: g.rev })
+      saveSyncMeta({ settingsDirty: [], settingsRev: g.rev })
       if (g.settings) saveSettings(g.settings)
     }
   }
@@ -84,8 +87,9 @@ async function syncNow(ask, only = null, { full = false } = {}) {
   // what each sync brought, for the diagnostics (trail)
   note('sync', { only, full, keys: Object.keys(r), targets: r.targets ? r.targets.length : null, areas: r.areas ? r.areas.length : null })
   if (r.settings) {
-    // Home Assistant's settings win, except a gesture calibration still on its way
-    const keep = syncMeta().gestureDirty ? { gesture: settings().gesture } : {}
+    // Home Assistant's settings win, except changes on the watch still on their way
+    const keep = {}
+    for (const group of syncMeta().settingsDirty) keep[group] = settings()[group]
     saveSettings({ ...r.settings, ...keep })
     saveSyncMeta({ settingsRev: r.settings_rev })
   }

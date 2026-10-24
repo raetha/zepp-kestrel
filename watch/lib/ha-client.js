@@ -285,13 +285,13 @@ export class HaClient {
   }
 
   /** Send the gesture calibration. -> { ok, rev, settings } */
-  async saveGesture(gesture) {
+  /** Changed settings ({ group: {...} }) from the watch or the settings page. -> { ok, rev, settings } */
+  async saveSettings(settings) {
     if (this.status().mode !== 'component') return { ok: false, error: 'Needs the Kestrel integration' }
-    const b = await this.component('/api/kestrel/gesture', { method: 'POST', body: { gesture } })
+    const b = await this.component('/api/kestrel/settings', { method: 'POST', body: { settings } })
     return { ok: true, rev: b && b.rev, settings: b && b.settings }
   }
 
-  /** The current room from a Home Assistant sensor, if one is configured. -> { id, name } | null */
   /** The room from a Home Assistant sensor; `here` reports the room the watch placed itself in. */
   async room(here = null) {
     if (this.status().mode !== 'component') return null

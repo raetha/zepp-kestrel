@@ -1,4 +1,4 @@
-"""Switches for each paired watch: the gesture trigger and away mode.
+"""Switches for each paired watch: the gesture trigger, instant toggle and away mode.
 
 Both are the watch's settings (watchdata.py), also editable in Configure.
 The watch picks up a change on its next sync.
@@ -35,6 +35,13 @@ SWITCHES: tuple[WatchSwitchDescription, ...] = (
         key="gesture", translation_key="gesture", entity_category=EntityCategory.CONFIG, group="gesture", field="enabled"
     ),
     WatchSwitchDescription(
+        key="instant_toggle",
+        translation_key="instant_toggle",
+        entity_category=EntityCategory.CONFIG,
+        group="dwell",
+        field="enabled",
+    ),
+    WatchSwitchDescription(
         key="away_mode", translation_key="away_mode", entity_category=EntityCategory.CONFIG, group="away", field="block"
     ),
 )
@@ -64,6 +71,4 @@ class WatchSwitch(KestrelEntity, SwitchEntity):
 
     async def _async_set(self, on: bool) -> None:
         d = self.entity_description
-        settings = settings_of(self.watch)
-        settings[d.group][d.field] = on
-        await self.watches.async_save_settings(self.watch_id, settings)  # updates the entity
+        await self.watches.async_update_settings(self.watch_id, {d.group: {d.field: on}})  # updates the entity

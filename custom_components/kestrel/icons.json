@@ -23,11 +23,31 @@
       },
       "away_mode": {
         "default": "mdi:home-export-outline"
+      },
+      "instant_toggle": {
+        "default": "mdi:timer-play-outline"
       }
     },
     "select": {
       "gesture": {
         "default": "mdi:hand-back-right"
+      },
+      "room_source": {
+        "default": "mdi:map-marker-radius"
+      },
+      "away_person": {
+        "default": "mdi:account-arrow-right"
+      }
+    },
+    "number": {
+      "instant_toggle_delay": {
+        "default": "mdi:timer-outline"
+      },
+      "gesture_gyro": {
+        "default": "mdi:rotate-3d-variant"
+      },
+      "gesture_jolt": {
+        "default": "mdi:vibrate"
       }
     }
   }

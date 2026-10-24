@@ -39,12 +39,14 @@ To test without your own devices nearby (at work, say), create a helper in Home 
 
 **6. Gesture.** More → Gesture: choose wrist flick, finger snap or finger tap, then Calibrate: five gestures after the buzzes, then a few seconds of slowly pointing around. The watch learns thresholds that separate your gesture from aiming, and keeps them per gesture, so you can switch later (on the watch or with the Gesture select in Home Assistant) without calibrating again. It only counts while you're aiming at something, and only once: gestures are ignored for 3 seconds after a trigger.
 
-**7. Rooms.** More → Rooms lists your Home Assistant areas. Calibrate each room you point in: walk around it for three short Bluetooth scans. Paint devices afterwards, from inside each room: then the watch only considers devices painted in the room you're in, which keeps things apart that line up through walls. "Where am I?" tests it. If you already track rooms in Home Assistant (for example Bermuda), choose that sensor in the integration's options instead.
+**7. Instant toggle.** More → Instant: Off, 2 s, 3 s or 5 s (any delay from 1 to 10 s in Home Assistant). With it on, holding the aim locked on a device that long triggers it, no button or gesture needed; the circle counts down. It fires once per hold: look away and back to trigger the same device again. Locks still need a press.
+
+**8. Rooms.** More → Rooms lists your Home Assistant areas. Calibrate each room you point in: walk around it for three short Bluetooth scans. Paint devices afterwards, from inside each room: then the watch only considers devices painted in the room you're in, which keeps things apart that line up through walls. "Where am I?" tests it. If you already track rooms in Home Assistant (for example Bermuda), choose that sensor in the integration's options instead.
 
 **Managing things in Home Assistant.** Settings → Devices & services → Kestrel → Configure:
 - **Painted devices**: remove a bad paint (the newest spot) or all of a device's paints, or make a paint trigger a different entity.
 - **Rooms**: delete a room's calibration.
-- **Settings**: gesture on or off and its thresholds; **away mode** (while the chosen person isn't home, only the entities you allow work, so pointing at work doesn't switch things at home); where the current room comes from.
+- **Settings**: gesture on or off, which gesture and its thresholds; instant toggle and its delay; **away mode** (while the chosen person isn't home, only the entities you allow work, so pointing at work doesn't switch things at home); where the current room comes from.
 
 The watch picks changes up on its next Sync (it also syncs quietly each time the app starts). Paints, rooms and settings live in Home Assistant, so a reset or new watch gets them back on Sync.
 
@@ -58,10 +60,15 @@ The watch is offered every supported entity except hidden, disabled, and devices
 | Room | The room the watch last placed itself in (only updated while Kestrel is open). |
 | Gesture trigger (switch) | Turns the flick/snap/tap trigger on or off, for example from an automation while you work out. |
 | Gesture (select) | Which gesture triggers: wrist flick, finger snap or finger tap. Each keeps its own calibration, so switching is instant; a snap or tap that was never calibrated asks for calibration on the watch. |
-| Away mode (switch) | Turns away mode on or off; pick the person and the allowed entities under Configure. |
+| Instant toggle (switch), Instant toggle delay (number) | Trigger by holding the aim on a device, and for how long (1–10 s). |
+| Gesture gyro threshold, Gesture jolt threshold (numbers, disabled by default) | The current gesture's calibrated thresholds, to nudge if it triggers too easily (raise) or too hard (lower). |
+| Away mode (switch), Away mode follows (select) | Away mode on or off, and whose presence it follows. The entities allowed while away are chosen under Configure. |
+| Room from (select) | The watch's own Bluetooth room calibration, or a Home Assistant sensor (chosen under Configure). |
 | Last seen, Home Assistant address, Painted devices, Calibrated rooms | Diagnostics: when the watch last talked to Home Assistant, the address it used, and what it has set up. |
 
-The device's software version is the watch app's build. Switch changes reach the watch on its next sync.
+The device's software version is the watch app's build. Changes reach the watch on its next sync. Every setting is also under Configure; lists of entities (allowed while away, the room sensor) only there.
+
+**In the Zepp app** (store installs: sideloaded test builds get no settings page), the app's settings page shows the same settings (gesture, instant toggle, away mode, room source) and changes them in Home Assistant.
 
 If your phone can't find Home Assistant (another port, or a name other than `homeassistant.local`), choose **Type address** on the watch and enter its IP address, with `:port` if it isn't 80 or 8123.
 

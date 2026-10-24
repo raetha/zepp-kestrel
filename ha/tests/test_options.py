@@ -79,7 +79,10 @@ async def test_settings_with_two_watches(hass, setup_entry):
     result = await _step(hass, result, {"watch": second["id"]})
     assert result["type"] is FlowResultType.MENU
     result = await _step(hass, result, {"next_step_id": "settings"})
-    base = {"gesture_enabled": True, "gesture_kind": "snap", "gesture_gyro": 200, "away_block": True, "room_source": "sensor"}
+    base = {
+        "gesture_enabled": True, "gesture_kind": "snap", "gesture_gyro": 200, "away_block": True, "room_source": "sensor",
+        "dwell_enabled": True, "dwell_seconds": 4,
+    }
     result = await _step(hass, result, base)
     assert result["errors"] == {"away_person": "person_needed", "room_sensor": "sensor_needed"}
     result = await _step(
@@ -93,15 +96,16 @@ async def test_settings_with_two_watches(hass, setup_entry):
     assert s["gesture"] == {"enabled": True, "kind": "snap", "calibrations": {"flick": {"gyro": 200.0, "jolt": None}}}
     assert s["away"] == {"block": True, "person": "person.me", "allowed": ["input_boolean.test"]}
     assert s["room"] == {"source": "sensor", "sensor": "sensor.area"}
+    assert s["dwell"] == {"enabled": True, "seconds": 4.0}
 
 
 async def test_empty_thresholds_forget_the_current_gestures_calibration(hass, setup_entry):
     watch = await _watch(setup_entry, "Third")
     watches = setup_entry.runtime_data
-    await watches.async_update_gesture(watch["id"], {"kind": "snap", "calibrations": {"snap": {"jolt": 193}, "flick": {"gyro": 900}}})
+    await watches.async_update_settings(watch["id"], {"gesture": {"kind": "snap", "calibrations": {"snap": {"jolt": 193}, "flick": {"gyro": 900}}}})
     result = await _open(hass, setup_entry)  # one watch: straight to its menu
     result = await _step(hass, result, {"next_step_id": "settings"})
     assert result["description_placeholders"] == {"kind": "snap"}
-    result = await _step(hass, result, {"gesture_enabled": True, "gesture_kind": "snap", "away_block": False, "room_source": "watch"})
+    result = await _step(hass, result, {"gesture_enabled": True, "gesture_kind": "snap", "away_block": False, "room_source": "watch", "dwell_enabled": False, "dwell_seconds": 3})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert watches.synced(watch["id"])["settings"]["gesture"]["calibrations"] == {"flick": {"gyro": 900.0, "jolt": None}}

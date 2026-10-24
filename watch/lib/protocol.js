@@ -13,7 +13,7 @@ export const METHOD = {
   SYNC: 'kestrel.sync', // { only?, have? } -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room } (see ha-client sync)
   FIRE: 'kestrel.fire', // { seq, target, action, value, confirmed } -> { ok, state, needsConfirm, error }
   SAVE: 'kestrel.save', // { section: 'paints' | 'rooms', value } -> { ok, rev } after a change on the watch
-  SAVE_GESTURE: 'kestrel.saveGesture', // { gesture } -> { ok, rev, settings } after calibrating
+  SAVE_SETTINGS: 'kestrel.saveSettings', // { settings: { group: {...} } } -> { ok, rev, settings } after a change on the watch
   ROOM: 'kestrel.room', // -> { room: { id, name } | null } from a Home Assistant sensor, if configured
 }
 

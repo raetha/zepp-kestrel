@@ -14,8 +14,8 @@ export const areas = () => read('kestrel.areas', [])
 export const saveAreas = (list) => write('kestrel.areas', list)
 
 // ---------------------------------------------------------------- sync state
-/** { watchId, targetsHash, targetsTotal, paintsRev, paintsDirty, roomsRev, roomsDirty, settingsRev, gestureDirty } */
-const META_DEFAULTS = { watchId: null, targetsHash: null, targetsTotal: null, paintsRev: 0, paintsDirty: [], roomsRev: 0, roomsDirty: [], settingsRev: 0, gestureDirty: false }
+/** { watchId, targetsHash, targetsTotal, paintsRev, paintsDirty, roomsRev, roomsDirty, settingsRev, settingsDirty: [group] } */
+const META_DEFAULTS = { watchId: null, targetsHash: null, targetsTotal: null, paintsRev: 0, paintsDirty: [], roomsRev: 0, roomsDirty: [], settingsRev: 0, settingsDirty: [] }
 export const syncMeta = () => ({ ...META_DEFAULTS, ...read('kestrel.sync', {}) })
 export const saveSyncMeta = (m) => write('kestrel.sync', { ...syncMeta(), ...m })
 /** Forget what was synced (paired with Home Assistant again). Local paints stay, as changes to send. */
@@ -69,6 +69,8 @@ export const DEFAULT_SETTINGS = {
   gesture: { enabled: true, kind: 'flick', calibrations: {} },
   away: { block: false, person: null, allowed: [] },
   room: { source: 'watch', sensor: null },
+  // instant toggle: trigger by holding the aim on a device this many seconds
+  dwell: { enabled: false, seconds: 3 },
 }
 
 /** Settings from Home Assistant (with defaults filled in). */
@@ -82,10 +84,13 @@ export const saveSettings = (s) => write('kestrel.settings', s)
 
 export const gesture = () => settings().gesture
 
-/** Change the gesture settings on the watch (calibration, on/off); sent to Home Assistant. */
-export function setGesture(values) {
+/** Change one settings group on the watch ('gesture', 'dwell'); sent to Home Assistant. */
+export function setSetting(group, values) {
   const s = settings()
-  s.gesture = { ...s.gesture, ...values }
+  s[group] = { ...s[group], ...values }
   saveSettings(s)
-  saveSyncMeta({ gestureDirty: true })
+  saveSyncMeta({ settingsDirty: markDirty(syncMeta().settingsDirty, group) })
 }
+
+/** Change the gesture settings on the watch (calibration, choice, on/off). */
+export const setGesture = (values) => setSetting('gesture', values)

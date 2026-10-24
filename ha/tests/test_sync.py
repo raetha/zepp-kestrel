@@ -61,9 +61,13 @@ async def test_paints_rooms_and_gesture_are_saved_per_watch(hass, setup_entry, h
     res = await client.post("/api/kestrel/rooms", headers=h1, json={"rooms": {"office": ROOM, "bad": {"fingerprint": 1}}})
     assert list((await res.json())["rooms"]) == ["office"]
 
-    res = await client.post("/api/kestrel/gesture", headers=h1, json={"gesture": {"kind": "snap", "calibrations": {"snap": {"gyro": 180, "jolt": 95.5}, "wave": {"gyro": 1}}, "enabled": "x"}})
+    gesture = {"kind": "snap", "calibrations": {"snap": {"gyro": 180, "jolt": 95.5}, "wave": {"gyro": 1}}, "enabled": "x"}
+    changes = {"gesture": gesture, "dwell": {"enabled": True, "seconds": 2.3}, "away": {"person": "light.x"}, "nonsense": {}}
+    res = await client.post("/api/kestrel/settings", headers=h1, json={"settings": changes})
     body = await res.json()
     assert body["settings"]["gesture"] == {"enabled": True, "kind": "snap", "calibrations": {"snap": {"gyro": 180, "jolt": 95.5}}}
+    assert body["settings"]["dwell"] == {"enabled": True, "seconds": 2.5}  # half seconds
+    assert body["settings"]["away"]["person"] is None  # only person entities
 
     # the other watch has its own
     res = await client.get("/api/kestrel/sync", headers={TOKEN_HEADER: two})
@@ -76,11 +80,24 @@ async def test_paints_rooms_and_gesture_are_saved_per_watch(hass, setup_entry, h
     body = await (await client.get("/api/kestrel/sync", headers=h1)).json()
     assert "light.desk" in body["paints"] and body["paints_rev"] == 1 and body["rooms_rev"] == 1 and body["settings_rev"] == 1
 
-    for path in ("/api/kestrel/paints", "/api/kestrel/rooms", "/api/kestrel/gesture"):
+    for path in ("/api/kestrel/paints", "/api/kestrel/rooms", "/api/kestrel/settings"):
         for bad in ([1], {"paints": [1]}, {}):
             assert (await client.post(path, headers=h1, json=bad)).status == HTTPStatus.BAD_REQUEST
         assert (await client.post(path, headers=h1, data="not json")).status == HTTPStatus.BAD_REQUEST
         assert (await client.post(path, headers={TOKEN_HEADER: "nope"}, json={})).status == HTTPStatus.UNAUTHORIZED
+
+
+async def test_cleaning_settings():
+    from custom_components.kestrel.watchdata import clean_settings
+
+    assert clean_settings([1]) == {}
+    assert clean_settings({"dwell": {"seconds": 99}, "room": {"source": "sensor", "sensor": "sensor.area"}}) == {
+        "dwell": {"seconds": 10.0},
+        "room": {"source": "sensor", "sensor": "sensor.area"},
+    }
+    away = clean_settings({"away": {"block": True, "person": "person.me", "allowed": ["light.a", 3, "nodot"]}})
+    assert away == {"away": {"block": True, "person": "person.me", "allowed": ["light.a"]}}
+    assert clean_settings({"room": {"sensor": "light.no"}}) == {"room": {"sensor": None}}
 
 
 async def test_cleaning_watch_data():

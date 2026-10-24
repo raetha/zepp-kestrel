@@ -28,7 +28,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import DOMAIN, NAME, SUPPORTED_DOMAINS
-from .watchdata import GESTURE_KINDS, ROOM_SOURCES, clean_thresholds, settings_of, thresholds
+from .watchdata import DWELL_SECONDS, GESTURE_KINDS, ROOM_SOURCES, clean_thresholds, settings_of, thresholds
 from .watches import Watches
 
 PAINT_ACTIONS = ("remove_last", "remove_all", "reassign")
@@ -155,7 +155,7 @@ class KestrelOptionsFlow(OptionsFlow):
 
     # ------------------------------------------------------------ settings
     async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Gesture trigger, away mode and room source."""
+        """Gesture trigger, instant toggle, away mode and room source."""
         assert self.watch_id is not None
         current = settings_of(self._watches.watches[self.watch_id])
         errors: dict[str, str] = {}
@@ -186,11 +186,12 @@ class KestrelOptionsFlow(OptionsFlow):
                         "allowed": user_input.get("away_allowed") or [],
                     },
                     "room": {"source": user_input["room_source"], "sensor": user_input.get("room_sensor")},
+                    "dwell": {"enabled": user_input["dwell_enabled"], "seconds": float(user_input["dwell_seconds"])},
                 }
                 await self._watches.async_save_settings(self.watch_id, settings)
                 return self._done()
 
-        g, away, room = current["gesture"], current["away"], current["room"]
+        g, away, room, dwell = current["gesture"], current["away"], current["room"], current["dwell"]
         th = thresholds(g) or {"gyro": None, "jolt": None}
         number = NumberSelector(NumberSelectorConfig(min=1, max=5000, step=1, mode=NumberSelectorMode.BOX))
         fields: dict[Any, Any] = {
@@ -198,6 +199,12 @@ class KestrelOptionsFlow(OptionsFlow):
             vol.Required("gesture_kind", default=g["kind"]): _select([(k, k) for k in GESTURE_KINDS], "gesture_kind"),
             vol.Optional("gesture_gyro", description={"suggested_value": th["gyro"]}): number,
             vol.Optional("gesture_jolt", description={"suggested_value": th["jolt"]}): number,
+            vol.Required("dwell_enabled", default=dwell["enabled"]): BooleanSelector(),
+            vol.Required("dwell_seconds", default=dwell["seconds"]): NumberSelector(
+                NumberSelectorConfig(
+                    min=DWELL_SECONDS[0], max=DWELL_SECONDS[1], step=0.5, unit_of_measurement="s", mode=NumberSelectorMode.SLIDER
+                )
+            ),
             vol.Required("away_block", default=away["block"]): BooleanSelector(),
             vol.Optional("away_person", description={"suggested_value": away["person"]}): EntitySelector(
                 EntitySelectorConfig(domain="person")

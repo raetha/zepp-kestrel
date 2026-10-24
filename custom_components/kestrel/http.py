@@ -13,7 +13,8 @@ token, sent as X-Kestrel-Token, which only works on these endpoints.
   GET  /api/kestrel/sync            watch token: targets, areas, settings, paints, rooms (with revisions); ?v=<app version>
   POST /api/kestrel/paints          watch token: the watch's paints after a change
   POST /api/kestrel/rooms           watch token: the watch's room fingerprints after calibrating
-  POST /api/kestrel/gesture         watch token: gesture calibration
+  POST /api/kestrel/settings        watch token: changed settings ({group: {field: value}}), from the watch or the
+                                      Zepp app's settings page
   GET  /api/kestrel/room            watch token: the current room from a sensor, if configured; ?here=<area id> reports
                                       the room the watch placed itself in
   POST /api/kestrel/fire            watch token: run an action on a target (away mode applies)
@@ -300,15 +301,16 @@ class RoomsView(_SectionView):
         return await watches.async_save_rooms(watch_id, value)
 
 
-class GestureView(_SectionView):
-    """The watch's gesture calibration. Other settings are changed in the integration's options."""
+class SettingsView(_SectionView):
+    """Changed settings, from the watch (gesture calibration and choice, instant toggle) or the
+    Zepp app's settings page. Each field is checked; the reply has all settings."""
 
-    url = "/api/kestrel/gesture"
-    name = "api:kestrel:gesture"
-    key = "gesture"
+    url = "/api/kestrel/settings"
+    name = "api:kestrel:settings"
+    key = "settings"
 
     async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
-        return await watches.async_update_gesture(watch_id, value)
+        return await watches.async_update_settings(watch_id, value)
 
     def result(self, synced: dict[str, Any]) -> dict[str, Any]:
         return {"settings": synced["settings"]}
@@ -419,7 +421,7 @@ VIEWS = (
     SyncView,
     PaintsView,
     RoomsView,
-    GestureView,
+    SettingsView,
     RoomView,
     FireView,
     ProbeView,

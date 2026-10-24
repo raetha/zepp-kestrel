@@ -11,6 +11,10 @@
 // Home Assistant sensor), only spots painted in that room (or before rooms
 // existed) count.
 //
+// Instant toggle (settings.dwell): holding the aim locked on a device for a
+// few seconds triggers it, with no button or gesture (lib/dwell.js). Locks
+// still need a press.
+//
 // The screen stays on while you're pointing: each time the arm is held out
 // (aiming or a device in mind) or something is triggered, the screen gets
 // another AWAKE_MS. Lowering the wrist lets it go off as usual.
@@ -27,7 +31,8 @@ import { setWakeUpRelaunch, setPageBrightTime, resetPageBrightTime } from '@zos/
 import { event as uiEvent } from '@zos/ui'
 import { text, setText, button, clear, circle, setColor, fit, ask, listenKeys, COLOR, SIZE } from './ui.js'
 import { startAim } from './aim.js'
-import { paintedDevices, paints, setPaint, gesture } from './store.js'
+import { paintedDevices, paints, setPaint, gesture, settings } from './store.js'
+import { Dwell } from '../lib/dwell.js'
 import { syncSoon } from './sync.js'
 import { detectRoom } from './room.js'
 import { stopScan } from './scan.js'
@@ -78,6 +83,9 @@ Page(
         this.roll = 0
         const g = gesture()
         this.gestureKind = g.kind
+        const dw = settings().dwell
+        this.dwell = dw.enabled ? new Dwell({ ms: dw.seconds * 1000 }) : null
+        this.dwellShown = null
         const th = gestureThresholds(g)
         this.detector = th ? new GestureDetector(th) : null
         this.needsCalibration = g.enabled && !th // e.g. snap chosen in Home Assistant but never calibrated
@@ -134,7 +142,8 @@ Page(
       },
 
       hint(state) {
-        if (this.needsCalibration && state === STATE.RESTING) return `Calibrate your ${this.gestureKind}: More → Gesture`
+        if (this.dwell && state === STATE.LOCKED) return 'Hold to trigger'
+        if (this.needsCalibration && !this.dwell && state === STATE.RESTING) return `Calibrate your ${this.gestureKind}: More → Gesture`
         if (state === STATE.RESTING) return 'Hold your arm out, still'
         if (state === STATE.AIMING) return 'Aiming…'
         const how = this.detector ? `Press or ${VERB[this.gestureKind] || 'gesture'}` : 'Press'
@@ -187,6 +196,7 @@ Page(
         })
         while (this.history.length && a.t - this.history[0].t > HISTORY_MS) this.history.shift()
         if (this.confirming) return
+        if (this.dwell && this.onDwell(a, r)) return
         const bestId = r.best ? r.best.id : null
         if (r.state === this.last.state && bestId === (this.last.best && this.last.best.id)) {
           this.last = r
@@ -195,8 +205,33 @@ Page(
         this.last = r
         setColor(this.ring, STATE_COLOR[r.state])
         setText(this.nameW, r.best ? fit(this.byId[r.best.id].name, 16) : '')
-        setText(this.hintW, a.calibrated ? this.hint(r.state) : 'Compass: turn the watch in a circle')
+        const hint = this.dwellShown !== null && this.dwellShown !== undefined ? `Hold… ${this.dwellShown}` : this.hint(r.state)
+        setText(this.hintW, a.calibrated ? hint : 'Compass: turn the watch in a circle')
         if (r.state === STATE.LOCKED) haptics.sent()
+      },
+
+      /** Instant toggle: count down while locked; returns true when it fired. */
+      onDwell(a, r) {
+        const lockedId = r.state === STATE.LOCKED && r.best ? r.best.id : null
+        const d = this.dwell.update(a.t, this.busy ? null : lockedId)
+        if (d.fire) {
+          this.dwellShown = null
+          if (domainOf(d.fire) === 'lock') {
+            setText(this.hintW, 'Locks need a press')
+            return false
+          }
+          this.last = r
+          this.trigger('dwell', d.fire, this.history[this.history.length - 1] || null)
+          return true
+        }
+        // show the countdown in whole seconds while holding
+        const left = d.id && d.progress > 0 ? Math.ceil((1 - d.progress) * this.dwell.o.ms / 1000) : null
+        if (left !== this.dwellShown) {
+          this.dwellShown = left
+          if (left !== null && domainOf(d.id) !== 'lock') setText(this.hintW, `Hold… ${left}`)
+          else if (left === null && this.last.state) setText(this.hintW, this.hint(this.last.state))
+        }
+        return false
       },
 
       // A gesture moves the arm, so act on what the aim had in mind just before it.
@@ -274,6 +309,7 @@ Page(
           at = this.history[this.history.length - 1] || null
         }
         this.clearCorrection()
+        if (this.dwell) this.dwell.triggered(id) // one trigger per hold, however it happened
         this.fire(id, false, { via, at, runnerUp: at ? at.runnerUp : null })
       },
 

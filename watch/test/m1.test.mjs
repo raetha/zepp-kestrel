@@ -231,7 +231,7 @@ test('corrections add small spots without pushing painted ones out', async () =>
   assert.equal(rank(devices, 104, 5)[0].id, 'light.b')
 })
 
-test('sync, section saves, gesture and room go to the component', async () => {
+test('sync, section saves, settings and room go to the component', async () => {
   const url = 'http://homeassistant.local'
   const store = memStore({ 'kestrel.pairing': JSON.stringify({ token: 'tok', urls: [url] }) })
   const fetch = fakeFetch({
@@ -242,7 +242,11 @@ test('sync, section saves, gesture and room go to the component', async () => {
       assert.deepEqual(JSON.parse(r.body), { paints: { 'light.a': [] } })
       return { status: 200, body: { ok: true, rev: 3 } }
     },
-    [`POST ${url}/api/kestrel/gesture`]: async () => ({ status: 200, body: { ok: true, rev: 4, settings: { gesture: { gyro: 500 } } } }),
+    [`POST ${url}/api/kestrel/settings`]: async (r) => {
+      assert.deepEqual(JSON.parse(r.body), { settings: { dwell: { enabled: true } } })
+      return { status: 200, body: { ok: true, rev: 4, settings: { dwell: { enabled: true, seconds: 3 } } } }
+    },
+    [`GET ${url}/api/kestrel/room?here=kitchen`]: async () => ({ status: 200, body: { room: null } }),
     [`GET ${url}/api/kestrel/room`]: async () => ({ status: 200, body: { room: { id: 'office', name: 'Office' } } }),
   })
   const ha = new HaClient({ fetch, store })
@@ -250,8 +254,9 @@ test('sync, section saves, gesture and room go to the component', async () => {
   assert.deepEqual(await ha.sync(['paints']), { paints: {}, paints_rev: 2 })
   assert.deepEqual(await ha.sync(null, { targets: 'abc', paints: 2 }), { paints_rev: 2 })
   assert.deepEqual(await ha.saveSection('paints', { 'light.a': [] }), { ok: true, rev: 3 })
-  assert.equal((await ha.saveGesture({ gyro: 500 })).settings.gesture.gyro, 500)
+  assert.equal((await ha.saveSettings({ dwell: { enabled: true } })).settings.dwell.seconds, 3)
   assert.deepEqual(await ha.room(), { id: 'office', name: 'Office' })
+  assert.equal(await ha.room('kitchen'), null) // reports where the watch is
 
   // direct mode: targets only, nothing kept in Home Assistant
   const direct = new HaClient({
@@ -260,6 +265,6 @@ test('sync, section saves, gesture and room go to the component', async () => {
   })
   assert.deepEqual(await direct.sync(), { targets: [] })
   assert.equal((await direct.saveSection('paints', {})).ok, false)
-  assert.equal((await direct.saveGesture({})).ok, false)
+  assert.equal((await direct.saveSettings({})).ok, false)
   assert.equal(await direct.room(), null)
 })
