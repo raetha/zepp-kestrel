@@ -65,7 +65,8 @@ export function setRoom(areaId, room) {
 
 // ---------------------------------------------------------------- settings
 export const DEFAULT_SETTINGS = {
-  gesture: { enabled: true, kind: 'flick', gyro: 600, jolt: null, calibrated: false },
+  // calibrations: { flick | snap | tap: { gyro, jolt } }; see gestureThresholds() in lib/gesture.js
+  gesture: { enabled: true, kind: 'flick', calibrations: {} },
   away: { block: false, person: null, allowed: [] },
   room: { source: 'watch', sensor: null },
 }

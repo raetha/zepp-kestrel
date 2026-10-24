@@ -1,10 +1,10 @@
 // The watch's storage: one small JSON file per key, in the app's data folder.
 //
-// Not LocalStorage: each page gets its own copy of LocalStorage and only
-// writes it back when that page closes. The home page stays open under every
-// other page, so what its sync saved (areas, targets) didn't reach Paint or
-// Rooms, and the app context's copy wiped page writes when the app closed.
-// Files are written at once and read fresh by every page.
+// Not LocalStorage: each page (and the app context) gets its own copy of
+// LocalStorage and writes it back later, so what Home's sync saved (areas,
+// targets) didn't reach Paint or Rooms, and the app context's copy wiped page
+// writes when the app closed. Files are written at once and read fresh by
+// every page.
 
 import { readFileSync, writeFileSync } from '@zos/fs'
 

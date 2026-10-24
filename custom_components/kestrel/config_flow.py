@@ -28,7 +28,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import DOMAIN, NAME, SUPPORTED_DOMAINS
-from .watchdata import GESTURE_KINDS, ROOM_SOURCES, settings_of
+from .watchdata import GESTURE_KINDS, ROOM_SOURCES, clean_thresholds, settings_of, thresholds
 from .watches import Watches
 
 PAINT_ACTIONS = ("remove_last", "remove_all", "reassign")
@@ -165,15 +165,20 @@ class KestrelOptionsFlow(OptionsFlow):
             if user_input["room_source"] == "sensor" and not user_input.get("room_sensor"):
                 errors["room_sensor"] = "sensor_needed"
             if not errors:
-                gyro = user_input.get("gesture_gyro")
-                jolt = user_input.get("gesture_jolt")
+                # the thresholds shown belong to the gesture chosen when the form opened
+                cals = dict(current["gesture"]["calibrations"])
+                edited = clean_thresholds(
+                    {"gyro": user_input.get("gesture_gyro"), "jolt": user_input.get("gesture_jolt")}
+                )
+                if edited:
+                    cals[current["gesture"]["kind"]] = edited
+                else:
+                    cals.pop(current["gesture"]["kind"], None)
                 settings = {
                     "gesture": {
-                        **current["gesture"],
                         "enabled": user_input["gesture_enabled"],
                         "kind": user_input["gesture_kind"],
-                        "gyro": float(gyro) if gyro else None,
-                        "jolt": float(jolt) if jolt else None,
+                        "calibrations": cals,
                     },
                     "away": {
                         "block": user_input["away_block"],
@@ -186,12 +191,13 @@ class KestrelOptionsFlow(OptionsFlow):
                 return self._done()
 
         g, away, room = current["gesture"], current["away"], current["room"]
+        th = thresholds(g) or {"gyro": None, "jolt": None}
         number = NumberSelector(NumberSelectorConfig(min=1, max=5000, step=1, mode=NumberSelectorMode.BOX))
         fields: dict[Any, Any] = {
             vol.Required("gesture_enabled", default=g["enabled"]): BooleanSelector(),
             vol.Required("gesture_kind", default=g["kind"]): _select([(k, k) for k in GESTURE_KINDS], "gesture_kind"),
-            vol.Optional("gesture_gyro", description={"suggested_value": g["gyro"]}): number,
-            vol.Optional("gesture_jolt", description={"suggested_value": g["jolt"]}): number,
+            vol.Optional("gesture_gyro", description={"suggested_value": th["gyro"]}): number,
+            vol.Optional("gesture_jolt", description={"suggested_value": th["jolt"]}): number,
             vol.Required("away_block", default=away["block"]): BooleanSelector(),
             vol.Optional("away_person", description={"suggested_value": away["person"]}): EntitySelector(
                 EntitySelectorConfig(domain="person")
@@ -204,4 +210,9 @@ class KestrelOptionsFlow(OptionsFlow):
                 EntitySelectorConfig(domain="sensor")
             ),
         }
-        return self.async_show_form(step_id="settings", data_schema=vol.Schema(fields), errors=errors)
+        return self.async_show_form(
+            step_id="settings",
+            data_schema=vol.Schema(fields),
+            errors=errors,
+            description_placeholders={"kind": g["kind"]},
+        )

@@ -1,5 +1,6 @@
 // The gesture trigger: pick a wrist flick, a finger snap or a finger tap,
-// calibrate it, or turn it off. Calibration records five gestures and a few
+// calibrate it, or turn it off. Each gesture keeps its own calibration, so
+// switching here or in Home Assistant (the watch's Gesture select) is instant. Calibration records five gestures and a few
 // seconds of ordinary aiming movement, then sets thresholds between them
 // (lib/gesture.js). The result goes to Home Assistant (settings, adjustable
 // in the integration's options) and, in full, with the probe results.
@@ -11,7 +12,7 @@ import { text, setText, button, setLabel, ask, listenKeys, COLOR, SIZE } from '.
 import { accel, gyro } from './sensors.js'
 import { gesture, setGesture } from './store.js'
 import { sync } from './sync.js'
-import { calibrateGesture, peakRate, peakJolt } from '../lib/gesture.js'
+import { calibrateGesture, peakRate, peakJolt, gestureThresholds } from '../lib/gesture.js'
 import { METHOD } from '../lib/protocol.js'
 import * as haptics from './haptics.js'
 
@@ -30,8 +31,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function describe(g) {
   if (!g.enabled) return `Gesture trigger is off.\n\nOn Point, press the select button or tap the circle instead.`
-  const t = [g.gyro ? `turn over ${g.gyro}°/s` : null, g.jolt ? `jolt over ${g.jolt}` : null].filter(Boolean).join(' or ')
-  return `${LABEL[g.kind] || g.kind}: ${g.calibrated ? 'calibrated' : 'standard setting'} (${t || 'no threshold'}).\n\nOn Point, aim, then ${HOW[g.kind] || 'do the gesture'} to trigger.`
+  const th = gestureThresholds(g)
+  const name = LABEL[g.kind] || g.kind
+  if (!th) return `${name} isn't calibrated yet: press Calibrate so the watch learns yours.`
+  const calibrated = !!(g.calibrations || {})[g.kind]
+  const t = [th.gyro ? `turn over ${th.gyro}°/s` : null, th.jolt ? `jolt over ${th.jolt}` : null].filter(Boolean).join(' or ')
+  return `${name}: ${calibrated ? 'calibrated' : 'standard setting'} (${t}).\n\nOn Point, aim, then ${HOW[g.kind] || 'do the gesture'} to trigger.`
 }
 
 Page(
@@ -68,8 +73,9 @@ Page(
       nextKind() {
         if (this.busy) return
         this.kind = KINDS[(KINDS.indexOf(this.kind) + 1) % KINDS.length]
-        setLabel(this.kindW, `Gesture: ${LABEL[this.kind]}`)
-        setText(this.bodyW, `Calibrate to use ${LABEL[this.kind].toLowerCase()}: it needs to learn yours.`)
+        setGesture({ kind: this.kind }) // its own calibration, if it has one, applies at once
+        this.push()
+        this.show()
       },
 
       toggle() {
@@ -131,7 +137,8 @@ Page(
 
           const c = calibrateGesture(peaks, movement)
           if (c.ok) {
-            setGesture({ enabled: true, kind, gyro: c.gyro, jolt: c.jolt, calibrated: true })
+            const calibrations = { ...(gesture().calibrations || {}), [kind]: { gyro: c.gyro, jolt: c.jolt } }
+            setGesture({ enabled: true, kind, calibrations })
             this.push()
           }
           const yours = `Yours: turn ${peaks.map((p) => p.gyro).join(', ')}°/s; jolt ${peaks.map((p) => p.jolt).join(', ')}\nAiming: turn ${movement.gyro}°/s, jolt ${movement.jolt}`

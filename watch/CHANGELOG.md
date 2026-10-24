@@ -25,6 +25,9 @@ All notable changes to the Kestrel watch app. The format is based on
 - The app syncs with Home Assistant each time it starts, fetching only what changed (usually almost nothing); Sync fetches everything. The device list is sent more compactly.
 - Larger, brighter text throughout, for reading at arm's length and in night mode.
 - More shows the Home Assistant address the phone is using.
+- Leaving a screen while it was still waiting for the phone could leave the app stuck (Home on "Checking…", every request hanging) until it was closed. Requests now always finish, and a stalled connection to the phone is retried.
+- A snap or tap no longer triggers twice: gestures are ignored for 3 seconds after a trigger and while the watch itself buzzes (its vibration looked like another snap).
+- Each gesture (flick, snap, tap) keeps its own calibration, so switching between them, on the watch or from Home Assistant, needs no recalibrating. Point says when the chosen gesture still needs calibrating.
 - Point keeps the screen on while you're pointing: every time your arm is held out, or something is triggered, the screen gets another 30 seconds. Lowering your wrist lets it go off as usual.
 - When the compass needs calibrating, Paint asks you to turn the watch in a circle (as the Compass app does) and waits, instead of recording a sweep that fails; Point says the same.
 - Tells Home Assistant its version, the room it placed itself in, and how each trigger happened, for the watch's sensors there.

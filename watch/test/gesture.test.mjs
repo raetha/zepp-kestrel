@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { peakRate, peakJolt, calibrateGesture, GestureDetector, candidateAt, LIMITS } from '../lib/gesture.js'
+import { peakRate, peakJolt, calibrateGesture, GestureDetector, candidateAt, gestureThresholds, LIMITS } from '../lib/gesture.js'
 
 // readings at 25 Hz (40 ms apart) from t0
 const gyroFeed = (det, t0, rates) => rates.map((r, i) => det.gyroUpdate(t0 + i * 40, r))
@@ -78,4 +78,27 @@ test('dimming: a quarter turn is the whole range, thumb up brightens', async () 
   assert.equal(dimStep(0, -170), 100) // clamped
   assert.equal(dimStep(0, -2), 0) // under half a step
   assert.equal(dimStep(170, -170), -20) // across the ±180 seam: 20 degrees thumb-down
+})
+
+test('quiet() mutes the detector: no second trigger from the watch buzzing', () => {
+  const d = new GestureDetector({ gyro: null, jolt: 100 })
+  const still = { x: 0, y: 0, z: 1000 }
+  const jolt = { x: 300, y: 0, z: 1000 }
+  d.accelUpdate(0, still)
+  assert.equal(d.accelUpdate(40, jolt), true) // the snap
+  d.quiet(40 + 3000) // cooldown after the trigger
+  d.accelUpdate(1500, still)
+  assert.equal(d.accelUpdate(1540, jolt), false) // the "done" buzz, 1.5 s later
+  d.accelUpdate(1580, still)
+  d.accelUpdate(3500, still)
+  assert.equal(d.accelUpdate(3540, jolt), true) // a real snap after the cooldown
+})
+
+test('gestureThresholds: each gesture keeps its own calibration', () => {
+  const cal = { flick: { gyro: 900, jolt: null }, snap: { gyro: null, jolt: 193 } }
+  assert.deepEqual(gestureThresholds({ enabled: true, kind: 'snap', calibrations: cal }), { gyro: null, jolt: 193 })
+  assert.deepEqual(gestureThresholds({ enabled: true, kind: 'flick', calibrations: cal }), { gyro: 900, jolt: null })
+  assert.equal(gestureThresholds({ enabled: true, kind: 'tap', calibrations: cal }), null) // not calibrated yet
+  assert.deepEqual(gestureThresholds({ enabled: true, kind: 'flick', calibrations: {} }), { gyro: 600, jolt: null })
+  assert.equal(gestureThresholds({ enabled: false, kind: 'snap', calibrations: cal }), null)
 })

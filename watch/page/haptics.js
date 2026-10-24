@@ -14,7 +14,22 @@ function v() {
   return vib
 }
 
+// Pages that detect gestures listen here: a buzz jolts the accelerometer.
+const listeners = new Set()
+/** fn(ms) is called with roughly how long each buzz lasts. Returns a function that stops listening. */
+export function onBuzz(fn) {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
+}
+
 function buzz(mode) {
+  for (const fn of listeners) {
+    try {
+      fn(mode === VIBRATOR_SCENE_DURATION ? 1200 : 500)
+    } catch (e) {
+      // a listener's problem
+    }
+  }
   try {
     const x = v()
     if (!x) return

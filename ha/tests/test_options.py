@@ -89,6 +89,19 @@ async def test_settings_with_two_watches(hass, setup_entry):
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     s = watches.synced(second["id"])["settings"]
-    assert s["gesture"] == {"enabled": True, "kind": "snap", "gyro": 200.0, "jolt": None, "calibrated": False}
+    # the thresholds were the current gesture's (flick); snap is chosen, still uncalibrated
+    assert s["gesture"] == {"enabled": True, "kind": "snap", "calibrations": {"flick": {"gyro": 200.0, "jolt": None}}}
     assert s["away"] == {"block": True, "person": "person.me", "allowed": ["input_boolean.test"]}
     assert s["room"] == {"source": "sensor", "sensor": "sensor.area"}
+
+
+async def test_empty_thresholds_forget_the_current_gestures_calibration(hass, setup_entry):
+    watch = await _watch(setup_entry, "Third")
+    watches = setup_entry.runtime_data
+    await watches.async_update_gesture(watch["id"], {"kind": "snap", "calibrations": {"snap": {"jolt": 193}, "flick": {"gyro": 900}}})
+    result = await _open(hass, setup_entry)  # one watch: straight to its menu
+    result = await _step(hass, result, {"next_step_id": "settings"})
+    assert result["description_placeholders"] == {"kind": "snap"}
+    result = await _step(hass, result, {"gesture_enabled": True, "gesture_kind": "snap", "away_block": False, "room_source": "watch"})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert watches.synced(watch["id"])["settings"]["gesture"]["calibrations"] == {"flick": {"gyro": 900.0, "jolt": None}}

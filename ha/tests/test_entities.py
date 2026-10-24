@@ -31,7 +31,7 @@ async def test_a_paired_watch_gets_its_entities(hass, setup_entry):
     ids = {e.unique_id for e in er.async_entries_for_device(reg, device.id)}
     assert ids == {
         f"{watch['id']}_{k}"
-        for k in ("last_triggered", "room", "last_seen", "address", "painted_devices", "calibrated_rooms", "gesture", "away_mode")
+        for k in ("last_triggered", "room", "last_seen", "address", "painted_devices", "calibrated_rooms", "gesture", "away_mode", "gesture_kind")
     }
     assert hass.states.get(_entity(hass, watch["id"], "painted_devices", "sensor")).state == "0"
     assert hass.states.get(_entity(hass, watch["id"], "last_triggered", "sensor")).state == "unknown"
@@ -127,3 +127,15 @@ async def test_unload_removes_the_entities(hass, setup_entry):
     assert await hass.config_entries.async_unload(setup_entry.entry_id)
     await hass.async_block_till_done()
     assert hass.states.get(entity_id).state == "unavailable"
+
+
+async def test_gesture_select_switches_between_calibrations(hass, setup_entry):
+    watch, _ = await _token(hass, setup_entry)
+    watches = setup_entry.runtime_data
+    await watches.async_update_gesture(watch["id"], {"calibrations": {"snap": {"jolt": 193}}})
+    select = _entity(hass, watch["id"], "gesture_kind", "select")
+    assert hass.states.get(select).state == "flick"
+    await hass.services.async_call("select", "select_option", {"entity_id": select, "option": "snap"}, blocking=True)
+    gesture = watches.synced(watch["id"])["settings"]["gesture"]
+    assert gesture["kind"] == "snap" and gesture["calibrations"]["snap"] == {"gyro": None, "jolt": 193.0}
+    assert hass.states.get(select).state == "snap"

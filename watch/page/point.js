@@ -32,7 +32,7 @@ import { syncSoon } from './sync.js'
 import { detectRoom } from './room.js'
 import { stopScan } from './scan.js'
 import { Aimer, STATE } from '../lib/classifier.js'
-import { GestureDetector, candidateAt } from '../lib/gesture.js'
+import { GestureDetector, candidateAt, gestureThresholds } from '../lib/gesture.js'
 import { correctionSpot, addCorrection } from '../lib/paint.js'
 import { spotsForRoom } from '../lib/rooms.js'
 import { dimStep } from '../lib/dim.js'
@@ -50,6 +50,7 @@ const HISTORY_MS = 4000 // aim kept for gestures, corrections and traces
 const CORRECT_MS = 5000 // how long "Not it?" stays up
 const HOLD_MS = 450 // holding the button or the circle this long starts dimming
 const ROOM_EVERY_MS = 45000 // check the room again this often while pointing
+const GESTURE_COOLDOWN_MS = 3000 // after a trigger, gestures are ignored this long (one gesture, one toggle)
 const AWAKE_MS = 30000 // screen time from the last aim or trigger
 const AWAKE_EVERY_MS = 5000 // renew it at most this often
 // Toggling these again undoes a wrong trigger. Scenes, scripts and buttons can't be undone.
@@ -77,7 +78,11 @@ Page(
         this.roll = 0
         const g = gesture()
         this.gestureKind = g.kind
-        this.detector = g.enabled && (g.gyro || g.jolt) ? new GestureDetector({ gyro: g.gyro, jolt: g.jolt }) : null
+        const th = gestureThresholds(g)
+        this.detector = th ? new GestureDetector(th) : null
+        this.needsCalibration = g.enabled && !th // e.g. snap chosen in Home Assistant but never calibrated
+        // the watch's own buzzes jolt the accelerometer like a snap or tap: ignore them
+        this.unbuzz = haptics.onBuzz((ms) => this.detector && this.detector.quiet(Date.now() + ms))
         // Raising the wrist again brings Point back. (By default Zepp OS closes
         // an app about 10 s after the screen goes off and wakes to the watch face.)
         try {
@@ -129,6 +134,7 @@ Page(
       },
 
       hint(state) {
+        if (this.needsCalibration && state === STATE.RESTING) return `Calibrate your ${this.gestureKind}: More → Gesture`
         if (state === STATE.RESTING) return 'Hold your arm out, still'
         if (state === STATE.AIMING) return 'Aiming…'
         const how = this.detector ? `Press or ${VERB[this.gestureKind] || 'gesture'}` : 'Press'
@@ -276,6 +282,8 @@ Page(
         const action = ctx.action || 'toggle'
         this.awakeAt = 0
         this.keepAwake()
+        // one gesture, one toggle: the arm settling and the buzzes that follow must not trigger again
+        if (this.detector) this.detector.quiet(Date.now() + GESTURE_COOLDOWN_MS)
         this.busy = true
         haptics.sent()
         setText(this.resultW, `${fit(d.name, 14)}${action === 'dim' ? ` ${ctx.value > 0 ? '+' : ''}${ctx.value}%` : ''}…`)
@@ -416,6 +424,7 @@ Page(
         stopScan()
         if (this.aim) this.aim.stop()
         this.unkeys && this.unkeys()
+        this.unbuzz && this.unbuzz()
         try {
           setWakeUpRelaunch({ relaunch: false })
           resetPageBrightTime()

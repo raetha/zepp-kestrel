@@ -97,9 +97,61 @@ export function fit(s, n = 18) {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s
 }
 
-/** page.request with a timeout, so a missing phone fails fast instead of hanging. */
+/**
+ * A request to the phone, with a timeout so a missing phone fails fast.
+ * A backup timer of the asking page's own makes sure it always settles
+ * (see unstickHandshake for why ZML's might not).
+ */
 export function ask(page, method, params, timeout = 6000) {
-  return page.request({ method, params }, { timeout })
+  unstickHandshake(page)
+  const req = page.request({ method, params }, { timeout })
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const backup = setTimeout(() => {
+      if (settled) return
+      settled = true
+      unstickHandshake(page)
+      reject(new Error('Phone not reachable'))
+    }, timeout + 1000)
+    const finish = (fn) => (v) => {
+      if (settled) return
+      settled = true
+      clearTimeout(backup)
+      fn(v)
+    }
+    req.then(finish(resolve), finish(reject))
+  })
+}
+
+// ZML greets the phone (a "shake") before requests, and gives up after 5 s
+// with a timer. Zepp OS cancels a page's timers when the page closes, so
+// leaving a page while the phone hadn't answered yet left the handshake
+// pending forever, and every later request, on any page, waited behind it
+// (seen on the emulator: Home stuck on "Checking…"). A handshake still
+// pending well past its own limit lost its timer: mark it failed so the next
+// request starts a fresh one.
+const SHAKE_STUCK_MS = 5500 // ZML's handshake gives up after 5 s
+function unstickHandshake(page) {
+  const m = page.globalData && page.globalData.messaging
+  const tr = m && m.transport
+  if (!tr || typeof tr.fork !== 'function') return
+  if (!tr.kestrelWatched) {
+    const fork = tr.fork.bind(tr)
+    tr.fork = (ms) => {
+      if (tr.shakeStatus !== 2) tr.kestrelShakeAt = Date.now() // a new handshake starts
+      return fork(ms)
+    }
+    tr.kestrelWatched = true
+  }
+  if (tr.shakeStatus === 2 && tr.kestrelShakeAt && Date.now() - tr.kestrelShakeAt > SHAKE_STUCK_MS) {
+    note('handshake', 'reset')
+    tr.shakeStatus = 4
+    try {
+      if (tr.shakeTask) tr.shakeTask.reject(new Error('handshake abandoned'))
+    } catch (e) {
+      // nothing waited on it
+    }
+  }
 }
 
 /**

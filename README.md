@@ -37,7 +37,7 @@ To test without your own devices nearby (at work, say), create a helper in Home 
 
 **5. Dim.** On a dimmable light, hold the select button (or a finger on the circle) and twist your wrist: thumb up brightens, thumb down dims, a quarter turn is the whole range. Let go to send it.
 
-**6. Gesture.** More → Gesture: choose wrist flick, finger snap or finger tap, then Calibrate: five gestures after the buzzes, then a few seconds of slowly pointing around. The watch learns thresholds that separate your gesture from aiming. It only counts while you're aiming at something.
+**6. Gesture.** More → Gesture: choose wrist flick, finger snap or finger tap, then Calibrate: five gestures after the buzzes, then a few seconds of slowly pointing around. The watch learns thresholds that separate your gesture from aiming, and keeps them per gesture, so you can switch later (on the watch or with the Gesture select in Home Assistant) without calibrating again. It only counts while you're aiming at something, and only once: gestures are ignored for 3 seconds after a trigger.
 
 **7. Rooms.** More → Rooms lists your Home Assistant areas. Calibrate each room you point in: walk around it for three short Bluetooth scans. Paint devices afterwards, from inside each room: then the watch only considers devices painted in the room you're in, which keeps things apart that line up through walls. "Where am I?" tests it. If you already track rooms in Home Assistant (for example Bermuda), choose that sensor in the integration's options instead.
 
@@ -57,6 +57,7 @@ The watch is offered every supported entity except hidden, disabled, and devices
 | Last triggered | The device the watch last triggered; attributes say how (button, tap, flick, snap, dim), from which room and when. Handy for automations along with the `kestrel_fired` event. |
 | Room | The room the watch last placed itself in (only updated while Kestrel is open). |
 | Gesture trigger (switch) | Turns the flick/snap/tap trigger on or off, for example from an automation while you work out. |
+| Gesture (select) | Which gesture triggers: wrist flick, finger snap or finger tap. Each keeps its own calibration, so switching is instant; a snap or tap that was never calibrated asks for calibration on the watch. |
 | Away mode (switch) | Turns away mode on or off; pick the person and the allowed entities under Configure. |
 | Last seen, Home Assistant address, Painted devices, Calibrated rooms | Diagnostics: when the watch last talked to Home Assistant, the address it used, and what it has set up. |
 

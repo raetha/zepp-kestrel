@@ -32,7 +32,7 @@ async def test_sync_returns_everything_with_revisions(hass, setup_entry, hass_cl
     assert body["targets"] == [{"id": "light.desk", "name": "Desk"}]  # compact: no empty fields
     assert body["paints"] == {} and body["rooms"] == {} and body["room"] is None
     assert body["paints_rev"] == 0 and body["settings_rev"] == 0 and body["rooms_rev"] == 0
-    assert body["settings"]["gesture"] == {"enabled": True, "kind": "flick", "gyro": 600, "jolt": None, "calibrated": False}
+    assert body["settings"]["gesture"] == {"enabled": True, "kind": "flick", "calibrations": {}}
     res = await client.get("/api/kestrel/sync", headers={TOKEN_HEADER: "nope"})
     assert res.status == HTTPStatus.UNAUTHORIZED
 
@@ -61,9 +61,9 @@ async def test_paints_rooms_and_gesture_are_saved_per_watch(hass, setup_entry, h
     res = await client.post("/api/kestrel/rooms", headers=h1, json={"rooms": {"office": ROOM, "bad": {"fingerprint": 1}}})
     assert list((await res.json())["rooms"]) == ["office"]
 
-    res = await client.post("/api/kestrel/gesture", headers=h1, json={"gesture": {"kind": "snap", "gyro": 180, "jolt": 95.5, "calibrated": True, "enabled": "x"}})
+    res = await client.post("/api/kestrel/gesture", headers=h1, json={"gesture": {"kind": "snap", "calibrations": {"snap": {"gyro": 180, "jolt": 95.5}, "wave": {"gyro": 1}}, "enabled": "x"}})
     body = await res.json()
-    assert body["settings"]["gesture"] == {"enabled": True, "kind": "snap", "gyro": 180, "jolt": 95.5, "calibrated": True}
+    assert body["settings"]["gesture"] == {"enabled": True, "kind": "snap", "calibrations": {"snap": {"gyro": 180, "jolt": 95.5}}}
 
     # the other watch has its own
     res = await client.get("/api/kestrel/sync", headers={TOKEN_HEADER: two})
@@ -84,7 +84,7 @@ async def test_paints_rooms_and_gesture_are_saved_per_watch(hass, setup_entry, h
 
 
 async def test_cleaning_watch_data():
-    assert clean_gesture({"gyro": -5, "jolt": "x", "kind": "wave"}) == {"gyro": None, "jolt": None}
+    assert clean_gesture({"calibrations": {"tap": {"gyro": -5, "jolt": "x"}}, "kind": "wave"}) == {"calibrations": {}}
     rooms = clean_rooms({"office": {"fingerprint": {"AA": [-60, 1], "BB": [1], "CC": ["a", 1]}}, 5: ROOM})
     assert rooms == {"office": {"name": "office", "fingerprint": {"AA": [-60.0, 1.0]}, "scans": 0, "at": 0}}
     assert clean_rooms({"x": {"fingerprint": {"BB": [1]}}}) == {}
@@ -180,3 +180,13 @@ async def test_sync_caps_the_device_list_and_says_so(hass, setup_entry, hass_cli
     body = await (await client.get("/api/kestrel/sync", headers={TOKEN_HEADER: token})).json()
     assert [t["id"] for t in body["targets"]] == ["light.a", "light.b"]
     assert body["targets_total"] == 3
+
+
+def test_thresholds_follow_the_chosen_gesture():
+    from custom_components.kestrel.watchdata import thresholds
+
+    cals = {"snap": {"gyro": None, "jolt": 193.0}}
+    assert thresholds({"kind": "snap", "calibrations": cals}) == {"gyro": None, "jolt": 193.0}
+    assert thresholds({"kind": "flick", "calibrations": cals}) == {"gyro": 600.0, "jolt": None}
+    assert thresholds({"kind": "tap", "calibrations": cals}) is None
+    assert clean_gesture({"calibrations": {"snap": "nonsense"}}) == {"calibrations": {}}

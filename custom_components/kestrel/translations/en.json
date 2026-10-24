@@ -54,12 +54,12 @@
       },
       "settings": {
         "title": "Settings",
-        "description": "Calibrating the gesture on the watch (More → Gesture) sets the thresholds; adjust them here if it triggers too easily (raise) or too hard (lower).",
+        "description": "Calibrating a gesture on the watch (More → Gesture) sets its thresholds; each gesture keeps its own. The thresholds below are for the current gesture ({kind}): raise them if it triggers too easily, lower them if it's too hard. Leave both empty to forget its calibration.",
         "data": {
           "gesture_enabled": "Gesture trigger",
           "gesture_kind": "Gesture",
-          "gesture_gyro": "Gyro threshold (°/s)",
-          "gesture_jolt": "Jolt threshold",
+          "gesture_gyro": "Gyro threshold (°/s) for the current gesture",
+          "gesture_jolt": "Jolt threshold for the current gesture",
           "away_block": "Away mode",
           "away_person": "Person",
           "away_allowed": "Allowed while away",
@@ -72,7 +72,8 @@
           "away_block": "While the person below isn't home, the watch can only trigger the entities allowed while away. This keeps a pointing arm at work from switching things at home.",
           "away_allowed": "Entities that work wherever you are.",
           "room_source": "The watch's own Bluetooth room calibration, or a sensor whose state is an area name (for example from Bermuda).",
-          "room_sensor": "A sensor whose state is the name of the area the watch (or you) is in."
+          "room_sensor": "A sensor whose state is the name of the area the watch (or you) is in.",
+          "gesture_kind": "Switches at once to that gesture's own calibration. Snaps and taps need calibrating on the watch first."
         }
       }
     },
@@ -157,6 +158,16 @@
       },
       "away_mode": {
         "name": "Away mode"
+      }
+    },
+    "select": {
+      "gesture": {
+        "name": "Gesture",
+        "state": {
+          "flick": "Wrist flick",
+          "snap": "Finger snap",
+          "tap": "Finger tap"
+        }
       }
     }
   }

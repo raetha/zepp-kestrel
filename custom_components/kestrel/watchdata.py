@@ -25,12 +25,15 @@ ROOMS_MAX = 50
 FINGERPRINT_MAX_DEVICES = 200
 
 GESTURE_KINDS = ("flick", "snap", "tap")
+FLICK_DEFAULT = {"gyro": 600.0, "jolt": None}  # same as the watch's lib/gesture.js
 ROOM_SOURCES = ("watch", "sensor")
 
 DEFAULT_SETTINGS: dict[str, Any] = {
-    # Gesture trigger. Thresholds come from calibration on the watch: gyro in
-    # deg/s, jolt in accelerometer units per sample; None = not used.
-    "gesture": {"enabled": True, "kind": "flick", "gyro": 600, "jolt": None, "calibrated": False},
+    # Gesture trigger. Each gesture keeps its own thresholds, from calibration
+    # on the watch: {kind: {gyro (deg/s), jolt (accelerometer units per sample)}},
+    # None = channel not used. Uncalibrated, a flick uses FLICK_DEFAULT; snaps
+    # and taps need calibrating first.
+    "gesture": {"enabled": True, "kind": "flick", "calibrations": {}},
     # Away mode: while `person` isn't home, only `allowed` entities can be triggered.
     "away": {"block": False, "person": None, "allowed": []},
     # Where the current room comes from: the watch's Bluetooth calibration, or
@@ -55,20 +58,37 @@ def settings_of(watch: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _threshold(value: Any) -> float | None:
+    return round(float(value), 1) if is_number(value) and 0 < value < 100000 else None
+
+
+def clean_thresholds(values: Any) -> dict[str, float | None] | None:
+    """{gyro, jolt} checked, or None if neither is usable."""
+    if not isinstance(values, dict):
+        return None
+    out = {key: _threshold(values.get(key)) for key in ("gyro", "jolt")}
+    return out if out["gyro"] or out["jolt"] else None
+
+
 def clean_gesture(values: dict[str, Any]) -> dict[str, Any]:
-    """Gesture settings sent by a watch (after calibration), checked."""
+    """Gesture settings sent by a watch (choice, on/off, calibrations), checked."""
     out: dict[str, Any] = {}
     if isinstance(values.get("enabled"), bool):
         out["enabled"] = values["enabled"]
     if values.get("kind") in GESTURE_KINDS:
         out["kind"] = values["kind"]
-    for key in ("gyro", "jolt"):
-        if key in values:
-            v = values[key]
-            out[key] = round(float(v), 1) if is_number(v) and 0 < v < 100000 else None
-    if isinstance(values.get("calibrated"), bool):
-        out["calibrated"] = values["calibrated"]
+    if isinstance(values.get("calibrations"), dict):
+        cals = {k: clean_thresholds(v) for k, v in values["calibrations"].items() if k in GESTURE_KINDS}
+        out["calibrations"] = {k: v for k, v in cals.items() if v}
     return out
+
+
+def thresholds(gesture: dict[str, Any]) -> dict[str, float | None] | None:
+    """The chosen gesture's thresholds (as the watch uses them), or None if it needs calibrating."""
+    cal = (gesture.get("calibrations") or {}).get(gesture.get("kind"))
+    if cal:
+        return cal
+    return dict(FLICK_DEFAULT) if gesture.get("kind") == "flick" else None
 
 
 def clean_paints(paints: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:

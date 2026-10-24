@@ -26,6 +26,6 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 - Devices offered to the watch include their area id, so the watch can list a room's devices.
 - Sync sends a watch only what changed since its last sync, and the device list in a compact form.
 - The device list leaves out devices' configuration and diagnostic entities (restart buttons, firmware switches and the like) and holds up to 1000 entities, up from 300; past that, the watch is told how many were left out.
-- Entities on each watch's device: Last triggered (with how, where and when), Room, Last seen, Home Assistant address, Painted devices and Calibrated rooms sensors, and Gesture trigger and Away mode switches. The device shows the watch app's version.
+- Entities on each watch's device: Last triggered (with how, where and when), Room, Last seen, Home Assistant address, Painted devices and Calibrated rooms sensors, and Gesture trigger and Away mode switches, and a Gesture select (flick, snap or tap; each keeps its own calibration). The device shows the watch app's version.
 - Diagnostics download (tokens redacted), for the integration or for one watch from its device page. It includes the watch's recent probe results.
 - Measurement results from the watch's Probes arrive as `kestrel_probe` events. The newest 500 are kept for the diagnostics download; unpairing a watch deletes its results.

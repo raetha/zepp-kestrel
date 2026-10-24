@@ -86,6 +86,23 @@ export const DETECTOR_DEFAULTS = {
   refractoryMs: 1200, // ignore the arm settling after a gesture
 }
 
+/** Until calibrated, a wrist flick uses this; snaps and taps need calibrating first. */
+export const FLICK_DEFAULT = { gyro: 600, jolt: null }
+
+/**
+ * The thresholds for the chosen gesture: settings.gesture is
+ * { enabled, kind, calibrations: { flick: {gyro, jolt}, snap: {...}, tap: {...} } }.
+ * Each gesture keeps its own calibration, so switching (on the watch or in
+ * Home Assistant) doesn't lose the others. Returns null when the gesture
+ * trigger is off or the chosen gesture isn't calibrated (and has no default).
+ */
+export function gestureThresholds(g) {
+  if (!g || !g.enabled) return null
+  const cal = (g.calibrations || {})[g.kind]
+  if (cal && (cal.gyro || cal.jolt)) return { gyro: cal.gyro || null, jolt: cal.jolt || null }
+  return g.kind === 'flick' ? { ...FLICK_DEFAULT } : null
+}
+
 /** Feed gyro and accelerometer readings in time order; each returns true once per gesture. */
 export class GestureDetector {
   constructor({ gyro = 600, jolt = null, ...opts } = {}) {
@@ -94,10 +111,21 @@ export class GestureDetector {
     this.jolt = jolt ? new Burst(jolt, this.o.lowRatio, this.o.maxBurstMs) : null
     this.prevA = null
     this.last = -Infinity
+    this.mutedUntil = -Infinity
     this.startedAt = null
   }
 
+  /**
+   * Ignore everything until time t: after a trigger (so one gesture can't
+   * toggle a device twice) and while the watch itself vibrates (a buzz jolts
+   * the accelerometer like a snap or tap does).
+   */
+  quiet(t) {
+    this.mutedUntil = Math.max(this.mutedUntil, t)
+  }
+
   _fire(t, burst) {
+    if (t < this.mutedUntil) return false
     if (t - this.last < this.o.refractoryMs) return false
     this.last = t
     this.startedAt = burst.start
