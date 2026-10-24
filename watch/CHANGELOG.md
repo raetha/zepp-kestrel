@@ -26,7 +26,7 @@ All notable changes to the WristWand watch app. The format is based on
 - Larger, brighter text throughout, for reading at arm's length and in night mode.
 - More shows the Home Assistant address the phone is using.
 - Point keeps the screen on while you're pointing: every time your arm is held out, or something is triggered, the screen gets another 30 seconds. Lowering your wrist lets it go off as usual.
-- When the compass needs calibrating, Paint asks for a few figure 8s with your wrist and waits, instead of recording a sweep that fails; Point says the same.
+- When the compass needs calibrating, Paint asks you to turn the watch in a circle (as the Compass app does) and waits, instead of recording a sweep that fails; Point says the same.
 - Tells Home Assistant its version, the room it placed itself in, and how each trigger happened, for the watch's sensors there.
 - When Home Assistant has more devices than it sends, Sync says so ("1000 of 1240 devices"); the `wristwand` label narrows the list.
 - Pairing again keeps the watch's paints and room calibrations and sends them to Home Assistant.

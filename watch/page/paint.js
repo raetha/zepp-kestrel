@@ -187,14 +187,15 @@ Page(
             })
             .catch(() => null)
         }
-        // An uncalibrated compass would waste the sweep: ask for a figure 8 and
-        // wait for it (the compass calibrates as the wrist moves), up to CALIBRATE_MS.
+        // An uncalibrated compass would waste the sweep (Zepp OS gives no heading
+        // until its own calibration is done; apps can't calibrate it themselves):
+        // ask for the Compass app's circling motion and wait, up to CALIBRATE_MS.
         await sleep(500)
         if (!this.alive) return
         if (!calibrated) {
           const until = Date.now() + CALIBRATE_MS
           while (!calibrated && Date.now() < until) {
-            setText(this.msgW, 'The compass needs calibrating.\n\nDraw a few slow figure 8s in the air with your wrist.')
+            setText(this.msgW, 'The compass needs calibrating.\n\nTurn the watch slowly in a circle a few times, as the Compass app asks.')
             await sleep(250)
             if (!this.alive) return
           }

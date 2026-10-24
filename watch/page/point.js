@@ -189,7 +189,7 @@ Page(
         this.last = r
         setColor(this.ring, STATE_COLOR[r.state])
         setText(this.nameW, r.best ? fit(this.byId[r.best.id].name, 16) : '')
-        setText(this.hintW, a.calibrated ? this.hint(r.state) : 'Compass: draw a figure 8 with your wrist')
+        setText(this.hintW, a.calibrated ? this.hint(r.state) : 'Compass: turn the watch in a circle')
         if (r.state === STATE.LOCKED) haptics.sent()
       },
 
