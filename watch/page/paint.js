@@ -17,6 +17,7 @@ import * as haptics from './haptics.js'
 
 const PER_PAGE = 4
 const PAINT_MS = 15000
+const CALIBRATE_MS = 30000 // how long Paint waits for the compass to calibrate
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 Page(
@@ -186,6 +187,19 @@ Page(
             })
             .catch(() => null)
         }
+        // An uncalibrated compass would waste the sweep: ask for a figure 8 and
+        // wait for it (the compass calibrates as the wrist moves), up to CALIBRATE_MS.
+        await sleep(500)
+        if (!this.alive) return
+        if (!calibrated) {
+          const until = Date.now() + CALIBRATE_MS
+          while (!calibrated && Date.now() < until) {
+            setText(this.msgW, 'The compass needs calibrating.\n\nDraw a few slow figure 8s in the air with your wrist.')
+            await sleep(250)
+            if (!this.alive) return
+          }
+          if (calibrated) haptics.done()
+        }
         for (let s = 3; s > 0; s--) {
           setText(this.msgW, `Point at it…\n\n${s}`)
           await sleep(800)
@@ -220,7 +234,7 @@ Page(
           setText(
             this.msgW,
             problem === 'few'
-              ? 'Too few compass readings. Calibrate the compass in the Compass app, then try again.'
+              ? 'Too few compass readings: the compass isn\'t calibrated. Open the Compass app and follow its prompt, then try again.'
               : `The compass was unsteady (±${Math.round(spot.headingSpread)}°). Sweep less widely, away from metal, and try again.`,
           )
         } else {

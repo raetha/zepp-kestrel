@@ -11,6 +11,10 @@
 // Home Assistant sensor), only spots painted in that room (or before rooms
 // existed) count.
 //
+// The screen stays on while you're pointing: each time the arm is held out
+// (aiming or a device in mind) or something is triggered, the screen gets
+// another AWAKE_MS. Lowering the wrist lets it go off as usual.
+//
 // After a trigger, "Not it?" offers the runner-up for a few seconds: choosing
 // it undoes the first action where that's possible, runs the right one, and
 // teaches the right device a small spot where you aimed (lib/paint.js).
@@ -19,7 +23,7 @@
 
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
-import { setWakeUpRelaunch } from '@zos/display'
+import { setWakeUpRelaunch, setPageBrightTime, resetPageBrightTime } from '@zos/display'
 import { event as uiEvent } from '@zos/ui'
 import { text, setText, button, clear, circle, setColor, fit, ask, listenKeys, COLOR, SIZE } from './ui.js'
 import { startAim } from './aim.js'
@@ -46,6 +50,8 @@ const HISTORY_MS = 4000 // aim kept for gestures, corrections and traces
 const CORRECT_MS = 5000 // how long "Not it?" stays up
 const HOLD_MS = 450 // holding the button or the circle this long starts dimming
 const ROOM_EVERY_MS = 45000 // check the room again this often while pointing
+const AWAKE_MS = 30000 // screen time from the last aim or trigger
+const AWAKE_EVERY_MS = 5000 // renew it at most this often
 // Toggling these again undoes a wrong trigger. Scenes, scripts and buttons can't be undone.
 const REVERSIBLE = ['light', 'switch', 'fan', 'input_boolean', 'media_player', 'cover']
 const VERB = { flick: 'flick', snap: 'snap', tap: 'tap' }
@@ -78,6 +84,20 @@ Page(
           setWakeUpRelaunch({ relaunch: true })
         } catch (e) {
           // older firmware
+        }
+        this.awakeAt = 0
+        this.keepAwake()
+      },
+
+      /** Give the screen another AWAKE_MS (called while aiming and on triggers). */
+      keepAwake() {
+        const now = Date.now()
+        if (now - this.awakeAt < AWAKE_EVERY_MS) return
+        this.awakeAt = now
+        try {
+          setPageBrightTime({ brightTime: AWAKE_MS })
+        } catch (e) {
+          // not critical
         }
       },
 
@@ -148,6 +168,7 @@ Page(
         this.roll = a.roll
         if (this.dim) return this.onDim(a)
         const r = this.aimer.update(a.t, a.ready, this.devices, a.heading, a.pitch)
+        if (r.state !== STATE.RESTING) this.keepAwake()
         this.history.push({
           t: a.t,
           heading: a.heading,
@@ -168,7 +189,7 @@ Page(
         this.last = r
         setColor(this.ring, STATE_COLOR[r.state])
         setText(this.nameW, r.best ? fit(this.byId[r.best.id].name, 16) : '')
-        setText(this.hintW, a.calibrated ? this.hint(r.state) : 'Calibrate the compass')
+        setText(this.hintW, a.calibrated ? this.hint(r.state) : 'Compass: draw a figure 8 with your wrist')
         if (r.state === STATE.LOCKED) haptics.sent()
       },
 
@@ -253,6 +274,8 @@ Page(
       fire(id, confirmed, ctx = {}) {
         const d = this.byId[id] || { name: id }
         const action = ctx.action || 'toggle'
+        this.awakeAt = 0
+        this.keepAwake()
         this.busy = true
         haptics.sent()
         setText(this.resultW, `${fit(d.name, 14)}${action === 'dim' ? ` ${ctx.value > 0 ? '+' : ''}${ctx.value}%` : ''}…`)
@@ -395,6 +418,7 @@ Page(
         this.unkeys && this.unkeys()
         try {
           setWakeUpRelaunch({ relaunch: false })
+          resetPageBrightTime()
         } catch (e) {
           // older firmware
         }
