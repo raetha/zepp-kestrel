@@ -12,6 +12,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -24,8 +25,12 @@ from .const import (
     PROBES_KEPT,
     PROBES_SAVE_DELAY,
     PROBES_STORAGE_KEY,
+    SEEN_EVERY,
+    SIGNAL_WATCH_ADDED,
+    STATUS_SAVE_DELAY,
     STORAGE_KEY,
     STORAGE_VERSION,
+    signal_watch_updated,
 )
 from .watchdata import PAINTS_MAX_SPOTS, SECTIONS, clean_gesture, clean_paints, clean_rooms, settings_of
 
@@ -124,6 +129,7 @@ class Watches:
         self.watches[watch_id] = watch
         await self._async_save()
         self._device(watch)
+        async_dispatcher_send(self.hass, SIGNAL_WATCH_ADDED, watch_id)
         return "ok", watch, token
 
     # ------------------------------------------------------------ paired watches
@@ -164,6 +170,7 @@ class Watches:
         w[section] = value
         w[f"{section}_rev"] = w.get(f"{section}_rev", 0) + 1
         await self._async_save()
+        async_dispatcher_send(self.hass, signal_watch_updated(watch_id))
         return w[f"{section}_rev"]
 
     async def async_save_paints(self, watch_id: str, paints: dict[str, Any]) -> int:
@@ -205,6 +212,33 @@ class Watches:
         rooms.pop(area_id, None)
         return await self._async_set(watch_id, "rooms", rooms)
 
+    # ------------------------------------------------------------ status (sensors)
+    def status(self, watch_id: str) -> dict[str, Any]:
+        """What a watch last reported: last_seen, address, app_version, room, last_fired."""
+        return self.watches.get(watch_id, {}).get("status", {})
+
+    def note_status(self, watch_id: str, **fields: Any) -> None:
+        """Record what a watch reported (None = not reported). Saved lazily; entities update.
+
+        "last seen" alone moves on at most every SEEN_EVERY seconds, so a burst of
+        requests doesn't flood the recorder.
+        """
+        watch = self.watches.get(watch_id)
+        if watch is None:
+            return
+        status = watch.setdefault("status", {})
+        changed = {k: v for k, v in fields.items() if v is not None and status.get(k) != v}
+        now = dt_util.utcnow()
+        last = dt_util.parse_datetime(status["last_seen"]) if status.get("last_seen") else None
+        if not changed and last is not None and (now - last).total_seconds() < SEEN_EVERY:
+            return
+        status.update(changed)
+        status["last_seen"] = now.isoformat()
+        if "app_version" in changed:
+            self._device(watch)
+        self.store.async_delay_save(lambda: {"watches": self.watches}, STATUS_SAVE_DELAY)
+        async_dispatcher_send(self.hass, signal_watch_updated(watch_id))
+
     # ------------------------------------------------------------ probe results
     def add_probe(self, watch: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
         """Keep a probe result (the newest PROBES_KEPT) and return the event data for it."""
@@ -228,6 +262,7 @@ class Watches:
             name=watch["name"],
             manufacturer="Amazfit",
             model="Zepp OS watch",
+            sw_version=watch.get("status", {}).get("app_version"),
         )
 
     def sync_devices(self) -> None:

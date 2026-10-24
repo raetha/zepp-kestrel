@@ -104,6 +104,8 @@ Page(
         const changed = (r.room && r.room.id) !== (this.room && this.room.id)
         this.room = r.room
         if (changed) this.applyRoom()
+        // tell Home Assistant (its Room sensor) when the watch placed itself somewhere new
+        if (changed && r.room && r.source === 'scan') ask(this, METHOD.ROOM, { here: r.room.id }, 8000).catch(() => null)
       },
 
       hint(state) {
@@ -255,7 +257,8 @@ Page(
         haptics.sent()
         setText(this.resultW, `${fit(d.name, 14)}${action === 'dim' ? ` ${ctx.value > 0 ? '+' : ''}${ctx.value}%` : ''}…`)
         const t0 = Date.now()
-        ask(this, METHOD.FIRE, { seq: nextSeq(), target: id, action, value: ctx.value, confirmed }, 10000)
+        const room = this.room ? this.room.id : null
+        ask(this, METHOD.FIRE, { seq: nextSeq(), target: id, action, value: ctx.value, confirmed, via: ctx.via, room }, 10000)
           .then((r) => {
             this.busy = false
             if (!this.alive) return

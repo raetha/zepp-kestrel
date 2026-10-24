@@ -107,5 +107,57 @@
         "sensor": "A Home Assistant sensor"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "last_triggered": {
+        "name": "Last triggered",
+        "state_attributes": {
+          "entity_id": {
+            "name": "Entity"
+          },
+          "action": {
+            "name": "Action"
+          },
+          "via": {
+            "name": "Triggered by"
+          },
+          "room": {
+            "name": "Room"
+          },
+          "at": {
+            "name": "Time"
+          }
+        }
+      },
+      "room": {
+        "name": "Room",
+        "state_attributes": {
+          "area_id": {
+            "name": "Area ID"
+          }
+        }
+      },
+      "last_seen": {
+        "name": "Last seen"
+      },
+      "address": {
+        "name": "Home Assistant address"
+      },
+      "painted_devices": {
+        "name": "Painted devices"
+      },
+      "calibrated_rooms": {
+        "name": "Calibrated rooms"
+      }
+    },
+    "switch": {
+      "gesture": {
+        "name": "Gesture trigger"
+      },
+      "away_mode": {
+        "name": "Away mode"
+      }
+    }
   }
 }

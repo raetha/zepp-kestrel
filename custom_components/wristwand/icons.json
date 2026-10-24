@@ -1,0 +1,15 @@
+{
+  "entity": {
+    "sensor": {
+      "last_triggered": { "default": "mdi:gesture-tap" },
+      "room": { "default": "mdi:floor-plan" },
+      "address": { "default": "mdi:web" },
+      "painted_devices": { "default": "mdi:target" },
+      "calibrated_rooms": { "default": "mdi:bluetooth" }
+    },
+    "switch": {
+      "gesture": { "default": "mdi:gesture" },
+      "away_mode": { "default": "mdi:home-export-outline" }
+    }
+  }
+}

@@ -266,11 +266,12 @@ export class HaClient {
    * says what the watch already has, so unchanged parts are left out.
    * -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room }
    */
-  async sync(only = null, have = null) {
+  async sync(only = null, have = null, version = null) {
     if (this.status().mode === 'component') {
       const q = []
       if (only) q.push(`only=${only.join(',')}`)
       if (have) q.push(`have=${Object.keys(have).map((k) => `${k}:${have[k]}`).join(',')}`)
+      if (version) q.push(`v=${encodeURIComponent(version)}`)
       return (await this.component(`/api/wristwand/sync${q.length ? `?${q.join('&')}` : ''}`)) || {}
     }
     return { targets: only ? undefined : await this.targets() }
@@ -291,18 +292,19 @@ export class HaClient {
   }
 
   /** The current room from a Home Assistant sensor, if one is configured. -> { id, name } | null */
-  async room() {
+  /** The room from a Home Assistant sensor; `here` reports the room the watch placed itself in. */
+  async room(here = null) {
     if (this.status().mode !== 'component') return null
-    const b = await this.component('/api/wristwand/room')
+    const b = await this.component(`/api/wristwand/room${here ? `?here=${encodeURIComponent(here)}` : ''}`)
     return (b && b.room) || null
   }
 
   /** Run an action on a target. Returns { ok, state, needsConfirm, error } */
-  async fire({ target, action = 'toggle', value, seq, confirmed = false }) {
+  async fire({ target, action = 'toggle', value, seq, confirmed = false, via, room }) {
     if (this.status().mode === 'component') {
       return this.component('/api/wristwand/fire', {
         method: 'POST',
-        body: { target, action, value, seq, confirmed },
+        body: { target, action, value, seq, confirmed, via, room },
       })
     }
     let current = null

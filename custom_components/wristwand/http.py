@@ -1,5 +1,8 @@
 """HTTP API used by the WristWand phone service.
 
+Every request a watch makes also updates what Home Assistant shows about it
+(last seen, the address it used; see sensor.py).
+
 Watches don't use Home Assistant user tokens. Pairing gives each watch its own
 token, sent as X-WristWand-Token, which only works on these endpoints.
 
@@ -7,11 +10,12 @@ token, sent as X-WristWand-Token, which only works on these endpoints.
   POST /api/wristwand/pair            no auth, rate limited: start pairing (HA shows a code)
   POST /api/wristwand/pair/confirm    no auth, limited attempts: code -> watch token
   GET  /api/wristwand/targets         watch token: what can be painted
-  GET  /api/wristwand/sync            watch token: targets, areas, settings, paints, rooms (with revisions)
+  GET  /api/wristwand/sync            watch token: targets, areas, settings, paints, rooms (with revisions); ?v=<app version>
   POST /api/wristwand/paints          watch token: the watch's paints after a change
   POST /api/wristwand/rooms           watch token: the watch's room fingerprints after calibrating
   POST /api/wristwand/gesture         watch token: gesture calibration
-  GET  /api/wristwand/room            watch token: the current room from a sensor, if configured
+  GET  /api/wristwand/room            watch token: the current room from a sensor, if configured; ?here=<area id> reports
+                                      the room the watch placed itself in
   POST /api/wristwand/fire            watch token: run an action on a target (away mode applies)
   POST /api/wristwand/probe           watch token: a measurement result -> wristwand_probe event
 """
@@ -29,8 +33,10 @@ from aiohttp import web
 from homeassistant.components import persistent_notification
 from homeassistant.components.http import KEY_HASS, HomeAssistantView
 from homeassistant.core import Context, HomeAssistant
+from homeassistant.helpers import area_registry as ar
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.network import NoURLAvailableError, get_url
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, SUPPORTED_DOMAINS, TOKEN_HEADER
 from .targets import MAX_TARGETS, list_targets, service_call
@@ -48,6 +54,12 @@ def _watches(hass: HomeAssistant) -> Watches | None:
 
 def _error(message: str, status: HTTPStatus) -> web.Response:
     return web.json_response({"message": message}, status=status)
+
+
+def _room(hass: HomeAssistant, area_id: Any) -> dict[str, str] | None:
+    """{id, name} of an area a watch reported, or None if there's no such area."""
+    area = ar.async_get(hass).async_get_area(str(area_id)) if area_id else None
+    return {"id": area.id, "name": area.name} if area else None
 
 
 def _notification_id(pairing_id: str) -> str:
@@ -80,6 +92,7 @@ class _WatchView(HomeAssistantView):
         watch = watches.by_token(request.headers.get(TOKEN_HEADER))
         if watch is None:
             return _error("Unknown watch: pair it again", HTTPStatus.UNAUTHORIZED)
+        watches.note_status(watch["id"], address=f"{request.scheme}://{request.host}")
         return hass, watches, watch
 
 
@@ -200,6 +213,9 @@ class SyncView(_WatchView):
         if isinstance(auth, web.Response):
             return auth
         hass, watches, watch = auth
+        version = request.query.get("v", "").strip()[:40]
+        if version:
+            watches.note_status(watch["id"], app_version=version)
         synced = watches.synced(watch["id"])
         have = dict(item.split(":", 1) for item in request.query.get("have", "").split(",") if ":" in item)
         only = [x for x in request.query.get("only", "").split(",") if x]
@@ -309,6 +325,9 @@ class RoomView(_WatchView):
         if isinstance(auth, web.Response):
             return auth
         hass, watches, watch = auth
+        here = _room(hass, request.query.get("here"))
+        if here:
+            watches.note_status(watch["id"], room=here)
         return web.json_response({"room": current_room(hass, watches.synced(watch["id"])["settings"])})
 
 
@@ -345,6 +364,20 @@ class FireView(_WatchView):
             await hass.services.async_call(domain, service, data, blocking=True, context=context)
         except HomeAssistantError as err:
             return web.json_response({"ok": False, "error": str(err)})
+        state = hass.states.get(target)
+        room = _room(hass, body.get("room"))
+        watches.note_status(
+            watch["id"],
+            room=room,
+            last_fired={
+                "entity_id": target,
+                "name": state.name if state else target,
+                "action": action,
+                "via": str(body.get("via") or "")[:16] or None,
+                "room": room["name"] if room else None,
+                "at": dt_util.utcnow().isoformat(),
+            },
+        )
         hass.bus.async_fire(
             EVENT_FIRED,
             {"watch_id": watch["id"], "watch_name": watch["name"], "target": target, "action": action},

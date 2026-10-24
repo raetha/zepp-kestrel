@@ -48,6 +48,18 @@ The watch picks changes up on its next Sync (it also syncs quietly each time the
 
 The watch is offered every supported entity except hidden, disabled, and devices' configuration or diagnostic entities, up to 1000 (Sync shows "1000 of N devices" when some are left out). To offer only some devices, add the label `wristwand` to those entities or devices in Home Assistant, then Sync on the watch. Each paired watch appears in Home Assistant as a device under the WristWand integration; delete the device to unpair it.
 
+**On each watch's device page** in Home Assistant:
+
+| Entity | What it shows |
+| --- | --- |
+| Last triggered | The device the watch last triggered; attributes say how (button, tap, flick, snap, dim), from which room and when. Handy for automations along with the `wristwand_fired` event. |
+| Room | The room the watch last placed itself in (only updated while WristWand is open). |
+| Gesture trigger (switch) | Turns the flick/snap/tap trigger on or off, for example from an automation while you work out. |
+| Away mode (switch) | Turns away mode on or off; pick the person and the allowed entities under Configure. |
+| Last seen, Home Assistant address, Painted devices, Calibrated rooms | Diagnostics: when the watch last talked to Home Assistant, the address it used, and what it has set up. |
+
+The device's software version is the watch app's build. Switch changes reach the watch on its next sync.
+
 If your phone can't find Home Assistant (another port, or a name other than `homeassistant.local`), choose **Type address** on the watch and enter its IP address, with `:port` if it isn't 80 or 8123.
 
 ### Running the M0 probes

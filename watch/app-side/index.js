@@ -68,7 +68,7 @@ AppSideService(
             this.ha.unpair()
             return { ok: true }
           case METHOD.SYNC:
-            return this.ha.sync(p.only || null, p.have || null)
+            return this.ha.sync(p.only || null, p.have || null, p.version || null)
           case METHOD.FIRE:
             // the watch may retry over Bluetooth; never run a command twice
             if (p.seq !== undefined && !dedupe.accept(p.seq)) return { ok: true, duplicate: true }
@@ -80,7 +80,7 @@ AppSideService(
           case METHOD.SAVE_GESTURE:
             return this.ha.saveGesture(p.gesture || {})
           case METHOD.ROOM:
-            return { room: await this.ha.room() }
+            return { room: await this.ha.room(p.here || null) }
 
           case METHOD.HA_PING:
             return this.haPing()

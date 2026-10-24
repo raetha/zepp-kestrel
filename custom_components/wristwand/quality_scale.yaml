@@ -9,7 +9,7 @@ rules:
     comment: No service actions; watches use the HTTP API, registered once in async_setup.
   appropriate-polling:
     status: exempt
-    comment: No polling; watches push requests.
+    comment: No polling: watches push requests, and entities update from them.
   brands:
     status: todo
     comment: Add brand images (home-assistant/brands or the custom integration brand folder) before the first release.
@@ -40,14 +40,13 @@ rules:
     status: todo
     comment: Document the wristwand_fired and wristwand_probe events (device triggers planned).
   entity-event-setup:
-    status: exempt
-    comment: No entities yet.
+    status: done
+    comment: Entities subscribe to dispatcher signals in async_added_to_hass, removed with async_on_remove.
   entity-unique-id:
-    status: exempt
-    comment: No entities yet.
+    status: done
+    comment: <watch id>_<key>.
   has-entity-name:
-    status: exempt
-    comment: No entities yet.
+    status: done
   runtime-data:
     status: done
   test-before-configure:
@@ -74,16 +73,16 @@ rules:
     status: exempt
     comment: The config flow has no fields.
   entity-unavailable:
-    status: exempt
-    comment: No entities yet.
+    status: done
+    comment: Unavailable once the watch is unpaired. A watch away from Home Assistant isn't unavailable: Last seen shows that.
   integration-owner:
     status: done
   log-when-unavailable:
     status: exempt
     comment: Nothing is polled; watches report their own connection problems.
   parallel-updates:
-    status: exempt
-    comment: No entity platforms.
+    status: done
+    comment: PARALLEL_UPDATES = 0: entities are pushed, and switches only change stored settings.
   reauthentication-flow:
     status: exempt
     comment: No credentials; a removed watch pairs again from the watch.
@@ -125,23 +124,22 @@ rules:
     status: done
     comment: Devices are added when a watch pairs.
   entity-category:
-    status: exempt
-    comment: No entities yet.
+    status: done
+    comment: Last seen, address and counts are diagnostic; the switches are configuration.
   entity-device-class:
-    status: exempt
-    comment: No entities yet.
+    status: done
+    comment: Last seen is a timestamp; the others have no fitting device class.
   entity-disabled-by-default:
     status: exempt
-    comment: No entities yet.
+    comment: None are noisy: Last seen moves on at most once a minute.
   entity-translations:
-    status: exempt
-    comment: No entities yet.
+    status: done
   exception-translations:
     status: exempt
     comment: No exceptions are raised to the user interface.
   icon-translations:
-    status: exempt
-    comment: No entities yet.
+    status: done
+    comment: icons.json.
   reconfiguration-flow:
     status: exempt
     comment: Nothing to reconfigure.

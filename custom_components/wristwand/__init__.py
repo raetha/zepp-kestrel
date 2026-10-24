@@ -3,12 +3,15 @@
 The integration gives watches a small API of their own (see http.py): pairing
 with a code shown in Home Assistant, the list of things they can point at, and
 running an action. Each paired watch is a device; deleting the device unpairs
-it. Every action fires a `wristwand_fired` event for automations.
+it. Every action fires a `wristwand_fired` event for automations. Each watch's
+device has sensors (last triggered, room, last seen...) and switches (gesture
+trigger, away mode).
 """
 
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.typing import ConfigType
@@ -21,6 +24,7 @@ from .watches import Watches
 type WristWandConfigEntry = ConfigEntry[Watches]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+PLATFORMS = [Platform.SENSOR, Platform.SWITCH]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -37,12 +41,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: WristWandConfigEntry) ->
     await watches.async_load()
     watches.sync_devices()
     entry.runtime_data = watches
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: WristWandConfigEntry) -> bool:
-    """Nothing to tear down: the API checks for a loaded entry on every request."""
-    return True
+    """Unload the entities; the API checks for a loaded entry on every request."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: WristWandConfigEntry) -> None:

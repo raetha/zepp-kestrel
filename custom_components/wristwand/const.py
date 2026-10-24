@@ -18,6 +18,16 @@ STORAGE_VERSION = 1
 PROBES_STORAGE_KEY = "wristwand.probes"  # recent probe results, for diagnostics downloads
 PROBES_KEPT = 500
 PROBES_SAVE_DELAY = 10  # seconds; probe results arrive in bursts
+STATUS_SAVE_DELAY = 30  # seconds; what watches report (last seen, room...) is saved lazily
+SEEN_EVERY = 60  # seconds; "last seen" moves on at most this often
+
+SIGNAL_WATCH_ADDED = f"{DOMAIN}_watch_added"  # a watch paired: add its entities
+
+
+def signal_watch_updated(watch_id: str) -> str:
+    """Dispatcher signal: a watch's status, settings, paints or rooms changed."""
+    return f"{DOMAIN}_watch_updated_{watch_id}"
+
 
 SUPPORTED_DOMAINS = (
     "light",
