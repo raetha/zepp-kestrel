@@ -164,6 +164,7 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 - **"Kestrel only works on your home network"** or **"Home Assistant not reachable"**: the phone must be on your home Wi-Fi (or a VPN into it). Kestrel never goes through Home Assistant Cloud.
 - **Pairing can't find Home Assistant**: your phone must be on the home Wi-Fi, with the Kestrel integration added. Choose Type address on the watch and enter Home Assistant's IP (and port, if not 80 or 8123). More shows the address in use once paired.
 - **Nothing locks on when pointing**: calibrate the compass (the Compass app, or turn the watch in a circle when asked, until the dots round the edge go green), then paint again from where you stand.
+- **Two devices get mixed up**: paint each of them from where you stand when you use them, sweeping only across the device itself (a narrow sweep is a precise paint). If Paint says they're too close from there, paint them from another spot as well. Use **Not it?** when it picks the wrong one: it teaches the watch where you aimed.
 - **Wrong device triggers**: use "Not it?" right after to correct it, or paint again from that spot.
 - **Something else**: Settings → Devices & services → Kestrel → your watch → ⋮ → Download diagnostics, and attach it to an issue.
 

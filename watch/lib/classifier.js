@@ -3,6 +3,14 @@
 // Each device has one or more spots (from painting). A spot scores the current
 // aim with a 2D Gaussian on (heading difference, pitch difference); a device's
 // score is its best spot. The state machine on top decides how sure we are.
+//
+// Two numbers per device: `score` (0..1, how well the aim fits that spot) decides
+// whether anything matches at all; `weight` (the Gaussian's density: the score
+// divided by the spot's width, times its room prior) decides which device wins and
+// by how much. Comparing plain scores let a widely swept spot claim most of the
+// space between it and a tight neighbour: on a real watch, a chandelier painted
+// with a 14° sweep beat an island light 18° away until the arm was within 5° of
+// the island, and the island never locked.
 
 import { angleDiff } from './circular.js'
 
@@ -16,6 +24,7 @@ export const STATE = {
 export const DEFAULTS = {
   minHeadingSigma: 6, // degrees: painted spreads are floored at these
   minPitchSigma: 5,
+  maxHeadingSigma: 15, // a wide sweep says how far the arm wandered, not how big the target is
   headingSigmaScale: 1.5, // widen the painted spread a little: aiming is looser than painting
   pitchSigmaScale: 1.5,
   candidateScore: 0.25, // best score needed to show a candidate
@@ -26,27 +35,39 @@ export const DEFAULTS = {
 
 /** Score 0..1 for one spot. */
 export function scoreSpot(spot, heading, pitch, o = DEFAULTS) {
-  const sh = Math.max(spot.headingSpread * o.headingSigmaScale, o.minHeadingSigma)
+  return fitSpot(spot, heading, pitch, o).score
+}
+
+/** { score 0..1, weight }: weight is the density, relative to the narrowest possible spot, times spot.prior. */
+export function fitSpot(spot, heading, pitch, o = DEFAULTS) {
+  const sh = Math.min(Math.max(spot.headingSpread * o.headingSigmaScale, o.minHeadingSigma), Math.max(o.maxHeadingSigma, o.minHeadingSigma))
   const sp = Math.max(spot.pitchSpread * o.pitchSigmaScale, o.minPitchSigma)
   const dh = angleDiff(heading, spot.heading) / sh
   const dp = (pitch - spot.pitch) / sp
-  return Math.exp(-0.5 * (dh * dh + dp * dp))
+  const score = Math.exp(-0.5 * (dh * dh + dp * dp))
+  const prior = typeof spot.prior === 'number' ? spot.prior : 1
+  return { score, weight: (score * prior * o.minHeadingSigma * o.minPitchSigma) / (sh * sp) }
 }
 
 /**
  * Rank devices for an aim.
  * @param devices [{ id, spots: [spot] }]
- * @returns [{ id, score }] best first (devices without spots are skipped)
+ * @returns [{ id, score, weight }] best (highest weight) first; devices without spots are skipped
  */
 export function rank(devices, heading, pitch, o = DEFAULTS) {
   const out = []
   for (const d of devices) {
     if (!d.spots || !d.spots.length) continue
-    let best = 0
-    for (const s of d.spots) best = Math.max(best, scoreSpot(s, heading, pitch, o))
-    out.push({ id: d.id, score: best })
+    let score = 0
+    let weight = 0
+    for (const s of d.spots) {
+      const f = fitSpot(s, heading, pitch, o)
+      score = Math.max(score, f.score)
+      weight = Math.max(weight, f.weight)
+    }
+    out.push({ id: d.id, score, weight })
   }
-  out.sort((a, b) => b.score - a.score)
+  out.sort((a, b) => b.weight - a.weight || b.score - a.score)
   return out
 }
 
@@ -78,7 +99,7 @@ export class Aimer {
       return { state: STATE.AIMING, best: null, runnerUp: null }
     }
     const decisive =
-      best.score >= this.o.lockScore && (!runnerUp || best.score >= runnerUp.score * this.o.lockMargin)
+      best.score >= this.o.lockScore && (!runnerUp || best.weight >= runnerUp.weight * this.o.lockMargin)
     if (decisive) {
       if (this.lockId !== best.id) {
         this.lockId = best.id

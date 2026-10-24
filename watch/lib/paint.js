@@ -2,8 +2,9 @@
 // "spot" (where the device is, seen from where the user stood), and keep a
 // device's spots in a bounded list.
 
-import { circularMean } from './circular.js'
+import { circularMean, angleDiff } from './circular.js'
 import { mean, stdev } from './stats.js'
+import { fitSpot, DEFAULTS as AIM } from './classifier.js'
 
 export const MAX_SPOTS = 6 // per device; oldest dropped first
 export const MIN_SAMPLES = 20 // a paint with fewer usable samples is rejected
@@ -71,4 +72,30 @@ export function addCorrection(spots, spot) {
   const painted = (spots || []).filter((s) => s.kind !== 'correction')
   const corrections = [...(spots || []).filter((s) => s.kind === 'correction'), spot].slice(-MAX_CORRECTIONS)
   return [...painted, ...corrections]
+}
+
+// Crowding: a new spot right next to another device's is hard to tell apart when
+// pointing (the lock needs a 2x lead). After painting, the watch says so, so you
+// can paint from where the two stand further apart, or aim more carefully.
+/**
+ * The other device that crowds `spot` most, or null if it stands clear.
+ * paints = { id: [spot] }; returns { id, headingGap, pitchGap } (degrees).
+ */
+export function crowdedBy(paints, id, spot, o = AIM) {
+  if (!spot) return null
+  const own = fitSpot(spot, spot.heading, spot.pitch, o).weight
+  let worst = null
+  for (const other of Object.keys(paints || {})) {
+    if (other === id) continue
+    for (const s of paints[other] || []) {
+      if (s.kind === 'correction') continue
+      // rooms are left out: in open-plan spaces the watch can't always tell which one it's in
+      const w = fitSpot(s, spot.heading, spot.pitch, o).weight
+      // aimed at the middle of the new spot, the other device must stay well behind
+      if (w * o.lockMargin * 1.5 > own && (!worst || w > worst.w)) {
+        worst = { id: other, w, headingGap: Math.round(Math.abs(angleDiff(s.heading, spot.heading))), pitchGap: Math.round(Math.abs(s.pitch - spot.pitch)) }
+      }
+    }
+  }
+  return worst && { id: worst.id, headingGap: worst.headingGap, pitchGap: worst.pitchGap }
 }

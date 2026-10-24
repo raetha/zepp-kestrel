@@ -28,7 +28,8 @@
 // results), so the classifier can be tuned on real data.
 
 import { BasePage } from '@zeppos/zml/base-page'
-import { tracked } from './trail.js'
+import { tracked, note } from './trail.js'
+import { batteryLevel } from './sensors.js'
 import { setWakeUpRelaunch, setPageBrightTime, resetPageBrightTime } from '@zos/display'
 import { event as uiEvent } from '@zos/ui'
 import { text, setText, button, clear, rect, setColor, setTextColor, fit, ask, listenKeys, tickRing, COLOR, SIZE } from './ui.js'
@@ -187,6 +188,7 @@ Page(
           onGyro: (t, dps) => this.detector && this.detector.gyroUpdate(t, dps) && this.onGesture(t),
           onAccel: (t, a) => this.detector && this.detector.accelUpdate(t, a) && this.onGesture(t),
         })
+        note('battery', { page: 'point', at: 'open', level: batteryLevel() }) // drain per minute of pointing (tools/replay.mjs)
         this.checkRoom()
         this.roomTimer = setInterval(() => this.checkRoom(), ROOM_EVERY_MS)
       },
@@ -531,6 +533,7 @@ Page(
         clearTimeout(this.holdTimer)
         clearTimeout(this.flashTimer)
         clearTimeout(this.ringTimer)
+        if (this.aim) note('battery', { page: 'point', at: 'close', level: batteryLevel() })
         clearInterval(this.roomTimer)
         stopScan()
         if (this.aim) this.aim.stop()

@@ -5,6 +5,7 @@ import {
   Accelerometer,
   Gyroscope,
   Compass,
+  Battery,
   FREQ_MODE_LOW,
   FREQ_MODE_NORMAL,
   FREQ_MODE_HIGH,
@@ -79,3 +80,13 @@ function compassReading(s) {
 }
 
 export const SENSORS = { accel, gyro, compass }
+
+/** Battery level in percent, or null if it can't be read. */
+export function batteryLevel() {
+  try {
+    const v = new Battery().getCurrent()
+    return Number.isFinite(v) ? v : null
+  } catch (e) {
+    return null
+  }
+}

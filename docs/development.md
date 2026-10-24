@@ -41,6 +41,10 @@ uv pip install --python .venv/bin/python -r ha/requirements_test.txt
 4. Run it on the emulator (below): open the screens you changed, look at screenshots, and check `tools/.emu/serial.log` for `Mini Program Error`.
 5. Push to `dev` and test on the watch from the test-build page.
 
+### Replaying diagnostics
+
+`node tools/replay.mjs <diagnostics.json>` (the integration's diagnostics download) runs the current `watch/lib` against what a real watch recorded: each room calibration scan against all rooms, rooms that sound alike, each paint and what crowds it, each trigger's aim trace through the Aimer (which device it would pick today, and its lead), and battery use per hour of pointing. Use it before and after changing the classifier or room matching; turn a case worth keeping into a test (`watch/test/m1.test.mjs` has one from a real kitchen).
+
 ## Dependencies
 
 Prefer a maintained library over our own code; write our own when nothing maintained fits. Pin exact versions (Dependabot proposes updates weekly). Everything bundled into the watch app runs in Zepp's QuickJS and counts against the package size, so check the bundled size too.

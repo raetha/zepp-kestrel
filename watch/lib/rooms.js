@@ -78,11 +78,45 @@ export function pickRoom(ranked, o = PICK) {
   return { id: best.id, name: best.name, score: Math.round(best.score * 100) / 100 }
 }
 
+// How much a spot painted in another room still counts, when the watch knows
+// which room it's in. Not zero: rooms that share a space (an open-plan kitchen
+// and dining room) sound alike to Bluetooth, so the room is sometimes wrong, and
+// from a doorway you may point into the next room. Halving is enough to settle
+// a tie between rooms (the lock needs a 2x lead), without hiding the other room.
+export const OTHER_ROOM_PRIOR = 0.5
+
 /**
- * The spots that apply in a room: those painted there, and those painted
- * before rooms were known (no room). Without a room, all spots apply.
+ * The spots as they apply in a room: those painted there and those painted
+ * before rooms were known count fully; others count less (OTHER_ROOM_PRIOR).
+ * Without a room, all count fully.
  */
-export function spotsForRoom(spots, roomId) {
+export function spotsForRoom(spots, roomId, otherPrior = OTHER_ROOM_PRIOR) {
   if (!roomId) return spots
-  return spots.filter((s) => !s.room || s.room === roomId)
+  return spots.map((s) => (!s.room || s.room === roomId ? s : { ...s, prior: otherPrior }))
+}
+
+/** A fingerprint read as if it were one scan. */
+function asScan(fingerprint) {
+  return Object.keys(fingerprint || {}).map((mac) => ({ mac, rssi: fingerprint[mac][0] }))
+}
+
+export const ALIKE_SCORE = 0.5 // rooms whose fingerprints match each other this well can't be told apart reliably
+
+/**
+ * The calibrated room that sounds most like `id` to Bluetooth, or null.
+ * Rooms that share a space (open-plan kitchen and dining room) often do; the
+ * watch then mostly can't say which of them it's in, and relies on aim alone.
+ * -> { id, name, score }
+ */
+export function soundsLike(rooms, id) {
+  const me = rooms && rooms[id]
+  if (!me || !me.fingerprint) return null
+  let best = null
+  for (const other of Object.keys(rooms)) {
+    if (other === id || !rooms[other].fingerprint) continue
+    // both ways: a small room inside a big one's range matches one way only
+    const score = Math.min(scoreRoom(rooms[other].fingerprint, asScan(me.fingerprint)), scoreRoom(me.fingerprint, asScan(rooms[other].fingerprint)))
+    if (score >= ALIKE_SCORE && (!best || score > best.score)) best = { id: other, name: rooms[other].name, score: Math.round(score * 100) / 100 }
+  }
+  return best
 }

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 
 import { makeSpot, addSpot, MAX_SPOTS } from '../lib/paint.js'
 import { scoreSpot, rank, Aimer, STATE } from '../lib/classifier.js'
+import { spotsForRoom } from '../lib/rooms.js'
+import { crowdedBy } from '../lib/paint.js'
 import { HaClient, normalizeUrl, expandAddress, DISCOVERY_CANDIDATES } from '../lib/ha-client.js'
 
 // ------------------------------------------------------------------ painting
@@ -73,6 +75,28 @@ test('Aimer does not lock when two devices are equally likely', () => {
   const twins = [lamp, { id: 'light.twin', spots: lamp.spots }]
   a.update(0, true, twins, 90, 0)
   assert.equal(a.update(1000, true, twins, 90, 0).state, STATE.CANDIDATE)
+})
+
+// Spots painted on a real watch from one corner of a kitchen: an island light,
+// swept tightly, and a dining-room chandelier 18° away, swept widely.
+const island = { id: 'light.island', spots: [{ heading: 277.6, headingSpread: 6.1, pitch: 24.3, pitchSpread: 0.6, room: 'kitchen' }] }
+const chandelier = { id: 'light.chandelier', spots: [{ heading: 295.9, headingSpread: 14.3, pitch: 20.9, pitchSpread: 0.7, room: 'dining' }] }
+
+test('a widely swept spot does not claim the space next to a tight one', () => {
+  // the boundary falls between the two, not 5° from the island
+  assert.equal(rank([island, chandelier], 284, 23)[0].id, 'light.island')
+  assert.equal(rank([island, chandelier], 290, 22)[0].id, 'light.chandelier')
+  // aimed at the island, it locks (it used to stay a candidate: plain scores 0.96 vs 0.67)
+  const a = new Aimer()
+  a.update(0, true, [island, chandelier], 278, 24)
+  assert.equal(a.update(400, true, [island, chandelier], 278, 24).state, STATE.LOCKED)
+})
+
+test('a spot from another room counts less but is not hidden', () => {
+  const inDining = [island, chandelier].map((d) => ({ ...d, spots: spotsForRoom(d.spots, 'dining') }))
+  // the room was wrong (or you point into the next room): the island still wins where it was painted
+  assert.equal(rank(inDining, 276, 24)[0].id, 'light.island')
+  assert.equal(rank(inDining, 286, 22)[0].id, 'light.chandelier')
 })
 
 // ------------------------------------------------------------------ HA client
@@ -237,4 +261,15 @@ test('sync, section saves, settings and room go to the component', async () => {
   assert.equal((await ha.saveSettings({ dwell: { enabled: true } })).settings.dwell.seconds, 3)
   assert.deepEqual(await ha.room(), { id: 'office', name: 'Office' })
   assert.equal(await ha.room('kitchen'), null) // reports where the watch is
+})
+
+test('painting next to another device says which one crowds it', () => {
+  const near = [{ heading: 288, headingSpread: 10, pitch: 22, pitchSpread: 1 }]
+  const far = [{ heading: 100, headingSpread: 5, pitch: 20, pitchSpread: 1 }]
+  const c = crowdedBy({ 'light.near': near, 'light.far': far }, 'light.island', island.spots[0])
+  assert.equal(c.id, 'light.near')
+  assert.equal(c.headingGap, 10)
+  // the chandelier, 18° away, stands clear now that wide spots don't claim the space between
+  assert.equal(crowdedBy({ 'light.chandelier': chandelier.spots, 'light.far': far }, 'light.island', island.spots[0]), null)
+  assert.equal(crowdedBy({ 'light.near': near }, 'light.island', null), null)
 })

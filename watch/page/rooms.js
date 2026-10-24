@@ -12,7 +12,7 @@ import { areas, rooms, setRoom, settings } from './store.js'
 import { syncSoon } from './sync.js'
 import { scanOnce, stopScan } from './scan.js'
 import { detectRoom } from './room.js'
-import { buildFingerprint } from '../lib/rooms.js'
+import { buildFingerprint, soundsLike } from '../lib/rooms.js'
 import { METHOD } from '../lib/protocol.js'
 import * as haptics from './haptics.js'
 
@@ -131,7 +131,13 @@ Page(
           } else {
             setRoom(area.id, { name: area.name, fingerprint, scans: SCANS, at: Date.now() })
             syncSoon((m, p, t) => ask(this, m, p, t), 'rooms')
-            setText(this.msgW, `${area.name} calibrated: ${n} steady devices.\n\nNow paint devices from here, so the watch knows they're in this room.`)
+            const alike = soundsLike(rooms(), area.id)
+            setText(
+              this.msgW,
+              alike
+                ? `${area.name} calibrated: ${n} steady devices.\n\nIt sounds a lot like ${fit(alike.name, 18)} to Bluetooth, so the watch often can't tell them apart. Aim does the work there.`
+                : `${area.name} calibrated: ${n} steady devices.\n\nNow paint devices from here, so the watch knows they're in this room.`,
+            )
           }
           ask(this, METHOD.PROBE_LOG, { test: 'room', at: Date.now(), area: area.id, name: area.name, devices: n, scans }, 15000).catch(() => null)
           this.add(button({ x: 140, w: 200, y: 394, h: 52, size: SIZE.body, label: 'Done', primary: true, onClick: () => this.list() }))

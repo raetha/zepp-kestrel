@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildFingerprint, scoreRoom, rankRooms, pickRoom, spotsForRoom } from '../lib/rooms.js'
+import { buildFingerprint, scoreRoom, rankRooms, pickRoom, spotsForRoom, soundsLike, OTHER_ROOM_PRIOR } from '../lib/rooms.js'
 
 const scan = (pairs) => pairs.map(([mac, rssi]) => ({ mac, rssi }))
 
@@ -42,8 +42,24 @@ test('no clear winner, no room', () => {
   assert.equal(pickRoom([{ id: 'a', name: 'A', score: 0.6 }, { id: 'b', name: 'B', score: 0.2 }]).id, 'a')
 })
 
-test('spots apply in their own room, and untagged ones everywhere', () => {
+test('spots count fully in their own room and untagged ones everywhere; other rooms count less', () => {
   const spots = [{ heading: 1, room: 'office' }, { heading: 2, room: 'kitchen' }, { heading: 3 }]
-  assert.deepEqual(spotsForRoom(spots, 'office').map((s) => s.heading), [1, 3])
-  assert.equal(spotsForRoom(spots, null).length, 3)
+  const inOffice = spotsForRoom(spots, 'office')
+  assert.deepEqual(inOffice.map((s) => s.heading), [1, 2, 3])
+  assert.deepEqual(inOffice.map((s) => s.prior), [undefined, OTHER_ROOM_PRIOR, undefined])
+  assert.equal(spots[1].prior, undefined) // the stored spot is left alone
+  assert.equal(spotsForRoom(spots, null), spots)
+})
+
+test('rooms sharing a space sound alike; separate ones do not', () => {
+  // an open-plan kitchen and dining room, calibrated on a real watch (addresses replaced)
+  const rooms = {
+    dining: { name: 'Dining', fingerprint: { A: [-67, 1], B: [-80, 0.67], C: [-81, 1], D: [-85, 1], E: [-86, 1], F: [-98, 0.67] } },
+    kitchen: { name: 'Kitchen', fingerprint: { A: [-76, 1], C: [-85, 1], D: [-88, 1], E: [-92, 0.67], G: [-93, 1], H: [-94, 1], B: [-98, 0.67], F: [-98, 0.67] } },
+    office: { name: 'Office', fingerprint: { X: [-60, 1], Y: [-70, 1], D: [-95, 0.67] } },
+  }
+  assert.equal(soundsLike(rooms, 'kitchen').id, 'dining')
+  assert.equal(soundsLike(rooms, 'dining').id, 'kitchen')
+  assert.equal(soundsLike(rooms, 'office'), null)
+  assert.equal(soundsLike(rooms, 'garage'), null)
 })

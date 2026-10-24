@@ -13,14 +13,14 @@ import { targetsInArea, areaChoices, ALL } from '../lib/areas.js'
 import { syncSoon } from './sync.js'
 import { detectRoom } from './room.js'
 import { stopScan } from './scan.js'
-import { makeSpot, addSpot, spotProblem, MAX_SPOTS } from '../lib/paint.js'
+import { makeSpot, addSpot, spotProblem, crowdedBy, MAX_SPOTS } from '../lib/paint.js'
 import * as haptics from './haptics.js'
 
 const PER_PAGE = 4
 const PAINT_MS = 15000
 const CALIBRATE_MS = 30000 // how long Paint waits for the compass to calibrate
 // background colours, the same as Point's: amber while recording, green saved, red failed
-const BG = { idle: 0x000000, recording: 0x4a3000, saved: 0x0d5a32, failed: 0x7a1c1c }
+const BG = { idle: 0x000000, recording: 0x4a3000, saved: 0x0d5a32, crowded: 0x4a3000, failed: 0x7a1c1c }
 const TICK = { off: 0x333333, on: COLOR.accent, done: 0x3ddc84 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -279,10 +279,15 @@ Page(
           setPaint(t.id, spots)
           syncSoon((m, p, tm) => ask(this, m, p, tm), 'paints')
           const n = spots.filter((x) => x.kind !== 'correction').length
-          setColor(this.bg, BG.saved)
+          const crowd = crowdedBy(paints(), t.id, spot)
+          const near = crowd && (targets().find((x) => x.id === crowd.id) || { name: crowd.id })
+          setColor(this.bg, crowd ? BG.crowded : BG.saved)
           setText(
             this.msgW,
-            `Saved${this.room ? ` in ${this.room.name}` : ''}: ${Math.round(spot.heading)}° ±${Math.round(spot.headingSpread)}, pitch ${Math.round(spot.pitch)}°.\n\nSpot ${n} of ${MAX_SPOTS}. Painting from another place you use it improves aim.`,
+            `Saved${this.room ? ` in ${this.room.name}` : ''}: ${Math.round(spot.heading)}° ±${Math.round(spot.headingSpread)}, pitch ${Math.round(spot.pitch)}°.\n` +
+              (crowd
+                ? `\nOnly ${crowd.headingGap}° from ${fit(near.name, 20)}: hard to tell apart from here. Paint again where they're further apart.`
+                : `\nSpot ${n} of ${MAX_SPOTS}. Painting from another place you use it improves aim.`),
           )
         }
         this.add(button({ x: 84, w: 148, y: 340, h: 58, label: 'Again', onClick: () => this.ready(t) }))

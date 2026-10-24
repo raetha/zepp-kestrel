@@ -8,6 +8,9 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Added
 
+- Paint warns when the new paint sits so close to another device's that pointing may not tell them apart, and suggests painting from where they stand further apart.
+- Room calibration says when a room sounds like another one to Bluetooth (common for open-plan spaces), where the watch relies on aim alone.
+- Point notes the battery level when it opens and closes (in the diagnostics), to measure battery use while pointing.
 - M0 measurement build: probes for sensor rates, snap/tap/flick recordings, compass tilt, Bluetooth scans per room, and watch → phone → Home Assistant latency.
 - Settings page in the Zepp app (store installs): the watch's settings and a list of probe results.
 - Pairing with Home Assistant (needs the Kestrel integration): the phone finds Home Assistant on the home Wi-Fi (`homeassistant.local` on port 80 or 8123; other addresses can be typed on the watch), Home Assistant shows a 6-digit code, and you type it on the watch. Kestrel works on your home network (or a VPN into it), never through Home Assistant Cloud.
@@ -44,6 +47,7 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Changed
 
+- Better at telling close devices apart. A device painted with a wide sweep no longer wins the space next to a tightly painted one (the watch now weighs how precisely each was painted), so both lock where you'd expect. Devices painted in another room still count, at half weight, instead of disappearing when the watch thinks it's in a different room (open-plan rooms often sound alike to Bluetooth).
 - Bigger text on Point (the device name is about twice the size) and big countdown numbers in Paint, for reading at arm's length. Paint's screen turns amber while recording, green when the paint is saved and red when it wasn't.
 - Fewer vibrations. Point buzzes once when it locks onto a device (not again while you stay on it) and once when the action is done or failed; no buzz when a command is sent, when dimming starts or at each 10% of dimming. Room calibration buzzes when it starts and when it's done, not at every scan, and gesture calibration dropped a buzz between steps.
 - Direct mode is gone: Kestrel needs its Home Assistant integration. The phone no longer stores a Home Assistant URL or long-lived token, and the settings page no longer asks for them.
