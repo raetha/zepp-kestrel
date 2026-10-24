@@ -20,6 +20,8 @@ All notable changes to the WristWand watch app. The format is based on
 - Rooms: More → Rooms calibrates each Home Assistant area by Bluetooth. Pointing then only considers devices painted in the room you're in. A Home Assistant room sensor (for example Bermuda) can be used instead.
 - Home Assistant holds the master copy of paints, rooms and settings: changes made in the integration's options (removing a bad paint, pointing a paint at another entity) reach the watch on Sync, and the app syncs quietly when it starts.
 - The BLE probe lists your Home Assistant areas.
+- Paint starts with the devices of the room you're in (from your room calibration or a Home Assistant sensor), or asks which room first, so you don't page through every device. The Room button switches rooms; All devices and No area are there too.
+- The home screen shows the build number, and Sync shows how many areas came from Home Assistant.
 - Corrections: after a trigger, "Not it?" offers the next most likely device for 5 seconds. Choosing it undoes the first where possible, toggles the right one, and teaches the watch where you aimed.
 - Each trigger sends a short record of the aim to Home Assistant (in the diagnostics download), to tune pointing.
 - More screen on Home: Gesture, Rooms, Probes and Unpair.

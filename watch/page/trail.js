@@ -3,6 +3,7 @@
 
 import { LocalStorage } from '@zos/storage'
 import { getDeviceInfo } from '@zos/device'
+import { getPackageInfo } from '@zos/app'
 import { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } from '@zos/interaction'
 import { append, splitPrevious, describeError } from '../lib/trail.js'
 
@@ -94,5 +95,15 @@ export function noteLaunch() {
   } catch (e) {
     device = { error: String((e && e.message) || e) }
   }
-  note('launch', { device, keys: { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } })
+  note('launch', { version: appVersion(), device, keys: { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } })
+}
+
+/** This build's version, e.g. "0.1.0-dev.187", or "" if the firmware won't say. */
+export function appVersion() {
+  try {
+    const v = getPackageInfo().version
+    return (v && (v.name || v)) || ''
+  } catch (e) {
+    return ''
+  }
 }

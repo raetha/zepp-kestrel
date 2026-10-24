@@ -108,8 +108,10 @@ async def test_targets_list_supported_entities_by_area(hass, setup_entry, hass_c
     by_id = {t["id"]: t for t in targets}
     assert set(by_id) == {"light.lamp", "switch.fan", "lock.door"}
     assert by_id["light.lamp"] == {
-        "id": "light.lamp", "name": "Lamp", "domain": "light", "area": "Living room", "dimmable": True, "confirm": False,
+        "id": "light.lamp", "name": "Lamp", "domain": "light", "area": "Living room", "area_id": area.id,
+        "dimmable": True, "confirm": False,
     }
+    assert by_id["switch.fan"]["area_id"] is None
     assert by_id["lock.door"]["confirm"] is True
     assert targets[0]["id"] == "light.lamp"  # areas first, unassigned last
 

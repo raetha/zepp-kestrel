@@ -19,5 +19,6 @@ All notable changes to the WristWand Home Assistant component. The format is bas
 - Away mode: while the chosen person isn't home, a watch can only trigger the entities you allow.
 - Can use a sensor whose state is an area (for example from Bermuda) as the watch's current room.
 - Dimming from the watch reports the light's new brightness.
+- Devices offered to the watch include their area id, so the watch can list a room's devices.
 - Diagnostics download (tokens redacted), for the integration or for one watch from its device page. It includes the watch's recent probe results.
 - Measurement results from the watch's Probes arrive as `wristwand_probe` events. The newest 500 are kept for the diagnostics download; unpairing a watch deletes its results.

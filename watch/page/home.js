@@ -2,7 +2,7 @@
 // Syncs quietly once per run, so changes made in Home Assistant arrive.
 
 import { BasePage } from '@zeppos/zml/base-page'
-import { tracked, previousRuns, forgetPreviousRuns, noteLaunch } from './trail.js'
+import { tracked, previousRuns, forgetPreviousRuns, noteLaunch, appVersion } from './trail.js'
 import { push } from '@zos/router'
 import { text, setText, setLabel, button, clear, ask, COLOR } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
@@ -38,6 +38,8 @@ Page(
 
       build() {
         text({ y: 34, h: 44, size: 32, value: 'WristWand' })
+        // the build, so it's clear which test build is running
+        text({ y: 438, h: 24, size: 15, color: COLOR.quiet, value: appVersion() })
         this.statusW = text({ y: 80, h: 30, size: 19, color: COLOR.quiet, value: 'Checking…' })
         ask(this, METHOD.STATUS, undefined, 5000)
           .then((st) => {
@@ -100,6 +102,7 @@ Page(
               return
             }
             const parts = [`${r.targets || 0} devices`]
+            if (r.areas !== undefined) parts.push(`${r.areas} areas`)
             if (r.paints !== undefined) parts.push(`${r.paints} painted`)
             if (r.rooms) parts.push(`${r.rooms} rooms`)
             setText(this.statusW, parts.join(' · '))

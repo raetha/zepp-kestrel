@@ -57,6 +57,7 @@ def list_targets(hass: HomeAssistant) -> list[dict[str, Any]]:
                     "name": state.name,
                     "domain": domain,
                     "area": area.name if area else None,
+                    "area_id": area.id if area else None,
                     "dimmable": domain == "light" and any(m != "onoff" for m in modes),
                     "confirm": domain in CONFIRM_DOMAINS,
                 },

@@ -4,6 +4,7 @@
 // section merges. In direct mode (no integration) only targets are synced.
 
 import { METHOD } from '../lib/protocol.js'
+import { note } from './trail.js'
 import { mergeSection } from '../lib/sync.js'
 import {
   saveTargets,
@@ -47,7 +48,12 @@ export async function sync(ask, only = null) {
     saveTargets(r.targets)
     out.targets = r.targets.length
   }
-  if (r.areas) saveAreas(r.areas)
+  if (r.areas) {
+    saveAreas(r.areas)
+    out.areas = r.areas.length
+  }
+  // what each sync brought, for the diagnostics (trail)
+  note('sync', { only, keys: Object.keys(r), targets: r.targets ? r.targets.length : null, areas: r.areas ? r.areas.length : null })
   if (r.settings) {
     // Home Assistant's settings win, except a gesture calibration still on its way
     const keep = syncMeta().gestureDirty ? { gesture: settings().gesture } : {}
