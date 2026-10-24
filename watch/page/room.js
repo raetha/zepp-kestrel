@@ -11,7 +11,7 @@ export const ROOM_SCAN_MS = 3000
 
 /**
  * @param ask (method, params, timeoutMs) => Promise
- * @returns { room: { id, name, score? } | null, source: 'sensor' | 'scan' | null, ranked }
+ * @returns { room: { id, name, score? } | null, source: 'sensor' | 'scan' | null, ranked, scan? }
  */
 export async function detectRoom(ask) {
   const s = settings()
@@ -24,5 +24,5 @@ export async function detectRoom(ask) {
   const scan = await scanOnce(ROOM_SCAN_MS)
   if (!scan) return { room: null, source: 'scan', ranked: [] }
   const ranked = rankRooms(known, scan)
-  return { room: pickRoom(ranked), source: 'scan', ranked: ranked.slice(0, 3).map((r) => ({ id: r.id, score: Math.round(r.score * 100) / 100 })) }
+  return { room: pickRoom(ranked), source: 'scan', scan, ranked: ranked.slice(0, 3).map((r) => ({ id: r.id, score: Math.round(r.score * 100) / 100 })) }
 }

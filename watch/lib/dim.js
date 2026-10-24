@@ -1,4 +1,4 @@
-// Dimming by twisting the wrist while holding the select button (or a finger
+// Dimming (and volume) by twisting the wrist while holding the select button (or a finger
 // on the circle): turning the thumb up brightens, down dims. Roll is the
 // wrist's turn about the forearm (lib/aim.js); turning the thumb up makes it
 // smaller (about -80 at thumb up on a Balance 3).
@@ -14,4 +14,16 @@ export function dimStep(roll0, roll) {
   const pct = (turn / DIM_DEGREES_FOR_FULL) * 100
   const stepped = Math.round(pct / DIM_STEP) * DIM_STEP
   return Math.max(-100, Math.min(100, stepped)) || 0
+}
+
+/**
+ * Volume change in percent for a twist: a quarter turn is `limit` (the most one
+ * twist may change it, set in Home Assistant, which enforces it too), steps of 5.
+ */
+export function volumeStep(roll0, roll, limit = 20) {
+  const max = Math.max(DIM_STEP, Math.min(100, limit || 20))
+  const turn = -angleDiff(roll, roll0)
+  const pct = (turn / DIM_DEGREES_FOR_FULL) * max
+  const stepped = Math.round(pct / DIM_STEP) * DIM_STEP
+  return Math.max(-max, Math.min(max, stepped)) || 0
 }

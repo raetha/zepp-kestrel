@@ -102,3 +102,12 @@ test('gestureThresholds: each gesture keeps its own calibration', () => {
   assert.deepEqual(gestureThresholds({ enabled: true, kind: 'flick', calibrations: {} }), { gyro: 600, jolt: null })
   assert.equal(gestureThresholds({ enabled: false, kind: 'snap', calibrations: cal }), null)
 })
+
+test('volume twist: a quarter turn is the per-twist limit, never more', async () => {
+  const { volumeStep } = await import('../lib/dim.js')
+  assert.equal(volumeStep(0, 0, 20), 0)
+  assert.equal(volumeStep(0, -45, 20), 10) // halfway up
+  assert.equal(volumeStep(0, -135, 20), 20) // past a quarter turn: still the limit
+  assert.equal(volumeStep(0, 90, 30), -30)
+  assert.equal(volumeStep(0, -90, undefined), 20)
+})

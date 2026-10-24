@@ -39,6 +39,15 @@ export function attitude(ax, ay, az, compassAngle = null) {
   return { pitch, roll, heading }
 }
 
+/** Degrees between two accelerometer readings' directions (how far gravity turned). */
+export function tiltBetween(a, b) {
+  const na = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z)
+  const nb = Math.sqrt(b.x * b.x + b.y * b.y + b.z * b.z)
+  if (!na || !nb) return 0
+  const cos = (a.x * b.x + a.y * b.y + a.z * b.z) / (na * nb)
+  return Math.acos(Math.max(-1, Math.min(1, cos))) * DEG
+}
+
 /** Magnitude of a 3-vector. */
 export function mag(x, y, z) {
   return Math.sqrt(x * x + y * y + z * z)

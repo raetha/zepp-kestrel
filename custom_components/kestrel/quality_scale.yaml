@@ -131,10 +131,10 @@ rules:
     comment: Devices are added when a watch pairs.
   entity-category:
     status: done
-    comment: Last seen, address and counts are diagnostic; switches, selects and numbers are configuration.
+    comment: Last seen, address, counts and the paint map are diagnostic; switches, selects and numbers are configuration.
   entity-device-class:
     status: done
-    comment: Last seen: timestamp; Instant toggle delay: duration. The rest have no fitting device class.
+    comment: Last seen: timestamp; Instant toggle delay: duration. The rest (volume limits are percentages) have no fitting device class.
   entity-disabled-by-default:
     status: done
     comment: The gesture threshold numbers (rarely needed) are disabled by default.

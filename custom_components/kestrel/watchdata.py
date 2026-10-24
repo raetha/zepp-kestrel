@@ -6,7 +6,8 @@ calibration) right away. Each section has a revision number that goes up on
 every change, so the watch can tell whether Home Assistant changed something
 (in the integration's options) since it last synced.
 
-  settings  gesture trigger, instant toggle, where the current room comes from
+  settings  gesture trigger, instant toggle, where the current room comes from,
+            what the app opens on, volume limits, learning from use
   paints    {entity_id: [spot]} where the user pointed at each device
   rooms     {area_id: {name, fingerprint: {mac: [rssi, seen]}, scans, at}}
 """
@@ -39,8 +40,17 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "room": {"source": "watch", "sensor": None},
     # Instant toggle: holding the aim on a device this many seconds triggers it.
     "dwell": {"enabled": False, "seconds": 3.0},
+    # Open straight on Point when the app starts (for launching it from the shortcut key).
+    "start": {"point": False},
+    # Twisting at a media player: the volume never goes above `max` percent by
+    # twisting (lowering always works), and one twist changes it by at most `step`.
+    "volume": {"max": 60, "step": 20},
+    # Learn from use: confirmed triggers refine paints, confident room checks refine rooms.
+    "learn": {"enabled": True},
 }
 DWELL_SECONDS = (1.0, 10.0)  # allowed range, in half seconds
+VOLUME_MAX = (10, 100)  # allowed range for the volume ceiling, percent, steps of 5
+VOLUME_STEP = (5, 50)  # allowed range for one twist, percent, steps of 5
 
 SECTIONS = ("settings", "paints", "rooms")
 
@@ -99,6 +109,16 @@ def clean_settings(values: Any) -> dict[str, dict[str, Any]]:
             low, high = DWELL_SECONDS
             dwell["seconds"] = round(min(max(float(d["seconds"]), low), high) * 2) / 2
         out["dwell"] = dwell
+    if isinstance(st := values.get("start"), dict) and isinstance(st.get("point"), bool):
+        out["start"] = {"point": st["point"]}
+    if isinstance(le := values.get("learn"), dict) and isinstance(le.get("enabled"), bool):
+        out["learn"] = {"enabled": le["enabled"]}
+    if isinstance(v := values.get("volume"), dict):
+        volume: dict[str, Any] = {}
+        for field, (low, high) in (("max", VOLUME_MAX), ("step", VOLUME_STEP)):
+            if is_number(v.get(field)):
+                volume[field] = int(round(min(max(float(v[field]), low), high) / 5) * 5)
+        out["volume"] = volume
     if isinstance(r := values.get("room"), dict):
         room: dict[str, Any] = {}
         if r.get("source") in ROOM_SOURCES:
@@ -118,13 +138,27 @@ def thresholds(gesture: dict[str, Any]) -> dict[str, float | None] | None:
     return dict(FLICK_DEFAULT) if gesture.get("kind") == "flick" else None
 
 
+SPOT_NUMBERS = ("heading", "headingSpread", "pitch", "pitchSpread", "n", "at", "uses")
+SPOT_KINDS = ("correction", "learned")
+
+
+def clean_spot(spot: dict[str, Any]) -> dict[str, Any]:
+    """One spot: its numbers, the room it was painted in, and its kind (painted spots have none)."""
+    out: dict[str, Any] = {k: spot[k] for k in SPOT_NUMBERS if is_number(spot.get(k))}
+    if isinstance(spot.get("room"), str):
+        out["room"] = spot["room"][:64]
+    if spot.get("kind") in SPOT_KINDS:
+        out["kind"] = spot["kind"]
+    return out
+
+
 def clean_paints(paints: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     """Paints sent by a watch: entity ids with usable spots, capped."""
     clean: dict[str, list[dict[str, Any]]] = {}
     for target, spots in list(paints.items())[:PAINTS_MAX_DEVICES]:
         if not isinstance(target, str) or "." not in target or not isinstance(spots, list):
             continue
-        kept = [s for s in spots if isinstance(s, dict) and is_number(s.get("heading")) and is_number(s.get("pitch"))]
+        kept = [clean_spot(s) for s in spots if isinstance(s, dict) and is_number(s.get("heading")) and is_number(s.get("pitch"))]
         if kept:
             clean[target[:255]] = kept[-PAINTS_MAX_SPOTS:]
     return clean

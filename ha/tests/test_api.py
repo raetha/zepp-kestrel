@@ -120,7 +120,7 @@ async def test_targets_list_supported_entities_by_area(hass, setup_entry, hass_c
     assert set(by_id) == {"light.lamp", "switch.fan", "lock.door"}  # no configuration entities
     assert by_id["light.lamp"] == {
         "id": "light.lamp", "name": "Lamp", "domain": "light", "area": "Living room", "area_id": area.id,
-        "dimmable": True, "confirm": False,
+        "dimmable": True, "volume": False, "confirm": False,
     }
     assert by_id["switch.fan"]["area_id"] is None
     assert by_id["lock.door"]["confirm"] is True

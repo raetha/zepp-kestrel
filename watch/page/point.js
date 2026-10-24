@@ -35,16 +35,17 @@ import { event as uiEvent } from '@zos/ui'
 import { text, setText, button, clear, rect, setColor, setTextColor, fit, ask, listenKeys, tickRing, COLOR, SIZE } from './ui.js'
 import { Circling } from '../lib/circling.js'
 import { startAim } from './aim.js'
-import { paintedDevices, paints, setPaint, gesture, settings } from './store.js'
+import { paintedDevices, paints, setPaint, gesture, settings, rooms, setRoom } from './store.js'
 import { Dwell } from '../lib/dwell.js'
-import { syncSoon } from './sync.js'
+import { syncSoon, sync, firstSyncOfRun } from './sync.js'
 import { detectRoom } from './room.js'
 import { stopScan } from './scan.js'
 import { Aimer, STATE } from '../lib/classifier.js'
 import { GestureDetector, candidateAt, gestureThresholds } from '../lib/gesture.js'
 import { correctionSpot, addCorrection } from '../lib/paint.js'
 import { spotsForRoom } from '../lib/rooms.js'
-import { dimStep } from '../lib/dim.js'
+import { dimStep, volumeStep } from '../lib/dim.js'
+import { learnSpot, clearMatch, adaptFingerprint, LEARN } from '../lib/learn.js'
 import { METHOD, nextSeq } from '../lib/protocol.js'
 import * as haptics from './haptics.js'
 
@@ -63,6 +64,7 @@ const FLASH_MS = 1200 // how long the done / failed colour stays
 const HISTORY_MS = 4000 // aim kept for gestures, corrections and traces
 const CORRECT_MS = 5000 // how long "Not it?" stays up
 const HOLD_MS = 450 // holding the button or the screen this long starts dimming
+const ROOM_LEARN_MS = 10 * 60000 // a room's fingerprint learns from at most one check this often
 const ROOM_EVERY_MS = 60000 // check the room again this often while pointing (a 3 s Bluetooth scan)
 const GESTURE_COOLDOWN_MS = 3000 // after a trigger, gestures are ignored this long (one gesture, one toggle)
 const AWAKE_MS = 30000 // screen time from the last aim or trigger
@@ -146,6 +148,7 @@ Page(
         const changed = (r.room && r.room.id) !== (this.room && this.room.id)
         this.room = r.room
         if (changed) this.applyRoom()
+        this.learnRoom(r)
         // tell Home Assistant (its Room sensor) when the watch placed itself somewhere new
         if (changed && r.room && r.source === 'scan') ask(this, METHOD.ROOM, { here: r.room.id }, 8000).catch(() => null)
       },
@@ -189,6 +192,12 @@ Page(
           onAccel: (t, a) => this.detector && this.detector.accelUpdate(t, a) && this.onGesture(t),
         })
         note('battery', { page: 'point', at: 'open', level: batteryLevel() }) // drain per minute of pointing (tools/replay.mjs)
+        // opened straight from launch (Open on Point): the quiet sync Home would have done
+        if (firstSyncOfRun()) {
+          sync((m, p, t) => ask(this, m, p, t), null, { full: false })
+            .then((r) => this.alive && r && r.ok && this.loadDevices())
+            .catch(() => null)
+        }
         this.checkRoom()
         this.roomTimer = setInterval(() => this.checkRoom(), ROOM_EVERY_MS)
       },
@@ -207,6 +216,7 @@ Page(
           state: r.state,
           best: r.best ? r.best.id : null,
           runnerUp: r.runnerUp ? r.runnerUp.id : null,
+          lead: r.best ? (r.runnerUp && r.runnerUp.weight ? Math.min(99, r.best.weight / r.runnerUp.weight) : 99) : 0,
         })
         while (this.history.length && a.t - this.history[0].t > HISTORY_MS) this.history.shift()
         if (this.confirming) return
@@ -223,7 +233,7 @@ Page(
         if (!this.flashing) this.look(r.state)
         setText(this.nameW, r.best ? fit(this.byId[r.best.id].name, 24) : '')
         const hint = this.dwellShown !== null && this.dwellShown !== undefined ? `Hold… ${this.dwellShown}` : this.hint(r.state)
-        setText(this.hintW, a.calibrated ? hint : 'Compass: turn the watch in a circle')
+        setText(this.hintW, a.calibrated ? hint : a.noCompass ? 'This watch has no compass' : 'Compass: turn the watch in a circle')
         // one buzz per device found: not again when the lock flickers off and back on the same device
         if (r.state === STATE.LOCKED && r.best && r.best.id !== this.buzzedFor) {
           this.buzzedFor = r.best.id
@@ -237,6 +247,7 @@ Page(
        * leans each way (lib/circling.js), then all go green, with one buzz, once it is.
        */
       calibration(a) {
+        if (a.noCompass) return
         if (!a.calibrated) {
           if (!this.ring) {
             this.ring = tickRing()
@@ -338,30 +349,40 @@ Page(
         const { state, best } = this.last
         if (!best || (state !== STATE.CANDIDATE && state !== STATE.LOCKED)) return
         const d = this.byId[best.id]
-        if (!d || !(d.dimmable || domainOf(d.id) === 'light')) return
+        if (!d) return
+        // twist: brightness for lights, volume for media players that take it
+        const kind = d.volume ? 'volume' : d.dimmable || domainOf(d.id) === 'light' ? 'light' : null
+        if (!kind) return
         const at = this.history[this.history.length - 1] || null
-        this.dim = { id: d.id, roll0: this.roll, step: 0, at } // the purple screen says it: no buzz
+        this.dim = { id: d.id, kind, roll0: this.roll, step: 0, at } // the purple screen says it: no buzz
         this.look('dim')
         setText(this.nameW, fit(d.name, 24))
-        setText(this.hintW, 'Twist: thumb up brighter')
+        setText(this.hintW, this.dimHint(0))
+      },
+
+      dimHint(step) {
+        const what = this.dim.kind === 'volume' ? 'volume' : ''
+        if (!step) return this.dim.kind === 'volume' ? 'Twist: thumb up louder' : 'Twist: thumb up brighter'
+        return `${step > 0 ? '+' : ''}${step}%${what ? ` ${what}` : ''}`
       },
 
       onDim(a) {
-        const step = dimStep(this.dim.roll0, a.roll)
+        // volume: a full twist is the per-twist limit set in Home Assistant, which also enforces it
+        const step = this.dim.kind === 'volume' ? volumeStep(this.dim.roll0, a.roll, settings().volume.step) : dimStep(this.dim.roll0, a.roll)
         if (step === this.dim.step) return
         this.dim.step = step
-        setText(this.hintW, step ? `${step > 0 ? '+' : ''}${step}%` : 'Twist: thumb up brighter')
+        setText(this.hintW, this.dimHint(step))
       },
 
       finishDim() {
-        const { id, step, at } = this.dim
+        const { id, step, at, kind } = this.dim
         this.dim = null
         this.justDimmed = true
         setTimeout(() => {
           this.justDimmed = false
         }, 600)
         this.last = { state: null, best: null, runnerUp: null }
-        if (step) this.fire(id, false, { via: 'dim', action: 'dim', value: step, at })
+        if (step) this.fire(id, false, { via: kind === 'volume' ? 'volume' : 'dim', action: kind === 'volume' ? 'volume' : 'dim', value: step, at })
         else setText(this.hintW, this.hint(STATE.RESTING))
       },
 
@@ -394,7 +415,7 @@ Page(
         if (this.detector) this.detector.quiet(Date.now() + GESTURE_COOLDOWN_MS)
         this.busy = true // no buzz here: one when it's done (or failed) is enough
         setText(this.nameW, fit(d.name, 24))
-        setText(this.resultW, action === 'dim' ? `${ctx.value > 0 ? '+' : ''}${ctx.value}%: sending…` : 'Sending…')
+        setText(this.resultW, action === 'dim' || action === 'volume' ? `${ctx.value > 0 ? '+' : ''}${ctx.value}%: sending…` : 'Sending…')
         const t0 = Date.now()
         const room = this.room ? this.room.id : null
         ask(this, METHOD.FIRE, { seq: nextSeq(), target: id, action, value: ctx.value, confirmed, via: ctx.via, room }, 10000)
@@ -405,9 +426,11 @@ Page(
             if (r && r.ok) {
               haptics.done()
               this.flash('done')
-              const shown = r.brightness !== undefined && r.state === 'on' ? `${r.brightness}%` : r.state || 'done'
+              let shown = r.brightness !== undefined && r.state === 'on' ? `${r.brightness}%` : r.state || 'done'
+              if (r.volume !== undefined) shown = `volume ${r.volume}%${r.limited ? ' (limit)' : ''}`
               setText(this.resultW, `${fit(d.name, 18)}: ${shown}`)
               if (ctx.runnerUp && ctx.runnerUp !== id && !ctx.correcting && action === 'toggle') this.offerCorrection(id, ctx)
+              if (action === 'toggle' && !ctx.correcting) this.learnLater(id, ctx)
             } else {
               haptics.failed()
               this.flash('failed')
@@ -422,6 +445,39 @@ Page(
             this.flash('failed')
             setText(this.resultW, 'Phone not reachable')
           })
+      },
+
+      // ------------------------------------------------------------ learning (lib/learn.js)
+      /**
+       * A trigger that locked decisively votes for where the device is, once the
+       * "Not it?" offer has passed without a correction.
+       */
+      learnLater(id, ctx) {
+        const at = ctx.at
+        if (!settings().learn.enabled || !at || at.best !== id || at.state !== STATE.LOCKED || !(at.lead >= LEARN.minLead)) return
+        clearTimeout(this.learnTimer)
+        const room = this.room ? this.room.id : null
+        this.learnTimer = setTimeout(() => {
+          if (!this.alive) return
+          const next = learnSpot(paints(), id, at, room)
+          if (!next) return
+          setPaint(id, next)
+          syncSoon((m, p, t) => ask(this, m, p, t), 'paints')
+          this.loadDevices()
+        }, CORRECT_MS + 500)
+      },
+
+      /** A room check that matched clearly nudges that room's fingerprint (at most every ROOM_LEARN_MS). */
+      learnRoom(r) {
+        if (!settings().learn.enabled || r.source !== 'scan' || !r.room || !r.scan || !clearMatch(r.ranked)) return
+        const now = Date.now()
+        this.roomLearnedAt = this.roomLearnedAt || {}
+        if (now - (this.roomLearnedAt[r.room.id] || 0) < ROOM_LEARN_MS) return
+        const known = rooms()[r.room.id]
+        if (!known || !known.fingerprint) return
+        this.roomLearnedAt[r.room.id] = now
+        setRoom(r.room.id, { ...known, fingerprint: adaptFingerprint(known.fingerprint, r.scan) })
+        syncSoon((m, p, t) => ask(this, m, p, t), 'rooms')
       },
 
       // ------------------------------------------------------------ corrections
@@ -450,6 +506,7 @@ Page(
       correct(wrongId, ctx) {
         const rightId = ctx.runnerUp
         this.clearCorrection()
+        clearTimeout(this.learnTimer) // the wrong device mustn't learn from this
         // undo the wrong one where a second toggle puts it back
         if (REVERSIBLE.includes(domainOf(wrongId))) {
           ask(this, METHOD.FIRE, { seq: nextSeq(), target: wrongId, action: 'toggle', confirmed: false }, 10000).catch(() => null)
@@ -533,6 +590,7 @@ Page(
         clearTimeout(this.holdTimer)
         clearTimeout(this.flashTimer)
         clearTimeout(this.ringTimer)
+        clearTimeout(this.learnTimer)
         if (this.aim) note('battery', { page: 'point', at: 'close', level: batteryLevel() })
         clearInterval(this.roomTimer)
         stopScan()

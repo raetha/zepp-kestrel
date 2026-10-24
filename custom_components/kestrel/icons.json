@@ -23,6 +23,12 @@
       },
       "instant_toggle": {
         "default": "mdi:timer-play-outline"
+      },
+      "open_on_point": {
+        "default": "mdi:target-account"
+      },
+      "learn": {
+        "default": "mdi:school-outline"
       }
     },
     "select": {
@@ -42,6 +48,17 @@
       },
       "gesture_jolt": {
         "default": "mdi:vibrate"
+      },
+      "volume_limit": {
+        "default": "mdi:volume-high"
+      },
+      "volume_step_limit": {
+        "default": "mdi:volume-plus"
+      }
+    },
+    "image": {
+      "paint_map": {
+        "default": "mdi:compass-rose"
       }
     }
   }

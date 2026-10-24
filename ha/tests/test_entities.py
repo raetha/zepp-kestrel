@@ -32,7 +32,8 @@ async def test_a_paired_watch_gets_its_entities(hass, setup_entry):
     assert ids == {
         f"{watch['id']}_{k}"
         for k in ("last_triggered", "room", "last_seen", "address", "painted_devices", "calibrated_rooms", "gesture", "gesture_kind",
-            "instant_toggle", "instant_toggle_delay", "gesture_gyro", "gesture_jolt", "room_source")
+            "instant_toggle", "instant_toggle_delay", "gesture_gyro", "gesture_jolt", "room_source",
+            "open_on_point", "learn", "volume_limit", "volume_step_limit", "paint_map")
     }
     assert hass.states.get(_entity(hass, watch["id"], "painted_devices", "sensor")).state == "0"
     assert hass.states.get(_entity(hass, watch["id"], "last_triggered", "sensor")).state == "unknown"

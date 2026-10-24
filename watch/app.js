@@ -6,7 +6,7 @@ import { BaseApp } from '@zeppos/zml/base-app'
 // (page/trail.js, noteLaunch).
 App(
   BaseApp({
-    globalData: { launched: false, synced: false },
+    globalData: { launched: false, synced: false, opened: false },
     onCreate() {},
     onDestroy() {},
   }),

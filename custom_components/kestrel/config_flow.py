@@ -32,7 +32,16 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import DOMAIN, NAME, SUPPORTED_DOMAINS
-from .watchdata import DWELL_SECONDS, GESTURE_KINDS, ROOM_SOURCES, clean_thresholds, settings_of, thresholds
+from .watchdata import (
+    DWELL_SECONDS,
+    GESTURE_KINDS,
+    ROOM_SOURCES,
+    VOLUME_MAX,
+    VOLUME_STEP,
+    clean_thresholds,
+    settings_of,
+    thresholds,
+)
 from .watches import Watches
 
 PAINT_ACTIONS = ("remove_last", "remove_all", "reassign")
@@ -60,6 +69,12 @@ def _schema(fields: dict[Any, Any]) -> Any:
     """A form schema. Typed loosely: Home Assistant 2026.10+ types forms with probatio, which
     voluptuous is an alias of there; older versions use voluptuous itself."""
     return vol.Schema(fields)
+
+
+def _percent(bounds: tuple[int, int]) -> NumberSelector:
+    return NumberSelector(
+        NumberSelectorConfig(min=bounds[0], max=bounds[1], step=5, unit_of_measurement="%", mode=NumberSelectorMode.SLIDER)
+    )
 
 
 def _select(options: list[tuple[str, str]], translation_key: str | None = None) -> SelectSelector:
@@ -221,11 +236,14 @@ class KestrelOptionsFlow(OptionsFlow):
                     },
                     "room": {"source": user_input["room_source"], "sensor": user_input.get("room_sensor")},
                     "dwell": {"enabled": user_input["dwell_enabled"], "seconds": float(user_input["dwell_seconds"])},
+                    "start": {"point": user_input["open_on_point"]},
+                    "learn": {"enabled": user_input["learn"]},
+                    "volume": {"max": int(user_input["volume_max"]), "step": int(user_input["volume_step"])},
                 }
                 await self._watches.async_save_settings(self.watch_id, settings)
                 return self._done()
 
-        g, room, dwell = current["gesture"], current["room"], current["dwell"]
+        g, room, dwell, volume = current["gesture"], current["room"], current["dwell"], current["volume"]
         th = thresholds(g) or {"gyro": None, "jolt": None}
         number = NumberSelector(NumberSelectorConfig(min=1, max=5000, step=1, mode=NumberSelectorMode.BOX))
         fields: dict[Any, Any] = {
@@ -239,6 +257,10 @@ class KestrelOptionsFlow(OptionsFlow):
                     min=DWELL_SECONDS[0], max=DWELL_SECONDS[1], step=0.5, unit_of_measurement="s", mode=NumberSelectorMode.SLIDER
                 )
             ),
+            vol.Required("open_on_point", default=current["start"]["point"]): BooleanSelector(),
+            vol.Required("learn", default=current["learn"]["enabled"]): BooleanSelector(),
+            vol.Required("volume_max", default=volume["max"]): _percent(VOLUME_MAX),
+            vol.Required("volume_step", default=volume["step"]): _percent(VOLUME_STEP),
             vol.Required("room_source", default=room["source"]): _select([(s, s) for s in ROOM_SOURCES], "room_source"),
             vol.Optional("room_sensor", description={"suggested_value": room["sensor"]}): EntitySelector(
                 EntitySelectorConfig(domain="sensor")

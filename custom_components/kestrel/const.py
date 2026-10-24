@@ -43,7 +43,11 @@ SUPPORTED_DOMAINS = (
     "scene",
     "script",
     "button",
+    "input_button",
     "input_boolean",
 )
+# Run, not toggle: these make good "virtual spots" (point at the sofa: movie scene).
+ACTION_DOMAINS = ("scene", "script", "button", "input_button")
+VOLUME_MIN_INTERVAL = 1.0  # seconds between two volume twists from one watch
 # Domains where a gesture alone never acts: the watch must send confirmed=true.
 CONFIRM_DOMAINS = ("lock",)

@@ -17,6 +17,8 @@ const ROOM_SOURCES = [
   { name: 'Home Assistant sensor', value: 'sensor' },
 ]
 const DWELL_SECONDS = [1, 1.5, 2, 2.5, 3, 4, 5, 7, 10].map((v) => ({ name: `${v} s`, value: v }))
+const VOLUME_MAX = [20, 30, 40, 50, 60, 70, 80, 100].map((v) => ({ name: `${v}%`, value: v }))
+const VOLUME_STEP = [5, 10, 15, 20, 30, 50].map((v) => ({ name: `${v}%`, value: v }))
 
 function readSettings(storage) {
   try {
@@ -41,6 +43,7 @@ function watchSettings(s) {
   const g = cur.gesture || {}
   const d = cur.dwell || {}
   const r = cur.room || {}
+  const v = cur.volume || { max: 60, step: 20 }
   return Section({ title: 'Watch settings' }, [
     Toggle({ label: 'Gesture trigger', value: !!g.enabled, onChange: (v) => change(s, 'gesture', 'enabled', v) }),
     Select({ label: 'Gesture', options: GESTURES, value: g.kind, onChange: (v) => change(s, 'gesture', 'kind', v) }),
@@ -50,7 +53,19 @@ function watchSettings(s) {
       onChange: (v) => change(s, 'dwell', 'enabled', v),
     }),
     Select({ label: 'Hold for', options: DWELL_SECONDS, value: d.seconds, onChange: (v) => change(s, 'dwell', 'seconds', Number(v)) }),
-    Select({ label: 'Current room from', options: ROOM_SOURCES, value: r.source, onChange: (v) => change(s, 'room', 'source', v) }),
+    Select({ label: 'Current room from', options: ROOM_SOURCES, value: r.source, onChange: (x) => change(s, 'room', 'source', x) }),
+    Toggle({
+      label: 'Open on Point (for the shortcut key)',
+      value: !!(cur.start && cur.start.point),
+      onChange: (x) => change(s, 'start', 'point', x),
+    }),
+    Toggle({
+      label: 'Learn from use',
+      value: !cur.learn || cur.learn.enabled !== false,
+      onChange: (x) => change(s, 'learn', 'enabled', x),
+    }),
+    Select({ label: 'Volume limit (twisting never goes above)', options: VOLUME_MAX, value: v.max, onChange: (x) => change(s, 'volume', 'max', Number(x)) }),
+    Select({ label: 'Volume change per twist', options: VOLUME_STEP, value: v.step, onChange: (x) => change(s, 'volume', 'step', Number(x)) }),
     row([Text({}, [s.getItem(EDIT_RESULT_KEY) || 'Gesture thresholds and the room sensor: Home Assistant → Kestrel → Configure.'])]),
   ])
 }

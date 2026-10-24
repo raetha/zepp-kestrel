@@ -6,23 +6,12 @@ import { tracked, previousRuns, forgetPreviousRuns, noteLaunch, appVersion } fro
 import { push } from '@zos/router'
 import { text, setText, setLabel, button, clear, ask, COLOR, SIZE } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
-import { targets, paintedDevices } from './store.js'
-import { sync } from './sync.js'
+import { targets, paintedDevices, settings } from './store.js'
+import { sync, firstSyncOfRun, firstOpenOfRun } from './sync.js'
 
 // Before the page's own 'open' entry, so a run's trail starts with its launch.
 noteLaunch()
 
-/** True on the first home visit of this run (the app's globalData lives for the run). */
-function firstVisit() {
-  try {
-    const g = getApp()._options.globalData
-    if (g.synced) return false
-    g.synced = true
-    return true
-  } catch (e) {
-    return false
-  }
-}
 
 Page(
   BasePage(
@@ -37,6 +26,12 @@ Page(
       },
 
       build() {
+        // Open on Point (More, or Home Assistant): for launching from the shortcut key.
+        // Only when the app starts; back from Point lands here as usual.
+        if (firstOpenOfRun() && settings().start.point && paintedDevices().length) {
+          push({ url: 'page/point', params: JSON.stringify({ launched: true }) })
+          return
+        }
         text({ y: 30, h: 46, size: SIZE.title, value: 'Kestrel' })
         // the build, so it's clear which test build is running
         text({ x: 90, y: 414, w: 300, h: 36, size: 26, color: COLOR.quiet, value: appVersion() })
@@ -47,7 +42,7 @@ Page(
             this.render(st || {})
             if (st && st.paired) {
               this.sendTrail()
-              if (firstVisit()) this.sync(true)
+              if (firstSyncOfRun()) this.sync(true)
             }
           })
           .catch(() => this.render({ offline: true }))

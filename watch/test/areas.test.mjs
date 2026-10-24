@@ -31,3 +31,12 @@ test('area choices skip empty areas and end with No area and All devices', () =>
   )
   assert.deepEqual(areaChoices([{ id: 'x', area_id: 'kitchen' }], undefined).map((a) => a.id), [ALL.id])
 })
+
+test('scenes, scripts and buttons get their own choice, first', async () => {
+  const { ACTIONS } = await import('../lib/areas.js')
+  const list = [...targets, { id: 'scene.movie', area_id: 'kitchen' }, { id: 'script.night' }, { id: 'input_button.bell' }]
+  const choices = areaChoices(list, [{ id: 'kitchen', name: 'Kitchen' }])
+  assert.equal(choices[0].id, ACTIONS.id)
+  assert.equal(choices[0].count, 3)
+  assert.deepEqual(targetsInArea(list, ACTIONS).map((t) => t.id), ['scene.movie', 'script.night', 'input_button.bell'])
+})

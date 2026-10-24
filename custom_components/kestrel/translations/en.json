@@ -78,7 +78,11 @@
           "room_source": "Current room from",
           "room_sensor": "Room sensor",
           "dwell_enabled": "Instant toggle",
-          "dwell_seconds": "Instant toggle delay (seconds)"
+          "dwell_seconds": "Instant toggle delay (seconds)",
+          "open_on_point": "Open on Point",
+          "learn": "Learn from use",
+          "volume_max": "Volume limit (%)",
+          "volume_step": "Volume change per twist (%)"
         },
         "data_description": {
           "gesture_gyro": "How fast the wrist must turn. Leave empty to not use the gyro.",
@@ -87,7 +91,11 @@
           "room_sensor": "A sensor whose state is the name of the area the watch (or you) is in.",
           "gesture_kind": "Switches at once to that gesture's own calibration. Snaps and taps need calibrating on the watch first.",
           "dwell_enabled": "Trigger a device just by holding the aim on it, with no button or gesture. Locks still need a press.",
-          "dwell_seconds": "How long to hold the aim before it triggers. Longer means fewer accidents."
+          "dwell_seconds": "How long to hold the aim before it triggers. Longer means fewer accidents.",
+          "open_on_point": "Start the app on Point instead of the home screen, for launching it from the watch's shortcut key. Back goes to the home screen.",
+          "learn": "Each trigger that wasn't corrected sharpens that device's paint a little, and confident room checks keep room calibrations up to date.",
+          "volume_max": "Twisting at a media player never raises its volume above this. Turning it down always works.",
+          "volume_step": "The most one twist can change the volume by, however far the wrist turns. Twists are also at least a second apart."
         }
       },
       "pick_watch": {
@@ -176,6 +184,12 @@
       },
       "instant_toggle": {
         "name": "Instant toggle"
+      },
+      "open_on_point": {
+        "name": "Open on Point"
+      },
+      "learn": {
+        "name": "Learn from use"
       }
     },
     "select": {
@@ -204,6 +218,17 @@
       },
       "gesture_jolt": {
         "name": "Gesture jolt threshold"
+      },
+      "volume_limit": {
+        "name": "Volume limit"
+      },
+      "volume_step_limit": {
+        "name": "Volume change per twist"
+      }
+    },
+    "image": {
+      "paint_map": {
+        "name": "Paint map"
       }
     }
   },

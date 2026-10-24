@@ -1,4 +1,4 @@
-"""Numbers for each paired watch: the instant-toggle delay and the current gesture's thresholds.
+"""Numbers for each paired watch: the instant-toggle delay, volume limits and the current gesture's thresholds.
 
 The thresholds come from calibrating on the watch; these let them be nudged
 (raise: fewer accidental triggers; lower: easier). They apply to the gesture
@@ -13,12 +13,12 @@ from typing import Any
 
 from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberEntityDescription, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfTime
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .entity import KestrelEntity, add_per_watch
-from .watchdata import DWELL_SECONDS, settings_of, thresholds
+from .watchdata import DWELL_SECONDS, VOLUME_MAX, VOLUME_STEP, settings_of, thresholds
 from .watches import Watches
 
 PARALLEL_UPDATES = 0
@@ -58,6 +58,30 @@ NUMBERS: tuple[WatchNumberDescription, ...] = (
         mode=NumberMode.SLIDER,
         value=lambda s: s["dwell"]["seconds"],
         change=lambda s, v: {"dwell": {"seconds": v}},
+    ),
+    WatchNumberDescription(
+        key="volume_limit",
+        translation_key="volume_limit",
+        entity_category=EntityCategory.CONFIG,
+        native_min_value=VOLUME_MAX[0],
+        native_max_value=VOLUME_MAX[1],
+        native_step=5,
+        native_unit_of_measurement=PERCENTAGE,
+        mode=NumberMode.SLIDER,
+        value=lambda s: s["volume"]["max"],
+        change=lambda s, v: {"volume": {"max": v}},
+    ),
+    WatchNumberDescription(
+        key="volume_step_limit",
+        translation_key="volume_step_limit",
+        entity_category=EntityCategory.CONFIG,
+        native_min_value=VOLUME_STEP[0],
+        native_max_value=VOLUME_STEP[1],
+        native_step=5,
+        native_unit_of_measurement=PERCENTAGE,
+        mode=NumberMode.SLIDER,
+        value=lambda s: s["volume"]["step"],
+        change=lambda s, v: {"volume": {"step": v}},
     ),
     WatchNumberDescription(
         key="gesture_gyro",

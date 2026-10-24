@@ -35,19 +35,25 @@ Test builds are for development and change often.
 
 To test without your own devices nearby (at work, say), create a helper in Home Assistant (Settings → Devices & services → Helpers → Toggle), Sync, and paint something in the room, like a door frame, as that helper.
 
-**5. Dim.** On a dimmable light, hold the select button (or a finger on the screen) and twist your wrist: thumb up brightens, thumb down dims, a quarter turn is the whole range. Let go to send it.
+**5. Dim and volume.** On a dimmable light, hold the select button (or a finger on the screen) and twist your wrist: thumb up brightens, thumb down dims, a quarter turn is the whole range. Let go to send it. On a media player that has a volume control, the same twist changes its volume, with safety limits set in Home Assistant: one twist changes it by at most 20% (a quarter turn is the whole 20%), twists are at least a second apart, and twisting never raises it above 60% (turning it down always works). Both limits can be changed per watch.
 
 **6. Gesture.** More → Gesture: choose wrist flick, finger snap or finger tap, then Calibrate: five gestures after the buzzes, then a few seconds of slowly pointing around. The watch learns thresholds that separate your gesture from aiming, and keeps them per gesture, so you can switch later (on the watch or with the Gesture select in Home Assistant) without calibrating again. It only counts while you're aiming at something, and only once: gestures are ignored for 3 seconds after a trigger.
 
 **7. Instant toggle.** More → Instant: Off, 2 s, 3 s or 5 s (any delay from 1 to 10 s in Home Assistant). With it on, holding the aim locked on a device that long triggers it, no button or gesture needed; the screen counts down. It fires once per hold: look away and back to trigger the same device again. Locks still need a press.
 
-**8. Rooms.** More → Rooms lists your Home Assistant areas. Calibrate each room you point in: walk around it for three short Bluetooth scans. Paint devices afterwards, from inside each room: then the watch only considers devices painted in the room you're in, which keeps things apart that line up through walls. "Where am I?" tests it. If you already track rooms in Home Assistant (for example Bermuda), choose that sensor in the integration's options instead.
+**8. Rooms.** More → Rooms lists your Home Assistant areas. Calibrate each room you point in: walk around it for three short Bluetooth scans. Paint devices afterwards, from inside each room: then devices painted in the room you're in count fully and others count half, which keeps things apart that line up through walls without hiding the next room (open-plan rooms often sound alike to Bluetooth; calibration says so). "Where am I?" tests it. If you already track rooms in Home Assistant (for example Bermuda), choose that sensor in the integration's options instead.
+
+**9. Launch from the shortcut key.** More → Open on: Point. Then assign Kestrel to the watch's shortcut button in the watch's own settings (where it lets you choose an app for the button). Pressing it opens Kestrel straight on Point; back goes to the home screen.
+
+**10. Scenes and scripts as virtual spots.** A scene, script or button has no place in the room, so give it one: Paint → Scenes & more, pick it, and paint any spot you like (the sofa for a movie scene, the window for "close all blinds"). Pointing there runs it.
+
+**11. Learning.** Kestrel improves with use (on by default; turn it off with the Learn from use switch in Home Assistant). Each trigger that locked on clearly and wasn't corrected with "Not it?" adds a small vote for where that device is from where you stood, kept in up to three learned spots per device next to your paints (which it never changes); a vote that would crowd another device isn't kept. Room calibrations follow slow changes in what Bluetooth hears when a room check matches one room clearly. It can't yet work out where devices are in your home's layout from paints made in different places: that needs to know where you are standing, which Bluetooth rooms are too coarse for.
 
 **Managing things in Home Assistant.** Settings → Devices & services → Kestrel → Configure:
 - **Painted devices**: remove a bad paint (the newest spot) or all of a device's paints, or make a paint trigger a different entity.
 - **Rooms**: delete a room's calibration.
 - **Devices for watches**: choose which devices (or single entities) watches can paint and trigger, with Home Assistant's searchable pickers. Leave it empty to offer everything.
-- **Settings** (per watch): gesture on or off, which gesture and its thresholds; instant toggle and its delay; where the current room comes from.
+- **Settings** (per watch): gesture on or off, which gesture and its thresholds; instant toggle and its delay; opening on Point; learning from use; the volume limit and change per twist; where the current room comes from.
 
 The watch picks changes up on its next Sync (it also syncs quietly each time the app starts). Paints, rooms and settings live in Home Assistant, so a reset or new watch gets them back on Sync.
 
@@ -64,6 +70,10 @@ The watch is offered every supported entity except hidden, disabled, and devices
 | Instant toggle (switch), Instant toggle delay (number) | Trigger by holding the aim on a device, and for how long (1–10 s). |
 | Gesture gyro threshold, Gesture jolt threshold (numbers, disabled by default) | The current gesture's calibrated thresholds, to nudge if it triggers too easily (raise) or too hard (lower). |
 | Room from (select) | The watch's own Bluetooth room calibration, or a Home Assistant sensor (chosen under Configure). |
+| Open on Point (switch) | Start the app on Point, for launching it from the watch's shortcut key. |
+| Learn from use (switch) | Let confirmed triggers refine paints and clear room checks refine room calibrations. |
+| Volume limit, Volume change per twist (numbers) | Twisting at a media player never raises the volume above the limit (10–100%), and one twist changes it by at most the change per twist (5–50%). |
+| Paint map (image) | One compass dial per room with every paint where it was made: north up, higher spots (ceiling lights) towards the centre, lower ones towards the edge, each as wide as it was painted. Filled: painted; outlined: learned; dots: corrections. Shows at a glance which devices crowd each other. |
 | Last seen, Home Assistant address, Painted devices, Calibrated rooms | Diagnostics: when the watch last talked to Home Assistant, the address it used, and what it has set up. |
 
 The device's software version is the watch app's build. Changes reach the watch on its next sync. Every setting is also under Configure; the room sensor only there.
@@ -95,13 +105,26 @@ Under **More → Probes** on the watch. Results show on the watch, and once the 
 
 ### Supported devices
 
-Zepp OS watches with a compass, an accelerometer and a gyroscope, on Zepp OS 3.6 (API level 3.6) or later, with the Zepp app on a phone. Developed on the Amazfit Balance 3 (480 × 480, round) and checked on the Zepp OS emulator (Balance 2 firmware). Other round watches should work; layouts are designed at 480 px wide and scale. The watch can trigger lights, switches, fans, media players, locks, covers, climate entities, scenes, scripts, buttons and input booleans.
+Zepp OS watches on API level 3.6 or later with a compass, with the Zepp app on a phone. A gyroscope helps (steadier aim, and the wrist flick needs it); without one, stillness comes from the accelerometer and snaps and taps still work. A watch without a compass says so: it can't tell where you point. Tested on the Amazfit Balance 3; checked on the Zepp OS emulator (Balance 2 firmware). Builds cover every round and square screen size; layouts are designed for 480 × 480 round, scale to the screen, and sit centred on square ones.
+
+| Expected to work (untested unless marked) | Screen |
+| --- | --- |
+| Balance 3 (tested), Balance Ultra, Balance 2, Balance | Round 480 |
+| Cheetah 2 Ultra, Cheetah Pro, T-Rex Ultra 2, T-Rex 3, T-Rex 3 Pro 48 mm, Active Max | Round 480 |
+| Cheetah 2 Pro, Active 3 Premium, Active 2 (round), T-Rex 3 Pro 44 mm, GTR 4 | Round 466 |
+| Cheetah (round), T-Rex Ultra | Round 454 |
+| Falcon | Round 416 |
+| Active 2 (square), Bip 6, Active, Cheetah (square), GTS 4 | Square 390 × 450 |
+
+Not supported: watches before API level 3.6 (Active Edge, Bip 5, Bip 5 Unity, GTR Mini, T-Rex 2, GTR 3, GTS 3, GTS 4 mini, Band 7). Check that your model has a compass. The test-build page only offers the Balance 3 package; other watches get theirs from the release.
+
+The watch can trigger lights, switches, fans, media players, locks, covers, climate entities, scenes, scripts, buttons, input buttons and input booleans.
 
 ### Supported functions
 
 - **Pairing**: a code shown in Home Assistant, typed on the watch; each watch gets its own token, limited to Kestrel's API.
-- **Triggering**: toggle (or the domain's natural action: press a button, run a scene or script, play/pause media); locks always ask for a confirming tap; dimming with a wrist twist.
-- **Entities per watch**: see the table above (sensors, switches, selects, numbers).
+- **Triggering**: toggle (or the domain's natural action: press a button, run a scene or script, play/pause media); locks always ask for a confirming tap; dimming and media volume with a wrist twist (volume limited per twist, spaced, and capped).
+- **Entities per watch**: see the table above (sensors, switches, selects, numbers, and the paint map image).
 - **Configure**: paints (remove, reassign), room calibrations, and every setting.
 - **Diagnostics**: per integration and per watch, with recent probe results; tokens redacted.
 

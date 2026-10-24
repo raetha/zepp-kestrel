@@ -7,7 +7,7 @@
 // can be checked against what a real watch recorded:
 //   - rooms: each calibration scan matched against all rooms, and rooms that
 //     sound alike to Bluetooth;
-//   - paints: each spot, and the device crowding it (if any);
+//   - paints: each spot (painted, learned or a correction), and the device crowding it (if any);
 //   - aim traces: each trigger's last seconds re-run through the Aimer with
 //     today's paints, against what was fired (and what it was corrected to);
 //   - battery: drain while each Point session was open, when the trail has it.
@@ -52,7 +52,7 @@ console.log('\nPaints')
 for (const id of Object.keys(paints)) {
   for (const s of paints[id]) {
     const c = s.kind === 'correction' ? null : crowdedBy(paints, id, s)
-    const what = s.kind === 'correction' ? 'correction' : `±${s.headingSpread}°`
+    const what = s.kind === 'correction' ? 'correction' : `±${s.headingSpread}°${s.kind === 'learned' ? ` learned×${s.uses || 1}` : ''}`
     console.log(`  ${short(id).padEnd(28)} ${String(s.heading).padStart(6)}° ${what.padEnd(10)} pitch ${s.pitch}° ${s.room || ''}${c ? `  crowded by ${short(c.id)} (${c.headingGap}° apart)` : ''}`)
   }
 }

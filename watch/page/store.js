@@ -70,6 +70,12 @@ export const DEFAULT_SETTINGS = {
   room: { source: 'watch', sensor: null },
   // instant toggle: trigger by holding the aim on a device this many seconds
   dwell: { enabled: false, seconds: 3 },
+  // open straight on Point when the app starts (for the watch's shortcut key)
+  start: { point: false },
+  // twisting at a media player: Home Assistant caps it at max %, and one twist at step %
+  volume: { max: 60, step: 20 },
+  // learn from use: confirmed triggers refine paints, clear room checks refine rooms (lib/learn.js)
+  learn: { enabled: true },
 }
 
 /** Settings from Home Assistant (with defaults filled in). */
@@ -83,7 +89,7 @@ export const saveSettings = (s) => write('kestrel.settings', s)
 
 export const gesture = () => settings().gesture
 
-/** Change one settings group on the watch ('gesture', 'dwell'); sent to Home Assistant. */
+/** Change one settings group on the watch ('gesture', 'dwell', 'start'); sent to Home Assistant. */
 export function setSetting(group, values) {
   const s = settings()
   s[group] = { ...s[group], ...values }

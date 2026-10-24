@@ -47,7 +47,7 @@ from homeassistant.util.network import is_local
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, PROBE_MAX_BYTES, SUPPORTED_DOMAINS, TOKEN_HEADER
-from .targets import MAX_TARGETS, is_offered, list_targets, service_call
+from .targets import MAX_TARGETS, is_offered, list_targets, service_call, volume_call
 from .watchdata import SECTIONS, areas, current_room
 from .watches import Watches
 
@@ -272,7 +272,7 @@ def sync_targets(targets: list[dict[str, Any]]) -> list[dict[str, Any]]:
         c: dict[str, Any] = {"id": t["id"], "name": t["name"]}
         if t.get("area_id"):
             c["area_id"] = t["area_id"]
-        for flag in ("dimmable", "confirm"):
+        for flag in ("dimmable", "volume", "confirm"):
             if t.get(flag):
                 c[flag] = True
         out.append(c)
@@ -379,10 +379,21 @@ class FireView(_WatchView):
             state = hass.states.get(target)
             return web.json_response({"ok": True, "duplicate": True, "state": state.state if state else None})
 
-        call = service_call(hass, target, action, body.get("value"), bool(body.get("confirmed")))
-        if call is None:
-            return web.json_response({"ok": False, "needsConfirm": True})
-        domain, service, data = call
+        volume: tuple[int, bool] | None = None
+        if action == "volume" and target.startswith("media_player."):
+            # twisting at a media player: limited per twist, capped, and at most one twist a second
+            if not watches.volume_allowed(watch["id"]):
+                return web.json_response({"ok": False, "error": "Too fast: one twist a second"})
+            vcall = volume_call(hass, target, body.get("value"), watches.synced(watch["id"])["settings"]["volume"])
+            if vcall is None:
+                return web.json_response({"ok": False, "error": "It doesn't report its volume"})
+            domain, service, data = "media_player", "volume_set", vcall[0]
+            volume = (vcall[1], vcall[2])
+        else:
+            call = service_call(hass, target, action, body.get("value"), bool(body.get("confirmed")))
+            if call is None:
+                return web.json_response({"ok": False, "needsConfirm": True})
+            domain, service, data = call
         context = Context()
         try:
             await hass.services.async_call(domain, service, data, blocking=True, context=context)
@@ -418,6 +429,8 @@ class FireView(_WatchView):
         reply: dict[str, Any] = {"ok": True, "state": state.state if state else None}
         if state is not None and state.domain == "light" and state.attributes.get("brightness") is not None:
             reply["brightness"] = round(state.attributes["brightness"] * 100 / 255)
+        if volume is not None:
+            reply["volume"], reply["limited"] = volume
         return web.json_response(reply)
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from homeassistant.components.media_player.const import MediaPlayerEntityFeature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 
@@ -74,6 +75,8 @@ def list_targets(
                 "area": area.name if area else None,
                 "area_id": area.id if area else None,
                 "dimmable": domain == "light" and any(m != "onoff" for m in modes),
+                "volume": domain == "media_player"
+                and bool(state.attributes.get("supported_features", 0) & MediaPlayerEntityFeature.VOLUME_SET),
                 "confirm": domain in CONFIRM_DOMAINS,
             }
         )
@@ -107,7 +110,7 @@ def service_call(
         return None
     if domain in ("scene", "script"):
         return domain, "turn_on", data
-    if domain == "button":
+    if domain in ("button", "input_button"):
         return domain, "press", data
     if domain == "media_player":
         return domain, "media_play_pause", data
@@ -115,3 +118,29 @@ def service_call(
         state = hass.states.get(entity_id)
         return domain, ("unlock" if state is not None and state.state == "locked" else "lock"), data
     return "homeassistant", "toggle", data
+
+
+def volume_call(
+    hass: HomeAssistant, entity_id: str, value: Any, limits: dict[str, Any]
+) -> tuple[dict[str, Any], int, bool] | None:
+    """media_player.volume_set data for a twist of `value` percent, the volume it sets (percent) and
+    whether a limit held it back; None if the player doesn't report its volume.
+
+    Safety: one twist changes the volume by at most limits["step"] percent, and twisting never raises
+    it above limits["max"] percent (if it is already higher, it stays; turning it down always works).
+    """
+    state = hass.states.get(entity_id)
+    current = state.attributes.get("volume_level") if state is not None else None
+    if not isinstance(current, (int, float)) or isinstance(current, bool):
+        return None
+    try:
+        wanted = float(value)
+    except (TypeError, ValueError):
+        wanted = 0.0
+    step = max(-limits["step"], min(limits["step"], wanted))
+    level = current + step / 100
+    if step > 0:
+        level = min(level, max(current, limits["max"] / 100))
+    level = round(max(0.0, min(1.0, level)), 2)
+    limited = abs(step) < abs(wanted) or (step > 0 and level < round(current + step / 100, 2))
+    return {"entity_id": entity_id, "volume_level": level}, round(level * 100), limited

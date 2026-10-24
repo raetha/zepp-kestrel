@@ -29,12 +29,26 @@ Page(
         ask(this, METHOD.STATUS, undefined, 5000)
           .then((st) => this.alive && st && st.url && setText(this.statusW, st.url.replace(/^http:\/\//, '')))
           .catch(() => null)
-        const btn = (i, label, onClick) => button({ x: 100, w: 280, y: 136 + i * 58, h: 52, label, onClick })
+        const btn = (i, label, onClick) => button({ x: 100, w: 280, y: 132 + i * 52, h: 46, label, onClick })
         btn(0, `Gesture: ${g.enabled ? g.kind : 'off'}`, () => push({ url: 'page/gesture' }))
         this.dwellW = btn(1, this.dwellLabel(), () => this.nextDwell())
-        btn(2, `Rooms${nRooms ? ` (${nRooms})` : ''}`, () => push({ url: 'page/rooms' }))
-        btn(3, 'Probes', () => push({ url: 'page/probes' }))
-        btn(4, 'Unpair', () => this.unpair())
+        this.startW = btn(2, this.startLabel(), () => this.toggleStart())
+        btn(3, `Rooms${nRooms ? ` (${nRooms})` : ''}`, () => push({ url: 'page/rooms' }))
+        btn(4, 'Probes', () => push({ url: 'page/probes' }))
+        btn(5, 'Unpair', () => this.unpair())
+      },
+
+      startLabel() {
+        return `Open on: ${settings().start.point ? 'Point' : 'Home'}`
+      },
+
+      // Open on Point: for launching Kestrel from the watch's shortcut key
+      toggleStart() {
+        const point = !settings().start.point
+        setSetting('start', { point })
+        setLabel(this.startW, this.startLabel())
+        setText(this.statusW, point ? 'Opens on Point; back for Home' : 'Opens on Home')
+        syncSoon((m, p, t) => ask(this, m, p, t), 'settings')
       },
 
       dwellLabel() {

@@ -16,6 +16,11 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 
 ### Added
 
+- Twist volume for media players, with safety limits enforced here: at most one twist a second per watch, at most the per-twist change (20% by default), and never above the volume limit by twisting (60% by default). Volume limit and Volume change per twist are entities and Configure settings per watch.
+- Open on Point and Learn from use switches per watch (also in Configure).
+- Paint map: an image entity per watch drawing every paint as compass dials per room (painted, learned and correction spots), to see which devices crowd each other.
+- Input buttons can be triggered (pressed); scenes, scripts and buttons make good virtual spots.
+- Removing the old WristWand integration: if HACS updated WristWand to Kestrel in place, remove WristWand in HACS (or delete `custom_components/wristwand`) and restart; nothing of Kestrel's lives there.
 - Pairing: a watch asks to pair, Home Assistant shows a 6-digit code as a notification, and the code entered on the watch gives that watch its own access, limited to Kestrel. No Home Assistant token needs copying.
 - Lets the phone find Home Assistant on the local network (port 80 or 8123, or an address typed on the watch), and tells it Home Assistant's home-network address after pairing.
 - The list of devices a watch can point at: lights, switches, fans, media players, locks, covers, climate, scenes, scripts, buttons and input booleans, grouped by area. Configure → Devices for watches chooses which devices or entities watches can use (nothing chosen: everything).

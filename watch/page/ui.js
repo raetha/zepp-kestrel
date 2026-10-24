@@ -1,5 +1,7 @@
-// Tiny UI helpers for the 480 x 480 round screen. Layout is designed at
-// 480 wide; px() scales it for other round Zepp OS watches.
+// Tiny UI helpers. Layout is designed for a 480 x 480 round screen; px()
+// scales it to the watch's width, and on taller screens (square watches,
+// 390 x 450) it is centred vertically, with full-screen backgrounds filling
+// the whole screen.
 //
 // Text is sized to be read at arm's length (about 45 cm): nothing smaller than
 // SIZE.small, and secondary text is light grey rather than dim, so it stays
@@ -7,9 +9,21 @@
 
 import { createWidget, deleteWidget, widget, align, prop, text_style } from '@zos/ui'
 import { px } from '@zos/utils'
+import { getDeviceInfo } from '@zos/device'
 import { onKey, offKey, onGesture, offGesture, KEY_SELECT, KEY_BACK, KEY_EVENT_CLICK, KEY_EVENT_PRESS, KEY_EVENT_RELEASE } from '@zos/interaction'
 import { back } from '@zos/router'
 import { note, safe } from './trail.js'
+
+let SCREEN = { w: 480, h: 480 }
+try {
+  const d = getDeviceInfo()
+  if (d && d.width && d.height) SCREEN = { w: d.width, h: d.height }
+} catch (e) {
+  // keep the design size
+}
+const Y0 = Math.max(0, Math.round((SCREEN.h - SCREEN.w) / 2))
+/** A y position in the 480 design, on this screen. */
+const py = (y) => px(y) + Y0
 
 export const COLOR = {
   bg: 0x000000,
@@ -36,7 +50,7 @@ export const SIZE = {
 export function text({ x = 60, y, w = 360, h = 40, size = SIZE.body, color = COLOR.text, value = '', center = true }) {
   return createWidget(widget.TEXT, {
     x: px(x),
-    y: px(y),
+    y: py(y),
     w: px(w),
     h: px(h),
     text: value,
@@ -55,7 +69,7 @@ export function setText(w, value) {
 export function button({ x = 110, y, w = 260, h = 60, label, onClick, primary = false, size = SIZE.button }) {
   return createWidget(widget.BUTTON, {
     x: px(x),
-    y: px(y),
+    y: py(y),
     w: px(w),
     h: px(h),
     radius: px(h / 2),
@@ -84,7 +98,7 @@ export function clear(list) {
 }
 
 export function circle({ x = 240, y = 240, r = 120, color = COLOR.button }) {
-  return createWidget(widget.CIRCLE, { center_x: px(x), center_y: px(y), radius: px(r), color })
+  return createWidget(widget.CIRCLE, { center_x: px(x), center_y: py(y), radius: px(r), color })
 }
 
 export function setColor(w, color) {
@@ -104,7 +118,7 @@ export function tickRing({ n = 12, r = 218, dot = 10, color = 0x333333 } = {}) {
     dots.push(circle({ ...at[i], r: dot, color }))
   }
   // a circle's colour only changes when its geometry is given again with it
-  const paint = (i, c) => dots[i].setProperty(prop.MORE, { center_x: px(at[i].x), center_y: px(at[i].y), radius: px(dot), color: c })
+  const paint = (i, c) => dots[i].setProperty(prop.MORE, { center_x: px(at[i].x), center_y: py(at[i].y), radius: px(dot), color: c })
   return {
     dots,
     set(i, c) { if (dots[i]) paint(i, c) },
@@ -114,7 +128,8 @@ export function tickRing({ n = 12, r = 218, dot = 10, color = 0x333333 } = {}) {
 
 /** A filled rectangle (the whole screen by default): a background that can change colour. */
 export function rect({ x = 0, y = 0, w = 480, h = 480, color = COLOR.bg } = {}) {
-  return createWidget(widget.FILL_RECT, { x: px(x), y: px(y), w: px(w), h: px(h), color })
+  if (x === 0 && y === 0 && w === 480 && h === 480) return createWidget(widget.FILL_RECT, { x: 0, y: 0, w: SCREEN.w, h: SCREEN.h, color })
+  return createWidget(widget.FILL_RECT, { x: px(x), y: py(y), w: px(w), h: px(h), color })
 }
 
 /** Change a text widget's colour. */

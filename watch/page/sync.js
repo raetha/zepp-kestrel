@@ -126,3 +126,30 @@ function have() {
 export function syncSoon(ask, section) {
   sync(ask, [section]).catch(() => null)
 }
+
+/**
+ * True once per run (the app's globalData lives for the run): the first screen
+ * that can sync (Home, or Point when the app opens on it) does the quiet sync.
+ */
+export function firstSyncOfRun() {
+  try {
+    const g = getApp()._options.globalData
+    if (g.synced) return false
+    g.synced = true
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+/** True the first time it's asked in a run: whether to open on Point is decided once. */
+export function firstOpenOfRun() {
+  try {
+    const g = getApp()._options.globalData
+    if (g.opened) return false
+    g.opened = true
+    return true
+  } catch (e) {
+    return false
+  }
+}

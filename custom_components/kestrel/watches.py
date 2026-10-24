@@ -34,6 +34,7 @@ from .const import (
     STATUS_SAVE_DELAY,
     STORAGE_KEY,
     STORAGE_VERSION,
+    VOLUME_MIN_INTERVAL,
     WATCH_NAME_MAX,
     signal_watch_updated,
 )
@@ -71,6 +72,7 @@ class Watches:
     pairings: dict[str, Pairing] = field(default_factory=dict)
     starts: dict[str, deque[float]] = field(default_factory=dict)
     seen_seqs: dict[str, deque[Any]] = field(default_factory=dict)
+    volume_at: dict[str, float] = field(default_factory=dict)  # monotonic time of each watch's last volume twist
     probes: deque[dict[str, Any]] = field(default_factory=deque)
     probe_sizes: deque[int] = field(default_factory=deque)  # characters per kept result, for the size cap
 
@@ -306,6 +308,15 @@ class Watches:
         self.probe_sizes.clear()
         await self.store.async_remove()
         await self.probe_store.async_remove()
+
+    def volume_allowed(self, watch_id: str) -> bool:
+        """At most one volume twist per VOLUME_MIN_INTERVAL from a watch (a safety net for loud speakers)."""
+        now = time.monotonic()
+        last = self.volume_at.get(watch_id)
+        if last is not None and now - last < VOLUME_MIN_INTERVAL:
+            return False
+        self.volume_at[watch_id] = now
+        return True
 
     def first_time(self, watch_id: str, seq: Any) -> bool:
         """True the first time a command sequence number is seen (retries are dropped)."""

@@ -45,3 +45,10 @@ test('RateMeter counts calls and distinct readings', () => {
   assert.equal(r.distinctHz, 25)
   assert.equal(r.intervalMs.p50, 20)
 })
+
+test('tiltBetween: degrees between two gravity directions', async () => {
+  const { tiltBetween } = await import('../lib/aim.js')
+  assert.equal(Math.round(tiltBetween({ x: 0, y: 0, z: 1 }, { x: 1, y: 0, z: 0 })), 90)
+  assert.equal(tiltBetween({ x: 0, y: 0, z: 9.8 }, { x: 0, y: 0, z: 9.8 }), 0)
+  assert.equal(tiltBetween({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }), 0)
+})

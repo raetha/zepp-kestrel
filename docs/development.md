@@ -43,7 +43,7 @@ uv pip install --python .venv/bin/python -r ha/requirements_test.txt
 
 ### Replaying diagnostics
 
-`node tools/replay.mjs <diagnostics.json>` (the integration's diagnostics download) runs the current `watch/lib` against what a real watch recorded: each room calibration scan against all rooms, rooms that sound alike, each paint and what crowds it, each trigger's aim trace through the Aimer (which device it would pick today, and its lead), and battery use per hour of pointing. Use it before and after changing the classifier or room matching; turn a case worth keeping into a test (`watch/test/m1.test.mjs` has one from a real kitchen).
+`node tools/replay.mjs <diagnostics.json>` (the integration's diagnostics download) runs the current `watch/lib` against what a real watch recorded: each room calibration scan against all rooms, rooms that sound alike, each paint and what crowds it, each trigger's aim trace through the Aimer (which device it would pick today, and its lead), learned spots, and battery use per hour of pointing. In Home Assistant, each watch's Paint map image shows the same paints as compass dials per room. Use it before and after changing the classifier or room matching; turn a case worth keeping into a test (`watch/test/m1.test.mjs` has one from a real kitchen).
 
 ## Dependencies
 

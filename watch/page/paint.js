@@ -9,7 +9,7 @@ import { text, setText, button, clear, fit, ask, listenKeys, rect, setColor, tic
 import { Circling } from '../lib/circling.js'
 import { startAim } from './aim.js'
 import { targets, paints, setPaint, areas, rooms } from './store.js'
-import { targetsInArea, areaChoices, ALL } from '../lib/areas.js'
+import { targetsInArea, areaChoices, ALL, ACTION_DOMAINS } from '../lib/areas.js'
 import { syncSoon } from './sync.js'
 import { detectRoom } from './room.js'
 import { stopScan } from './scan.js'
@@ -159,11 +159,14 @@ Page(
         clear(this.widgets)
         setColor(this.bg, BG.idle)
         this.target = t
-        const spots = (paints()[t.id] || []).length
+        const spots = (paints()[t.id] || []).filter((s) => !s.kind).length
         setText(this.titleW, fit(t.name, 16))
         setText(
           this.msgW,
-          `Stand where you'd use it and point at it. Press Start, then sweep slowly across it for 15 s.${spots ? `\n\nPainted from ${spots} spot${spots > 1 ? 's' : ''}.` : ''}`,
+          (ACTION_DOMAINS.includes(t.id.split('.')[0])
+            ? `Pick a spot to point at for it (the sofa, a picture, a corner). Press Start, then sweep slowly across that spot for 15 s.`
+            : `Stand where you'd use it and point at it. Press Start, then sweep slowly across it for 15 s.`) +
+            (spots ? `\n\nPainted from ${spots} spot${spots > 1 ? 's' : ''}.` : ''),
         )
         this.onSelect = () => this.paint()
         this.add(button({ x: 110, w: 260, y: 326, h: 58, label: 'Start', primary: true, onClick: () => this.paint() }))
@@ -177,7 +180,9 @@ Page(
         clear(this.widgets)
         const samples = []
         let calibrated = true
+        let noCompass = false
         this.aim = startAim((a) => {
+          noCompass = a.noCompass
           calibrated = a.calibrated
           if (this.circling && !calibrated) {
             const i = this.circling.add(a.pitch, a.roll)
@@ -208,6 +213,16 @@ Page(
         // ask for the Compass app's circling motion and wait, up to CALIBRATE_MS.
         await sleep(500)
         if (!this.alive) return
+        if (noCompass) {
+          setText(this.msgW, 'This watch has no compass, which Kestrel needs to tell where you point.')
+          this.aim.stop()
+          this.aim = null
+          resetDropWristScreenOff()
+          this.awake = false
+          this.painting = false
+          this.add(button({ x: 140, w: 200, y: 394, h: 52, size: SIZE.body, label: 'Back', onClick: () => this.list() }))
+          return
+        }
         if (!calibrated) {
           // The dots round the edge light as the watch leans each way: they show the
           // circling motion, since Zepp OS tells apps nothing about calibration until it's done.

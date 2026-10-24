@@ -2,7 +2,7 @@
 // and whether the arm is held out and still (the aim gate). Shared by Paint and Point.
 
 import { accel, gyro, compass } from './sensors.js'
-import { attitude, mag, AimGate } from '../lib/aim.js'
+import { attitude, mag, tiltBetween, AimGate } from '../lib/aim.js'
 import { safe } from './trail.js'
 
 /**
@@ -18,37 +18,52 @@ export function startAim(onAim, { mode = 'NORMAL', gate = {}, onGyro = null, onA
   const aimGate = new AimGate(gate)
   let lastA = null
   let gyroDps = 0
+  let gyroAt = 0
+  let tiltDps = 0 // how fast gravity's direction turns: stands in for the gyro on watches without one
 
   const accelCb = onAccel ? safe('accel', onAccel) : null
   a.start(mode, (s) => {
+    if (lastA && s.t > lastA.t) tiltDps = 0.7 * tiltDps + 0.3 * (tiltBetween(lastA, s) / ((s.t - lastA.t) / 1000))
     lastA = s
     if (accelCb) accelCb(s.t, s)
   })
   const gyroCb = onGyro ? safe('gyro', onGyro) : null
-  g.start(mode, (s) => {
-    gyroDps = mag(s.x, s.y, s.z)
-    if (gyroCb) gyroCb(s.t, gyroDps)
-  })
-  c.start('NORMAL', () => {})
+  let hasGyro = true
+  try {
+    g.start(mode, (s) => {
+      gyroDps = mag(s.x, s.y, s.z)
+      gyroAt = Date.now()
+      if (gyroCb) gyroCb(s.t, gyroDps)
+    })
+  } catch (e) {
+    hasGyro = false // some watches have none: stillness then comes from the accelerometer, and flicks can't be told
+  }
+  let hasCompass = true
+  try {
+    c.start('NORMAL', () => {})
+  } catch (e) {
+    hasCompass = false
+  }
 
   const timer = setInterval(safe('aim', () => {
-    const h = c.read()
+    const h = hasCompass ? c.read() : { calibrated: false, angle: null }
     if (!lastA || !h) return
     const calibrated = h.calibrated && h.angle !== null
     const att = attitude(lastA.x, lastA.y, lastA.z, calibrated ? h.angle : null)
     if (!att) return
     const { pitch, roll, heading } = att
     const t = Date.now()
-    const ready = aimGate.update(t, gyroDps, pitch, roll, calibrated && heading !== null)
-    onAim({ t, heading, pitch, roll, calibrated, ready, gyroDps })
+    const turning = t - gyroAt < 1000 ? gyroDps : tiltDps
+    const ready = aimGate.update(t, turning, pitch, roll, calibrated && heading !== null)
+    onAim({ t, heading, pitch, roll, calibrated, ready, gyroDps: turning, noCompass: !hasCompass, noGyro: !hasGyro })
   }), 100)
 
   return {
     stop() {
       clearInterval(timer)
       a.stop()
-      g.stop()
-      c.stop()
+      if (hasGyro) g.stop()
+      if (hasCompass) c.stop()
     },
   }
 }

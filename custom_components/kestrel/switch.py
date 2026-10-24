@@ -1,4 +1,4 @@
-"""Switches for each paired watch: the gesture trigger and instant toggle.
+"""Switches for each paired watch: gesture trigger, instant toggle, opening on Point, learning.
 
 Both are the watch's settings (watchdata.py), also editable in Configure.
 The watch picks up a change on its next sync.
@@ -40,6 +40,12 @@ SWITCHES: tuple[WatchSwitchDescription, ...] = (
         entity_category=EntityCategory.CONFIG,
         group="dwell",
         field="enabled",
+    ),
+    WatchSwitchDescription(
+        key="open_on_point", translation_key="open_on_point", entity_category=EntityCategory.CONFIG, group="start", field="point"
+    ),
+    WatchSwitchDescription(
+        key="learn", translation_key="learn", entity_category=EntityCategory.CONFIG, group="learn", field="enabled"
     ),
 )
 
