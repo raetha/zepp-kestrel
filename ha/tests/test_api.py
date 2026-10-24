@@ -2,9 +2,9 @@
 
 from http import HTTPStatus
 
-from pytest_homeassistant_custom_component.common import async_capture_events, async_mock_service
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events, async_mock_service
 
-from homeassistant.helpers import area_registry as ar, entity_registry as er, label_registry as lr
+from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er, label_registry as lr
 
 from custom_components.kestrel.const import DOMAIN, EVENT_FIRED, TOKEN_HEADER
 
@@ -80,9 +80,16 @@ async def test_too_many_wrong_codes_cancels_the_pairing(hass, setup_entry, hass_
 
 async def test_pairing_requests_are_rate_limited(hass, setup_entry, hass_client_no_auth):
     client = await hass_client_no_auth()
-    statuses = [(await client.post("/api/kestrel/pair", json={})).status for _ in range(11)]
-    assert statuses[-1] == HTTPStatus.TOO_MANY_REQUESTS
-    assert statuses[:10] == [HTTPStatus.OK] * 10
+    statuses = [(await client.post("/api/kestrel/pair", json={})).status for _ in range(6)]
+    assert statuses == [HTTPStatus.OK] * 5 + [HTTPStatus.TOO_MANY_REQUESTS]  # five waiting at most
+
+    # and each address only so often, even once the waiting ones are gone
+    watches = setup_entry.runtime_data
+    allowed = []
+    for _ in range(11):
+        watches.pairings.clear()
+        allowed.append(watches.allow_start("10.0.0.1"))
+    assert allowed == [True] * 10 + [False]
 
 
 async def test_targets_need_a_watch_token(hass, setup_entry, hass_client_no_auth):
@@ -216,3 +223,91 @@ async def test_probe_results_become_events(hass, setup_entry, hass_client_no_aut
     assert events[0].data["test"] == "rates"
     assert events[0].data["watch_name"] == "Balance 3"
 
+
+
+async def test_pairing_only_from_the_home_network(hass, setup_entry, hass_client_no_auth):
+    from unittest.mock import patch
+
+    client = await hass_client_no_auth()
+    with patch("custom_components.kestrel.http.is_cloud_connection", return_value=True):
+        res = await client.post("/api/kestrel/pair", json={"watch_name": "x"})
+        assert res.status == HTTPStatus.FORBIDDEN
+        res = await client.post("/api/kestrel/pair/confirm", json={"pairing_id": "x", "code": "1"})
+        assert res.status == HTTPStatus.FORBIDDEN
+
+
+def test_from_home_needs_a_local_address(hass):
+    from types import SimpleNamespace
+
+    from custom_components.kestrel.http import _from_home
+
+    assert _from_home(hass, SimpleNamespace(remote="192.168.1.20"))
+    assert _from_home(hass, SimpleNamespace(remote="127.0.0.1"))
+    assert not _from_home(hass, SimpleNamespace(remote="8.8.8.8"))
+    assert not _from_home(hass, SimpleNamespace(remote=None))
+
+
+async def test_pairing_names_are_plain_and_pending_pairings_are_capped(hass, setup_entry):
+    watches = setup_entry.runtime_data
+    pairing = watches.start_pairing("[evil](http://x) **Bal*ance 3")
+    assert pairing.watch_name == "evil(httpx) Balance 3"
+    for i in range(4):
+        assert watches.allow_start(f"10.0.0.{i}")
+        watches.start_pairing("Watch")
+    assert not watches.allow_start("10.0.0.99")  # five waiting already
+
+
+async def test_fire_only_targets_the_watch_is_offered(hass, setup_entry, hass_client_no_auth):
+    label = lr.async_get(hass).async_create("Kestrel")
+    ent_reg = er.async_get(hass)
+    lamp = ent_reg.async_get_or_create("light", "test", "lamp", suggested_object_id="lamp")
+    ent_reg.async_update_entity(lamp.entity_id, labels={label.label_id})
+    hass.states.async_set("light.lamp", "off")
+    hass.states.async_set("lock.front", "locked")  # not labelled: not offered
+    async_mock_service(hass, "lock", "unlock")
+    client = await hass_client_no_auth()
+    paired = await _pair(hass, client)
+    res = await client.post(
+        "/api/kestrel/fire", headers={TOKEN_HEADER: paired["token"]}, json={"target": "lock.front", "confirmed": True}
+    )
+    assert res.status == HTTPStatus.NOT_FOUND
+
+
+async def test_probe_results_have_a_size_limit(hass, setup_entry, hass_client_no_auth):
+    from custom_components.kestrel.const import PROBE_MAX_BYTES
+
+    client = await hass_client_no_auth()
+    paired = await _pair(hass, client)
+    big = {"test": "x", "data": "a" * PROBE_MAX_BYTES}
+    res = await client.post("/api/kestrel/probe", headers={TOKEN_HEADER: paired["token"]}, json=big)
+    assert res.status == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+
+
+async def test_is_offered_matches_the_target_list(hass, setup_entry):
+    from custom_components.kestrel.targets import is_offered, list_targets
+
+    dev_reg = dr.async_get(hass)
+    ent_reg = er.async_get(hass)
+    hass.states.async_set("light.a", "off")
+    hass.states.async_set("sensor.temp", "1")
+    restart = ent_reg.async_get_or_create("button", "t", "r", suggested_object_id="r", entity_category=er.EntityCategory.CONFIG)
+    hass.states.async_set(restart.entity_id, "unknown")
+
+    def same() -> None:
+        offered = {t["id"] for t in list_targets(hass, limit=None)}
+        for entity_id in hass.states.async_entity_ids():
+            assert is_offered(hass, entity_id) == (entity_id in offered), entity_id
+        assert not is_offered(hass, "light.missing")
+
+    same()  # no label: everything supported
+    label = lr.async_get(hass).async_create("Kestrel")
+    same()  # a label nobody uses yet changes nothing
+    entry = MockConfigEntry(domain="test")
+    entry.add_to_hass(hass)
+    device = dev_reg.async_get_or_create(config_entry_id=entry.entry_id, identifiers={("test", "d")})
+    lamp = ent_reg.async_get_or_create("light", "t", "b", suggested_object_id="b", device_id=device.id)
+    hass.states.async_set(lamp.entity_id, "off")
+    dev_reg.async_update_device(device.id, labels={label.label_id})
+    same()  # labelled through its device: only that one
+    ent_reg.async_update_entity(restart.entity_id, labels={label.label_id})
+    same()  # a labelled configuration entity isn't offered

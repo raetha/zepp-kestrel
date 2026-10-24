@@ -161,6 +161,7 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 ### Troubleshooting
 
 - **"Phone not reachable"**: the Zepp app must be running on the phone (in the background is fine) and connected to the watch over Bluetooth.
+- **"Pair from your home network"**: pairing only works on your home network (for safety, not through Home Assistant Cloud or from outside). Pair at home; afterwards the watch works away from home too.
 - **Pairing can't find Home Assistant**: your phone must be on the home Wi-Fi, with the Kestrel integration added. Choose Type address on the watch and enter Home Assistant's IP (and port, if not 80 or 8123). More shows the address in use once paired.
 - **Nothing locks on when pointing**: calibrate the compass (the Compass app, or turn the watch in a circle when asked), then paint again from where you stand.
 - **Wrong device triggers**: use "Not it?" right after to correct it, or paint again from that spot.

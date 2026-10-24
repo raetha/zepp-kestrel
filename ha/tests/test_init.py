@@ -172,3 +172,14 @@ async def test_settings_on_an_unpaired_watch_raise(hass, setup_entry):
     with pytest.raises(HomeAssistantError) as err:  # Home Assistant skips unavailable entities; a race still lands here
         await entity.async_turn_on()
     assert err.value.translation_key == "watch_unpaired"
+
+
+async def test_kept_probe_results_are_capped_by_size(hass, setup_entry, monkeypatch):
+    monkeypatch.setattr("custom_components.kestrel.watches.PROBES_MAX_CHARS", 1000)
+    watches = setup_entry.runtime_data
+    watch = {"id": "w", "name": "W"}
+    for i in range(20):
+        watches.add_probe(watch, {"test": "x", "i": i, "pad": "a" * 100})
+    kept = watches.probes_for()
+    assert 1 < len(kept) < 20 and kept[-1]["i"] == 19
+    assert sum(watches.probe_sizes) <= 1000

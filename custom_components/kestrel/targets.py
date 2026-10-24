@@ -73,6 +73,43 @@ def list_targets(hass: HomeAssistant, limit: int | None = MAX_TARGETS) -> list[d
     return targets if limit is None else targets[:limit]
 
 
+def is_offered(hass: HomeAssistant, entity_id: str) -> bool:
+    """Whether list_targets offers this entity (ignoring the size cap), without building the list:
+    checked on every trigger, so it looks at this entity and the labelled entries only."""
+    state = hass.states.get(entity_id)
+    if state is None or state.domain not in SUPPORTED_DOMAINS:
+        return False
+    ent_reg = er.async_get(hass)
+    entry = ent_reg.async_get(entity_id)
+    if entry is not None and (entry.disabled_by or entry.hidden_by or entry.entity_category):
+        return False
+    label_id = _label_id(hass)
+    if not label_id:
+        return True
+    dev_reg = dr.async_get(hass)
+
+    def labelled(e: er.RegistryEntry | None) -> bool:
+        if e is None:
+            return False
+        if label_id in e.labels:
+            return True
+        device = dev_reg.async_get(e.device_id) if e.device_id else None
+        return device is not None and label_id in device.labels
+
+    if labelled(entry):
+        return True
+    # the label narrows the list only if some offered entity carries it (as list_targets does)
+    candidates = list(er.async_entries_for_label(ent_reg, label_id))
+    for device in dr.async_entries_for_label(dev_reg, label_id):
+        candidates.extend(er.async_entries_for_device(ent_reg, device.id))
+    return not any(
+        e.domain in SUPPORTED_DOMAINS
+        and hass.states.get(e.entity_id) is not None
+        and not (e.disabled_by or e.hidden_by or e.entity_category)
+        for e in candidates
+    )
+
+
 def service_call(
     hass: HomeAssistant, entity_id: str, action: str, value: Any, confirmed: bool
 ) -> tuple[str, str, dict[str, Any]] | None:

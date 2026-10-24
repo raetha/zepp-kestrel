@@ -12,6 +12,10 @@ PAIRING_TTL = 600  # seconds a pairing code stays valid
 PAIRING_MAX_ATTEMPTS = 5  # wrong codes before a pairing is cancelled
 PAIR_STARTS_PER_WINDOW = 10  # pairing requests per client address per window
 PAIR_WINDOW = 600
+PAIRINGS_PENDING_MAX = 5  # pairings waiting for their code at once (each shows a notification)
+WATCH_NAME_MAX = 40
+PROBE_MAX_BYTES = 100_000  # one probe result; a trail or aim trace is a few kB
+PROBES_MAX_CHARS = 2_000_000  # all kept probe results together (they're rewritten to disk as one file)
 
 STORAGE_KEY = "kestrel.watches"
 STORAGE_VERSION = 1

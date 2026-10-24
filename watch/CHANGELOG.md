@@ -26,6 +26,7 @@ All notable changes to the Kestrel watch app. The format is based on
 - Larger, brighter text throughout, for reading at arm's length and in night mode.
 - More shows the Home Assistant address the phone is using.
 - Leaving a screen while it was still waiting for the phone could leave the app stuck (Home on "Checking…", every request hanging) until it was closed. Requests now always finish, and a stalled connection to the phone is retried.
+- Faster and lighter on the watch: stored data is read from flash once per screen, unchanged data isn't rewritten, the debug trail logs only button clicks, and the room is checked every 60 s while pointing.
 - Instant toggle: hold the aim on a device for a few seconds to trigger it, with no button or gesture (More → Instant, or in Home Assistant). It fires once per hold; locks still need a press.
 - The Zepp app's settings page (store installs) shows and changes the watch's settings: gesture, instant toggle, away mode and room source. Changes go to Home Assistant and reach the watch when it next syncs.
 - A snap or tap no longer triggers twice: gestures are ignored for 3 seconds after a trigger and while the watch itself buzzes (its vibration looked like another snap).

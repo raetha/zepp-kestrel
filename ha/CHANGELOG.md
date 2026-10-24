@@ -30,6 +30,7 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 - Entities on each watch's device: Last triggered (with how, where and when), Room, Last seen, Home Assistant address, Painted devices and Calibrated rooms sensors, and Gesture trigger and Away mode switches, and a Gesture select (flick, snap or tap; each keeps its own calibration). Every other setting has an entity too: Instant toggle (switch) and its delay, Room from and Away mode follows (selects), and the current gesture's thresholds (numbers, disabled by default).
 - Instant toggle: trigger a device by holding the watch's aim on it (setting, off by default; 1–10 s).
 - One endpoint for settings changes from the watch and the Zepp app's settings page; every field is checked.
+- Security: pairing only works from the home network (not through Home Assistant Cloud or a public address), at most five pairings wait at once, watch names are plain text, a watch can only trigger the entities it's offered, and probe results have size limits. See `docs/audits.md`.
 - A repair notice when watches are paired but Home Assistant has no address that works away from home.
 - The `kestrel_fired` event says how the device was triggered (`via`) and from which room (`area_id`).
 - Documentation: use cases, supported devices and functions, events, automation examples, known limitations, troubleshooting and removal. The device shows the watch app's version.

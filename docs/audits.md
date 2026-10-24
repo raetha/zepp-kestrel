@@ -1,0 +1,69 @@
+# Audits
+
+Quality scale, performance and security reviews of every part of Kestrel: the
+watch app (`watch/page`, `watch/lib`), the phone side service (`watch/app-side`,
+`watch/lib/ha-client.js`), the settings page (`watch/setting`), the Home
+Assistant integration (`custom_components/kestrel`) and CI. Repeat before each
+release; record what changed.
+
+## 2026-10-24
+
+### Quality scale
+
+All 54 rules (developers.home-assistant.io → Integration quality scale → Rules)
+checked against the code; the result is in `custom_components/kestrel/quality_scale.yaml`.
+Every rule is done or exempt with a reason; none is left to do.
+
+Done in this audit:
+
+- Documentation (README → "The Home Assistant integration"): use cases, supported
+  devices and functions, events (triggers), automation examples, how data updates,
+  known limitations, troubleshooting, removal.
+- `repair-issues`: a warning when watches are paired but Home Assistant has no
+  address that works away from home (`issues.py`).
+- `action-exceptions`, `exception-translations`: entity actions on a watch that was
+  unpaired raise a translated `HomeAssistantError`.
+- `entity-device-class`: the instant-toggle delay is a duration.
+- `entity-disabled-by-default`: the gesture threshold numbers.
+- `strict-typing`: `mypy --strict` passes (`ha/mypy.ini`) and runs in CI. Home
+  Assistant 2026.10 types forms with probatio (voluptuous is aliased to it); config
+  flow schemas go through one loosely typed helper so 2026.1+ keeps working.
+- Every setting the watch syncs has an entity or (for lists of entities) a
+  Configure field.
+
+Exempt, with reasons in the file: service actions (none of its own), polling and
+`log-when-unavailable` (watches push), discovery (watches find Home Assistant),
+reauthentication and reconfiguration (nothing to re-enter), async dependency and
+web session (no library, no client).
+
+### Performance
+
+| Where | Finding | Outcome |
+| --- | --- | --- |
+| Watch storage | Every `get()` read the file from flash: a sync read the sync state a dozen times, and the device list (up to about 60 kB with 1000 entities) was re-read for every count shown. | Fixed: `page/kv.js` keeps each file's text in memory per page (pages don't overlap) and skips writes that change nothing. Checked on the emulator: data written on Home still reaches Rooms. |
+| Watch trail | Each button press wrote the trail file three times (press, release, click). | Fixed: clicks only. |
+| Watch, Point | Room check: a 3 s Bluetooth scan every 45 s while pointing. | Every 60 s. Only when rooms are calibrated on the watch (not with a Home Assistant room sensor). |
+| Watch, Point | Aim loop at 10 Hz, sensors at 25 Hz: scoring is a few Gaussians per painted spot; widgets change only when the state does; the screen-on renewal is throttled to every 5 s; dwell and gesture detection are constant time. | Fine as is. |
+| Watch ↔ phone | Sync sends only what changed (revisions and a device-list hash, about 60 bytes); the full device list moves only when it changes. | Fine as is. |
+| Phone | Requests try the last address that worked first, so away from home they don't wait for the home address to time out. | Fine as is. |
+| HA, triggering | Checking that a target is offered rebuilt the whole device list on every trigger. | Fixed: `is_offered()` checks the one entity and the labelled entries. A test compares it with the list in every label situation. |
+| HA, probes | Kept probe results are rewritten to disk as one file; 500 large traces could make it several MB. | Fixed: also capped at 2 million characters together (oldest dropped). |
+| HA, status | "Last seen" moves at most once a minute; status saves are delayed 30 s. | Fine as is. |
+
+### Security
+
+| Severity | Finding | Outcome |
+| --- | --- | --- |
+| High | Pairing worked from anywhere, including through Home Assistant Cloud. A stranger could keep starting pairings and guess codes (6 digits, 5 tries per pairing, 10 pairings per 10 minutes per address); a hit gives a watch token, which can trigger devices, locks included. | Fixed: pairing (start and confirm) only from the home network: not through Home Assistant Cloud, and only from private or loopback addresses. At most 5 pairings wait at once. |
+| Medium | A watch token could trigger any supported entity that exists, including ones the `kestrel` label leaves out, hidden or disabled ones, and devices' configuration entities. | Fixed: only what the watch is offered. |
+| Low | The watch name (sent before pairing) went into the pairing notification as markdown, so it could carry links. | Fixed: letters, digits, spaces and `-_.'()` only, 40 characters. |
+| Low | Probe results had no size limit: a paired watch could fill the probe store. | Fixed: 100 kB per result, 2 million characters kept in all. |
+| Info | Watch tokens: 32 random bytes, stored only as SHA-256 hashes, compared in constant time; only valid on Kestrel's own endpoints; deleting the watch's device revokes it. | Fine. |
+| Info | Every watch request is checked (paints, rooms and settings are cleaned field by field and capped). Away mode is enforced in Home Assistant, not on the watch. | Fine. |
+| Info | `/api/kestrel/info` is unauthenticated (the phone needs it to find Home Assistant) and returns the location name and integration version. | Accepted. |
+| Info | Behind a reverse proxy without `trusted_proxies`, every request looks local, so the home-network check can't tell. | Documented here; set up `trusted_proxies` for your proxy. |
+| Info | On the phone, the watch token (and in direct mode the long-lived token) sits in the Zepp app's settings storage, like any Zepp app's settings. The settings page never shows a saved token. | Accepted (the platform offers nothing safer). |
+| Info | Typed local addresses use plain HTTP on the home network, so the token crosses the LAN unencrypted; remote addresses come from Home Assistant (normally HTTPS). | Accepted for local use. |
+| Info | Diagnostics contain Bluetooth MAC addresses of nearby devices (room calibration), the watch's address and person entity ids, but no tokens. | Accepted: needed to debug; diagnostics are only downloaded by the owner. |
+| Info | The watch holds no secrets: the token lives on the phone. | Fine. |
+| Info | CI: least-privilege `permissions`, actions pinned to commits (Dependabot proposes updates), no stored secrets (the Zepp preview tokens are gone), builds published over HTTPS. | Fine. |

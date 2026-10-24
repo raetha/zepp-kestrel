@@ -3,6 +3,11 @@
 Every request a watch makes also updates what Home Assistant shows about it
 (last seen, the address it used; see sensor.py).
 
+Pairing only works from the home network (not through Home Assistant Cloud or
+from a public address): a stranger can't keep asking for pairings and guessing
+codes from the internet. Pairing happens at home anyway: the phone finds Home
+Assistant on the local network.
+
 Watches don't use Home Assistant user tokens. Pairing gives each watch its own
 token, sent as X-Kestrel-Token, which only works on these endpoints.
 
@@ -24,6 +29,7 @@ token, sent as X-Kestrel-Token, which only works on these endpoints.
 from __future__ import annotations
 
 import hashlib
+from ipaddress import ip_address
 import json
 import logging
 from http import HTTPStatus
@@ -36,11 +42,12 @@ from homeassistant.helpers.http import KEY_HASS, HomeAssistantView
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.helpers import area_registry as ar
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.network import NoURLAvailableError, get_url
+from homeassistant.helpers.network import NoURLAvailableError, get_url, is_cloud_connection
+from homeassistant.util.network import is_local
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, SUPPORTED_DOMAINS, TOKEN_HEADER
-from .targets import MAX_TARGETS, list_targets, service_call
+from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, PROBE_MAX_BYTES, SUPPORTED_DOMAINS, TOKEN_HEADER
+from .targets import MAX_TARGETS, is_offered, list_targets, service_call
 from .watchdata import SECTIONS, areas, away_block, current_room
 from .watches import Watches
 
@@ -55,6 +62,16 @@ def _watches(hass: HomeAssistant) -> Watches | None:
 
 def _error(message: str, status: HTTPStatus) -> web.Response:
     return web.json_response({"message": message}, status=status)
+
+
+def _from_home(hass: HomeAssistant, request: web.Request) -> bool:
+    """A request from the local network: not through Home Assistant Cloud, from a private or loopback address."""
+    if is_cloud_connection(hass):
+        return False
+    try:
+        return is_local(ip_address(request.remote or ""))
+    except ValueError:
+        return False
 
 
 def _room(hass: HomeAssistant, area_id: Any) -> dict[str, str] | None:
@@ -120,6 +137,8 @@ class PairView(HomeAssistantView):
         watches = _watches(hass)
         if watches is None:
             return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
+        if not _from_home(hass, request):
+            return _error("Pair from your home network", HTTPStatus.FORBIDDEN)
         if not watches.allow_start(request.remote or "?"):
             return _error("Too many pairing requests: wait a few minutes", HTTPStatus.TOO_MANY_REQUESTS)
         try:
@@ -150,6 +169,8 @@ class PairConfirmView(HomeAssistantView):
         watches = _watches(hass)
         if watches is None:
             return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
+        if not _from_home(hass, request):
+            return _error("Pair from your home network", HTTPStatus.FORBIDDEN)
         try:
             body = await request.json()
         except ValueError:
@@ -349,7 +370,8 @@ class FireView(_WatchView):
             return _error("Bad request", HTTPStatus.BAD_REQUEST)
         target = str(body.get("target") or "")
         action = str(body.get("action") or "toggle")
-        if target.split(".", 1)[0] not in SUPPORTED_DOMAINS or hass.states.get(target) is None:
+        # only what the watch is offered: supported, not hidden or disabled, and labelled if labels are used
+        if not is_offered(hass, target):
             return _error(f"Unknown target {target}", HTTPStatus.NOT_FOUND)
         if not watches.first_time(watch["id"], body.get("seq")):
             state = hass.states.get(target)
@@ -411,8 +433,13 @@ class ProbeView(_WatchView):
         if isinstance(auth, web.Response):
             return auth
         hass, watches, watch = auth
+        if (request.content_length or 0) > PROBE_MAX_BYTES:
+            return _error("Too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+        raw = await request.read()
+        if len(raw) > PROBE_MAX_BYTES:
+            return _error("Too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
         try:
-            body = await request.json()
+            body = json.loads(raw)
         except ValueError:
             return _error("Bad request", HTTPStatus.BAD_REQUEST)
         if not isinstance(body, dict):

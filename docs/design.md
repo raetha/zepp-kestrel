@@ -47,7 +47,7 @@ Direct mode filters entities with an HA label `kestrel` (all supported entities 
 - Aim gate: the arm must be still (gyro under about 30°/s for 300 ms), pitch within ±70°, roll within ±45° for at least 1.5 s (the compass is smoothed and lags after the wrist turns), compass calibrated. The limits are symmetric, so the left wrist works without a setting.
 - A paint stores, per device and room, one or more spots: circular mean heading and spread, mean pitch and spread, and up to 60 samples. Heading maths is always circular (`watch/lib/circular.js`).
 - Classification scores each spot with a 2D Gaussian; states are resting, aiming, candidate (show the name) and locked (margin over the runner-up). A wrong guess offers the runner-up; corrections add a small spot where the arm was.
-- Rooms: spots are tagged with the room they were painted in. When the current room is known (a Bluetooth scan matched against calibrated fingerprints, `watch/lib/rooms.js`, or a Home Assistant sensor), only that room's spots and untagged ones count. Point checks the room when it opens and every 45 s.
+- Rooms: spots are tagged with the room they were painted in. When the current room is known (a Bluetooth scan matched against calibrated fingerprints, `watch/lib/rooms.js`, or a Home Assistant sensor), only that room's spots and untagged ones count. Point checks the room when it opens and every 60 s (a 3 s Bluetooth scan each time).
 - Dimming: hold the select button or the circle (450 ms) on a dimmable light and twist; a quarter turn is the whole range (`watch/lib/dim.js`). Release sends `brightness_step_pct`.
 
 ## Triggers

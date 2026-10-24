@@ -166,6 +166,10 @@ Test builds install only as "Kestrel DEV" (app ID 2132466). An earlier experimen
 
 The release QR code (`watch/docs/install-qr.png`) encodes `zpkd1://raetha.github.io/zepp-kestrel/watch/kestrel.zpk`. Regenerate with `npm run qr` if the repo moves.
 
+## Audits
+
+Quality scale, performance and security reviews are in [audits.md](audits.md). Repeat them before each release.
+
 ## Licensing
 
 MIT for everything (`LICENSE`), like Home Assistant and most of its ecosystem: anyone may use, change and share the code, commercially too. Forks are asked (README) to use another name and icon. Until 2026-10 the watch app was CC BY-NC-SA 4.0, with generic helpers in a separate MIT `lib/`; that split is gone and the helpers live in `watch/lib/`.

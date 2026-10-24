@@ -164,7 +164,7 @@ function unstickHandshake(page) {
 export function listenKeys(onSelect, opts = {}) {
   onKey({
     callback: safe('keys', (key, event) => {
-      note('key', [key, event])
+      if (event === KEY_EVENT_CLICK) note('key', key) // clicks only: press and release would triple the writes
       if (key === KEY_SELECT && (onSelect || opts.onSelectPress)) {
         if (event === KEY_EVENT_PRESS && opts.onSelectPress) opts.onSelectPress()
         if (event === KEY_EVENT_RELEASE && opts.onSelectRelease) opts.onSelectRelease()

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
+import re
 import secrets
 import time
 from collections import deque
@@ -22,14 +24,17 @@ from .const import (
     PAIR_WINDOW,
     PAIRING_MAX_ATTEMPTS,
     PAIRING_TTL,
+    PAIRINGS_PENDING_MAX,
     PROBES_KEPT,
     PROBES_SAVE_DELAY,
+    PROBES_MAX_CHARS,
     PROBES_STORAGE_KEY,
     SEEN_EVERY,
     SIGNAL_WATCH_ADDED,
     STATUS_SAVE_DELAY,
     STORAGE_KEY,
     STORAGE_VERSION,
+    WATCH_NAME_MAX,
     signal_watch_updated,
 )
 from .issues import check_external_url
@@ -65,7 +70,8 @@ class Watches:
     pairings: dict[str, Pairing] = field(default_factory=dict)
     starts: dict[str, deque[float]] = field(default_factory=dict)
     seen_seqs: dict[str, deque[Any]] = field(default_factory=dict)
-    probes: deque[dict[str, Any]] = field(default_factory=lambda: deque(maxlen=PROBES_KEPT))
+    probes: deque[dict[str, Any]] = field(default_factory=deque)
+    probe_sizes: deque[int] = field(default_factory=deque)  # characters per kept result, for the size cap
 
     def __post_init__(self) -> None:  # noqa: D105
         self.store = Store(self.hass, STORAGE_VERSION, STORAGE_KEY)
@@ -75,7 +81,8 @@ class Watches:
         data = await self.store.async_load() or {}
         self.watches = data.get("watches", {})
         probes = await self.probe_store.async_load() or {}
-        self.probes.extend(probes.get("probes", []))
+        for record in probes.get("probes", []):
+            self._keep_probe(record)
 
     async def _async_save(self) -> None:
         await self.store.async_save({"watches": self.watches})
@@ -84,6 +91,9 @@ class Watches:
     def allow_start(self, client: str, now: float | None = None) -> bool:
         """Rate-limit pairing requests per client address."""
         now = time.monotonic() if now is None else now
+        self._expire(now)
+        if len(self.pairings) >= PAIRINGS_PENDING_MAX:
+            return False
         q = self.starts.setdefault(client, deque())
         while q and now - q[0] > PAIR_WINDOW:
             q.popleft()
@@ -97,7 +107,8 @@ class Watches:
         self._expire(now)
         pairing = Pairing(
             pairing_id=secrets.token_hex(8),
-            watch_name=(watch_name or "Watch").strip()[:40] or "Watch",
+            # shown in a notification (markdown): plain characters only
+            watch_name=re.sub(r"[^\w \-.'()]", "", watch_name or "").strip()[:WATCH_NAME_MAX] or "Watch",
             code=f"{secrets.randbelow(1_000_000):06d}",
             expires=now + PAIRING_TTL,
         )
@@ -151,7 +162,9 @@ class Watches:
         kept = [p for p in self.probes if p.get("watch_id") not in watch_ids]
         if len(kept) != len(self.probes):
             self.probes.clear()
-            self.probes.extend(kept)
+            self.probe_sizes.clear()
+            for record in kept:
+                self._keep_probe(record)
             self._save_probes()
         await self._async_save()
 
@@ -248,9 +261,17 @@ class Watches:
         """Keep a probe result (the newest PROBES_KEPT) and return the event data for it."""
         # the watch's own fields win over anything in the body with the same name
         record = {**result, "watch_id": watch["id"], "watch_name": watch["name"], "received": dt_util.utcnow().isoformat()}
-        self.probes.append(record)
+        self._keep_probe(record)
         self._save_probes()
         return record
+
+    def _keep_probe(self, record: dict[str, Any]) -> None:
+        """Keep the newest PROBES_KEPT results, and no more than PROBES_MAX_CHARS together."""
+        self.probes.append(record)
+        self.probe_sizes.append(len(json.dumps(record, default=str)))
+        while len(self.probes) > 1 and (len(self.probes) > PROBES_KEPT or sum(self.probe_sizes) > PROBES_MAX_CHARS):
+            self.probes.popleft()
+            self.probe_sizes.popleft()
 
     def probes_for(self, watch_id: str | None = None) -> list[dict[str, Any]]:
         return [p for p in self.probes if watch_id is None or p.get("watch_id") == watch_id]
@@ -282,6 +303,7 @@ class Watches:
     async def async_clear(self) -> None:
         self.watches = {}
         self.probes.clear()
+        self.probe_sizes.clear()
         await self.store.async_remove()
         await self.probe_store.async_remove()
 
