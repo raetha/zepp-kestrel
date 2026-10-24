@@ -40,8 +40,8 @@ export const SUPPORTED_DOMAINS = [
 ]
 
 const KEY = {
-  pairing: 'ww.pairing', // JSON { token, watchId, haName, urls: [..], lastGood }
-  lastGood: 'ww.lastGoodUrl',
+  pairing: 'kestrel.pairing', // JSON { token, watchId, haName, urls: [..], lastGood }
+  lastGood: 'kestrel.lastGoodUrl',
   haUrl: 'haUrl', // settings page (direct mode)
   haToken: 'haToken',
 }

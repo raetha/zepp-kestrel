@@ -137,7 +137,7 @@ test('pairing stores the token and every address HA reports', async () => {
 
 test('component requests fall back from local to Nabu Casa, then remember what worked', async () => {
   const store = memStore({
-    'ww.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123', 'https://abc.ui.nabu.casa'] }),
+    'kestrel.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123', 'https://abc.ui.nabu.casa'] }),
   })
   const fetch = fakeFetch({
     'GET https://abc.ui.nabu.casa/api/kestrel/targets': async (r) => {
@@ -148,13 +148,13 @@ test('component requests fall back from local to Nabu Casa, then remember what w
   const ha = new HaClient({ fetch, store })
   assert.deepEqual(await ha.targets(), [{ id: 'light.lamp' }])
   assert.equal(fetch.calls[0].url.startsWith('http://homeassistant.local'), true)
-  assert.equal(store.m['ww.lastGoodUrl'], 'https://abc.ui.nabu.casa')
+  assert.equal(store.m['kestrel.lastGoodUrl'], 'https://abc.ui.nabu.casa')
   await ha.targets()
   assert.equal(fetch.calls[2].url.startsWith('https://abc.ui.nabu.casa'), true)
 })
 
 test('a 401 from the component unpairs the watch', async () => {
-  const store = memStore({ 'ww.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123'] }) })
+  const store = memStore({ 'kestrel.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123'] }) })
   const fetch = fakeFetch({ 'GET http://homeassistant.local:8123/api/kestrel/targets': async () => ({ status: 401, body: {} }) })
   const ha = new HaClient({ fetch, store })
   await assert.rejects(ha.targets(), /pair again/)
@@ -233,7 +233,7 @@ test('corrections add small spots without pushing painted ones out', async () =>
 
 test('sync, section saves, gesture and room go to the component', async () => {
   const url = 'http://homeassistant.local'
-  const store = memStore({ 'ww.pairing': JSON.stringify({ token: 'tok', urls: [url] }) })
+  const store = memStore({ 'kestrel.pairing': JSON.stringify({ token: 'tok', urls: [url] }) })
   const fetch = fakeFetch({
     [`GET ${url}/api/kestrel/sync`]: async () => ({ status: 200, body: { targets: [], paints: {}, paints_rev: 2 } }),
     [`GET ${url}/api/kestrel/sync?only=paints`]: async () => ({ status: 200, body: { paints: {}, paints_rev: 2 } }),

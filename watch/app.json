@@ -17,8 +17,7 @@
     "device:os.ble",
     "device:os.compass",
     "data:os.device.info",
-    "device:os.gyroscope",
-    "device:os.local_storage"
+    "device:os.gyroscope"
   ],
   "runtime": {
     "apiVersion": {

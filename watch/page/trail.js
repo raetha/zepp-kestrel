@@ -7,7 +7,7 @@ import { getPackageInfo } from '@zos/app'
 import { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } from '@zos/interaction'
 import { append, splitPrevious, describeError } from '../lib/trail.js'
 
-const KEY = 'ww.trail'
+const KEY = 'kestrel.trail'
 
 function read() {
   const v = get(KEY, [])

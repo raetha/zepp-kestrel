@@ -2,19 +2,19 @@
 // Kept in one place so both sides agree on method names.
 
 export const METHOD = {
-  PING: 'ww.ping', // phone answers immediately: measures watch <-> phone
-  HA_PING: 'ww.haPing', // phone calls HA GET /api/: measures phone <-> HA
-  PROBE_LOG: 'ww.probeLog', // watch sends a probe result for storage/forwarding
-  STATUS: 'ww.status', // { paired, mode, haName }
-  DISCOVER: 'ww.discover', // { address? } look for Home Assistant on the local network (or at a typed address)
-  PAIR_START: 'ww.pairStart', // { url, watchName } -> { pairingId } (HA shows a code)
-  PAIR_CONFIRM: 'ww.pairConfirm', // { url, pairingId, code } -> { ok, haName, error }
-  UNPAIR: 'ww.unpair',
-  SYNC: 'ww.sync', // { only?, have? } -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room } (see ha-client sync)
-  FIRE: 'ww.fire', // { seq, target, action, value, confirmed } -> { ok, state, needsConfirm, error }
-  SAVE: 'ww.save', // { section: 'paints' | 'rooms', value } -> { ok, rev } after a change on the watch
-  SAVE_GESTURE: 'ww.saveGesture', // { gesture } -> { ok, rev, settings } after calibrating
-  ROOM: 'ww.room', // -> { room: { id, name } | null } from a Home Assistant sensor, if configured
+  PING: 'kestrel.ping', // phone answers immediately: measures watch <-> phone
+  HA_PING: 'kestrel.haPing', // phone calls HA GET /api/: measures phone <-> HA
+  PROBE_LOG: 'kestrel.probeLog', // watch sends a probe result for storage/forwarding
+  STATUS: 'kestrel.status', // { paired, mode, haName }
+  DISCOVER: 'kestrel.discover', // { address? } look for Home Assistant on the local network (or at a typed address)
+  PAIR_START: 'kestrel.pairStart', // { url, watchName } -> { pairingId } (HA shows a code)
+  PAIR_CONFIRM: 'kestrel.pairConfirm', // { url, pairingId, code } -> { ok, haName, error }
+  UNPAIR: 'kestrel.unpair',
+  SYNC: 'kestrel.sync', // { only?, have? } -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room } (see ha-client sync)
+  FIRE: 'kestrel.fire', // { seq, target, action, value, confirmed } -> { ok, state, needsConfirm, error }
+  SAVE: 'kestrel.save', // { section: 'paints' | 'rooms', value } -> { ok, rev } after a change on the watch
+  SAVE_GESTURE: 'kestrel.saveGesture', // { gesture } -> { ok, rev, settings } after calibrating
+  ROOM: 'kestrel.room', // -> { room: { id, name } | null } from a Home Assistant sensor, if configured
 }
 
 /**

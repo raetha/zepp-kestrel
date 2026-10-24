@@ -6,31 +6,30 @@ import { markDirty } from '../lib/sync.js'
 import { get as read, set as write } from './kv.js'
 
 /** [{ id, name, domain, area, dimmable, confirm }] from the last sync */
-export const targets = () => read('targets', [])
-export const saveTargets = (list) => write('targets', list)
+export const targets = () => read('kestrel.targets', [])
+export const saveTargets = (list) => write('kestrel.targets', list)
 
 /** [{ id, name }] Home Assistant areas, from the last sync */
-export const areas = () => read('ww.areas', [])
-export const saveAreas = (list) => write('ww.areas', list)
+export const areas = () => read('kestrel.areas', [])
+export const saveAreas = (list) => write('kestrel.areas', list)
 
 // ---------------------------------------------------------------- sync state
 /** { watchId, targetsHash, targetsTotal, paintsRev, paintsDirty, roomsRev, roomsDirty, settingsRev, gestureDirty } */
 const META_DEFAULTS = { watchId: null, targetsHash: null, targetsTotal: null, paintsRev: 0, paintsDirty: [], roomsRev: 0, roomsDirty: [], settingsRev: 0, gestureDirty: false }
-export const syncMeta = () => ({ ...META_DEFAULTS, ...read('ww.sync', {}) })
-export const saveSyncMeta = (m) => write('ww.sync', { ...syncMeta(), ...m })
+export const syncMeta = () => ({ ...META_DEFAULTS, ...read('kestrel.sync', {}) })
+export const saveSyncMeta = (m) => write('kestrel.sync', { ...syncMeta(), ...m })
 /** Forget what was synced (paired with Home Assistant again). Local paints stay, as changes to send. */
 export function resetSyncMeta() {
-  write('ww.sync', { ...META_DEFAULTS, paintsDirty: Object.keys(paints()), roomsDirty: Object.keys(rooms()) })
+  write('kestrel.sync', { ...META_DEFAULTS, paintsDirty: Object.keys(paints()), roomsDirty: Object.keys(rooms()) })
 }
 
 // ---------------------------------------------------------------- paints
 /**
- * { [targetId]: [spot, ...] }. 'paints2': spots hold the forearm's heading.
- * Spots from earlier builds ('paints') held 12 o'clock's heading and are dropped.
+ * { [targetId]: [spot, ...] }. Each spot holds the forearm's heading.
  */
-export const paints = () => read('paints2', {})
+export const paints = () => read('kestrel.paints', {})
 /** Replace all paints (from a sync). */
-export const savePaints = (p) => write('paints2', p)
+export const savePaints = (p) => write('kestrel.paints', p)
 
 /** Change one device's spots on the watch (null removes it); synced later. */
 export function setPaint(id, spots) {
@@ -53,8 +52,8 @@ export function paintedDevices() {
 
 // ---------------------------------------------------------------- rooms
 /** { [areaId]: { name, fingerprint: { mac: [rssi, seen] }, scans, at } } */
-export const rooms = () => read('ww.rooms', {})
-export const saveRooms = (r) => write('ww.rooms', r)
+export const rooms = () => read('kestrel.rooms', {})
+export const saveRooms = (r) => write('kestrel.rooms', r)
 
 export function setRoom(areaId, room) {
   const r = rooms()
@@ -73,12 +72,12 @@ export const DEFAULT_SETTINGS = {
 
 /** Settings from Home Assistant (with defaults filled in). */
 export function settings() {
-  const s = read('ww.settings', {})
+  const s = read('kestrel.settings', {})
   const out = {}
   for (const k of Object.keys(DEFAULT_SETTINGS)) out[k] = { ...DEFAULT_SETTINGS[k], ...(s[k] || {}) }
   return out
 }
-export const saveSettings = (s) => write('ww.settings', s)
+export const saveSettings = (s) => write('kestrel.settings', s)
 
 export const gesture = () => settings().gesture
 

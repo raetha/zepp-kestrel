@@ -2,7 +2,7 @@
 
 # Kestrel
 
-Point your Amazfit watch at a smart-home device and trigger it. An open-source pointing remote for Zepp OS watches, built around [Home Assistant](https://www.home-assistant.io/).
+Point your Amazfit watch at a smart-home device and trigger it. Hold your arm still on the lamp across the room, the way a kestrel hangs still in the wind over its target, then flick your wrist and the light comes on. An open-source pointing remote for Zepp OS watches, built around [Home Assistant](https://www.home-assistant.io/).
 
 > **Status: feature-complete test builds, before release polish.** Pair the watch with Home Assistant, paint devices, point, and trigger with the select button, a tap or a gesture (wrist flick, finger snap or finger tap). Twist to dim lights. Rooms are recognised by Bluetooth (or a Home Assistant sensor). Away mode, paints, rooms and settings are managed in Home Assistant. There is no release yet.
 

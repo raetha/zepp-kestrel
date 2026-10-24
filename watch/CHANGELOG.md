@@ -38,7 +38,7 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Changed
 
-- Renamed from WristWand to Kestrel, with a new icon. Test builds install as "Kestrel DEV" and need pairing again with the renamed Home Assistant integration.
+- Renamed from WristWand to Kestrel, with a new icon. Test builds install as "Kestrel DEV" and need pairing again with the renamed Home Assistant integration. Uninstall WristWand DEV first: nothing it stored carries over.
 - Aim uses where your forearm points (the watch's compass heading turned by 90°). Keep the palm roughly down: with the wrist turned more than about 45° the compass drifts, so aim waits until it has settled. Devices painted with earlier test builds need painting again.
 - Point reopens when you raise your wrist again after the screen went off, instead of the watch returning to the watch face.
 - Compass tilt probe: two short guided recordings (up and down along one line; wrist turned in and out) instead of single captures. Each step is announced by 1 to 4 buzzes, so you needn't read the screen, and all steps are shown before you start.
