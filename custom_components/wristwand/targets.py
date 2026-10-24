@@ -14,7 +14,8 @@ from homeassistant.helpers import (
 
 from .const import CONFIRM_DOMAINS, LABEL_NAME, SUPPORTED_DOMAINS
 
-MAX_TARGETS = 300
+# Sent to a watch at most; the rest are left out (the wristwand label narrows the list).
+MAX_TARGETS = 1000
 
 
 def _label_id(hass: HomeAssistant) -> str | None:
@@ -24,11 +25,13 @@ def _label_id(hass: HomeAssistant) -> str | None:
     return None
 
 
-def list_targets(hass: HomeAssistant) -> list[dict[str, Any]]:
+def list_targets(hass: HomeAssistant, limit: int | None = MAX_TARGETS) -> list[dict[str, Any]]:
     """Entities a watch can paint.
 
     If any entity (or its device) carries the `wristwand` label, only labelled ones;
-    otherwise every supported entity that isn't hidden or disabled. Grouped by area.
+    otherwise every supported entity that isn't hidden, disabled, or a device's
+    configuration or diagnostic entity (restart buttons, firmware switches).
+    Grouped by area; at most `limit` (None for all).
     """
     ent_reg = er.async_get(hass)
     dev_reg = dr.async_get(hass)
@@ -43,7 +46,7 @@ def list_targets(hass: HomeAssistant) -> list[dict[str, Any]]:
     rows: list[tuple[dict[str, Any], bool]] = []
     for state in hass.states.async_all(SUPPORTED_DOMAINS):
         entry = ent_reg.async_get(state.entity_id)
-        if entry is not None and (entry.disabled_by or entry.hidden_by):
+        if entry is not None and (entry.disabled_by or entry.hidden_by or entry.entity_category):
             continue
         device = dev_reg.async_get(entry.device_id) if entry and entry.device_id else None
         area_id = (entry.area_id if entry else None) or (device.area_id if device else None)
@@ -69,7 +72,7 @@ def list_targets(hass: HomeAssistant) -> list[dict[str, Any]]:
         rows = [r for r in rows if r[1]]
     targets = [t for t, _ in rows]
     targets.sort(key=lambda t: ((t["area"] or "￿").lower(), t["name"].lower()))
-    return targets[:MAX_TARGETS]
+    return targets if limit is None else targets[:limit]
 
 
 def service_call(

@@ -24,7 +24,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: WristWa
         "version": watches.version,
         "watches": async_redact_data(list(watches.watches.values()), TO_REDACT),
         "pairings_in_progress": len(watches.pairings),
-        "targets": len(list_targets(hass)),
+        "targets": len(list_targets(hass, limit=None)),
         "probes": watches.probes_for(),
     }
 

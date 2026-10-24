@@ -66,8 +66,7 @@ Page(
           setText(this.statusW, 'Not connected to Home Assistant')
         } else {
           const painted = paintedDevices().length
-          this.statusText = `${st.haName} · ${painted} painted`
-          setText(this.statusW, this.statusText)
+          setText(this.statusW, `${st.haName} · ${painted} painted`)
         }
 
         if (!st.paired && !st.offline) {
@@ -93,20 +92,27 @@ Page(
       },
 
       // Targets, areas, settings, paints and rooms from Home Assistant (page/sync.js).
-      // The Sync button fetches everything; the quiet sync at launch only what changed.
-      // Both show Syncing… (a second one waits for the first; page/sync.js).
+      // The Sync button fetches everything; the quiet sync at launch only what
+      // changed. Sync pressed while one runs is ignored, with a note.
       sync(quiet = false) {
+        if (this.syncing) {
+          if (quiet) return
+          setText(this.statusW, 'Already syncing…')
+          setTimeout(() => this.alive && this.syncing && setText(this.statusW, 'Syncing…'), 1500)
+          return
+        }
+        this.syncing = true
         setText(this.statusW, 'Syncing…')
-        this.syncing = (this.syncing || 0) + 1
         sync((m, p, t) => ask(this, m, p, t), null, { full: !quiet })
           .catch(() => ({ ok: false, error: 'Phone not reachable' }))
           .then((r) => {
-            if (--this.syncing > 0 || !this.alive) return // only the last one shows its result
+            this.syncing = false
+            if (!this.alive) return
             if (!r.ok) {
-              setText(this.statusW, quiet ? this.statusText || '' : r.error || 'Sync failed')
+              setText(this.statusW, `Sync failed: ${r.error || 'no reply'}`)
               return
             }
-            const parts = [`${r.targets || 0} devices`]
+            const parts = [r.total ? `${r.targets} of ${r.total} devices` : `${r.targets || 0} devices`]
             if (r.areas !== undefined) parts.push(`${r.areas} areas`)
             if (r.paints !== undefined) parts.push(`${r.paints} painted`)
             if (r.rooms) parts.push(`${r.rooms} rooms`)

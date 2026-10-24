@@ -169,3 +169,14 @@ async def test_sync_sends_only_what_changed(hass, setup_entry, hass_client_no_au
     assert "rooms" not in body and "settings" not in body
     assert [t["id"] for t in body["targets"]] == ["light.desk", "light.porch"]
     assert body["targets_hash"] != full["targets_hash"]
+
+
+async def test_sync_caps_the_device_list_and_says_so(hass, setup_entry, hass_client_no_auth, monkeypatch):
+    monkeypatch.setattr("custom_components.wristwand.http.MAX_TARGETS", 2)
+    for name in ("a", "b", "c"):
+        hass.states.async_set(f"light.{name}", "off")
+    _, token = await _token(setup_entry)
+    client = await hass_client_no_auth()
+    body = await (await client.get("/api/wristwand/sync", headers={TOKEN_HEADER: token})).json()
+    assert [t["id"] for t in body["targets"]] == ["light.a", "light.b"]
+    assert body["targets_total"] == 3

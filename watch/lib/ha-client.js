@@ -103,7 +103,7 @@ export class HaClient {
 
   status() {
     const p = this.pairing()
-    if (p && p.token) return { paired: true, mode: 'component', haName: p.haName || 'Home Assistant' }
+    if (p && p.token) return { paired: true, mode: 'component', haName: p.haName || 'Home Assistant', url: this.candidateUrls()[0] || null }
     if (this.directConfig()) return { paired: true, mode: 'direct', haName: 'Home Assistant' }
     return { paired: false, mode: null }
   }

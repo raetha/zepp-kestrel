@@ -131,7 +131,7 @@ test('pairing stores the token and every address HA reports', async () => {
   assert.deepEqual(await ha.pairConfirm(start.url, 'p1', 111111), { ok: false, error: 'Wrong code' })
   assert.equal(ha.status().paired, false)
   assert.deepEqual(await ha.pairConfirm(start.url, 'p1', 123456), { ok: true, haName: 'Home' })
-  assert.deepEqual(ha.status(), { paired: true, mode: 'component', haName: 'Home' })
+  assert.deepEqual(ha.status(), { paired: true, mode: 'component', haName: 'Home', url: 'http://homeassistant.local:8123' }) // the address that answered
   assert.deepEqual(ha.pairing().urls, ['http://homeassistant.local:8123', 'http://192.168.1.5:8123', 'https://abc.ui.nabu.casa'])
 })
 

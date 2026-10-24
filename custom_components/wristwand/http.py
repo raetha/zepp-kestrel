@@ -33,7 +33,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, SUPPORTED_DOMAINS, TOKEN_HEADER
-from .targets import list_targets, service_call
+from .targets import MAX_TARGETS, list_targets, service_call
 from .watchdata import SECTIONS, areas, away_block, current_room
 from .watches import Watches
 
@@ -213,11 +213,14 @@ class SyncView(_WatchView):
             if have.get(section) != str(rev):
                 body[section] = synced[section]
         if not only:
-            targets, area_list = sync_targets(list_targets(hass)), areas(hass)
+            every = list_targets(hass, limit=None)
+            targets, area_list = sync_targets(every[:MAX_TARGETS]), areas(hass)
             digest = hashlib.sha1(json.dumps([targets, area_list], sort_keys=True).encode()).hexdigest()[:12]
             body["targets_hash"] = digest
             if have.get("targets") != digest:
                 body.update(targets=targets, areas=area_list)
+                if len(every) > MAX_TARGETS:
+                    body["targets_total"] = len(every)  # the watch says some were left out
         return web.json_response(body)
 
 

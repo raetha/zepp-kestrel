@@ -100,13 +100,17 @@ async def test_targets_list_supported_entities_by_area(hass, setup_entry, hass_c
     hass.states.async_set("switch.fan", "off", {"friendly_name": "Fan plug"})
     hass.states.async_set("sensor.temp", "21")
     hass.states.async_set("lock.door", "locked", {"friendly_name": "Door"})
+    restart = ent_reg.async_get_or_create(
+        "button", "test", "restart", suggested_object_id="restart", entity_category=er.EntityCategory.CONFIG
+    )
+    hass.states.async_set(restart.entity_id, "unknown")
 
     client = await hass_client_no_auth()
     paired = await _pair(hass, client)
     res = await client.get("/api/wristwand/targets", headers={TOKEN_HEADER: paired["token"]})
     targets = (await res.json())["targets"]
     by_id = {t["id"]: t for t in targets}
-    assert set(by_id) == {"light.lamp", "switch.fan", "lock.door"}
+    assert set(by_id) == {"light.lamp", "switch.fan", "lock.door"}  # no configuration entities
     assert by_id["light.lamp"] == {
         "id": "light.lamp", "name": "Lamp", "domain": "light", "area": "Living room", "area_id": area.id,
         "dimmable": True, "confirm": False,

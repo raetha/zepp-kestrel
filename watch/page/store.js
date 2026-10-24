@@ -14,8 +14,8 @@ export const areas = () => read('ww.areas', [])
 export const saveAreas = (list) => write('ww.areas', list)
 
 // ---------------------------------------------------------------- sync state
-/** { watchId, targetsHash, paintsRev, paintsDirty, roomsRev, roomsDirty, settingsRev, gestureDirty } */
-const META_DEFAULTS = { watchId: null, targetsHash: null, paintsRev: 0, paintsDirty: [], roomsRev: 0, roomsDirty: [], settingsRev: 0, gestureDirty: false }
+/** { watchId, targetsHash, targetsTotal, paintsRev, paintsDirty, roomsRev, roomsDirty, settingsRev, gestureDirty } */
+const META_DEFAULTS = { watchId: null, targetsHash: null, targetsTotal: null, paintsRev: 0, paintsDirty: [], roomsRev: 0, roomsDirty: [], settingsRev: 0, gestureDirty: false }
 export const syncMeta = () => ({ ...META_DEFAULTS, ...read('ww.sync', {}) })
 export const saveSyncMeta = (m) => write('ww.sync', { ...syncMeta(), ...m })
 /** Forget what was synced (paired with Home Assistant again). Local paints stay, as changes to send. */

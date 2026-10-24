@@ -32,12 +32,13 @@ const SECTIONS = {
  * @param only null for everything, or ['paints'] / ['rooms'] after a change
  * @param full true to fetch everything (the Sync button); otherwise the watch
  *        says what it has and Home Assistant sends only what changed
- * @returns { ok, targets, areas, paints, rooms, error }
+ * @returns { ok, targets, total (when Home Assistant left some out), areas, paints, rooms, error }
  */
 export function sync(ask, only = null, opts = {}) {
   // One sync at a time: two at once over Bluetooth made one fail ("Phone not
-  // reachable") while the other succeeded, e.g. Sync pressed during the quiet
-  // sync at launch. A sync asked for meanwhile runs once the current one ends.
+  // reachable") while the other succeeded. One asked for meanwhile (a paint
+  // saved during the launch sync) runs once the current one ends; the home
+  // page ignores Sync presses while it is syncing.
   const run = () => syncNow(ask, only, opts)
   const next = running ? running.then(run, run) : run()
   const mine = next.finally(() => {
@@ -76,7 +77,7 @@ async function syncNow(ask, only = null, { full = false } = {}) {
 
   if (r.targets) {
     saveTargets(r.targets)
-    saveSyncMeta({ targetsHash: r.targets_hash || null })
+    saveSyncMeta({ targetsHash: r.targets_hash || null, targetsTotal: r.targets_total || null })
   }
   if (r.areas) saveAreas(r.areas)
   // what each sync brought, for the diagnostics (trail)
@@ -88,7 +89,7 @@ async function syncNow(ask, only = null, { full = false } = {}) {
     saveSyncMeta({ settingsRev: r.settings_rev })
   }
 
-  const out = { ok: true, targets: targets().length, areas: areas().length }
+  const out = { ok: true, targets: targets().length, total: syncMeta().targetsTotal, areas: areas().length }
   for (const name of Object.keys(SECTIONS)) {
     const revKey = `${name}_rev`
     if (r[revKey] === undefined) continue // direct mode, or not asked for

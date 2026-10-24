@@ -24,6 +24,8 @@ All notable changes to the WristWand watch app. The format is based on
 - The home screen shows the build number, and Sync shows how many areas came from Home Assistant.
 - The app syncs with Home Assistant each time it starts, fetching only what changed (usually almost nothing); Sync fetches everything. The device list is sent more compactly.
 - Larger, brighter text throughout, for reading at arm's length and in night mode.
+- More shows the Home Assistant address the phone is using.
+- When Home Assistant has more devices than it sends, Sync says so ("1000 of 1240 devices"); the `wristwand` label narrows the list.
 - Pairing again keeps the watch's paints and room calibrations and sends them to Home Assistant.
 - One QR code on the test-build page; it never expires.
 - Corrections: after a trigger, "Not it?" offers the next most likely device for 5 seconds. Choosing it undoes the first where possible, toggles the right one, and teaches the watch where you aimed.
