@@ -42,14 +42,6 @@ Expires {html.escape(expires)} (each push to dev makes a new one).</p>
 <p>based on {html.escape(meta["version"]["name"])} · build {html.escape(build)} · {html.escape(sha)}</p>
 {primary}
 <p><a href="watch/{WATCH_ZPK}">{WATCH_ZPK}</a></p></section>''')
-rel = dev / "watch-release"
-if (rel / "preview-qr.png").exists():
-    # EXPERIMENT (remove once settled): preview under the console-registered app ID.
-    expires = (rel / "preview-expires.txt").read_text().strip()
-    cards.append(f'''<section><h2>Experiment: registered app ID</h2>
-<p class="note">The same build installed as "WristWand" (app ID 1132466, the one registered in the
-Zepp console) to see whether the Zepp app then lists it with its Settings page. Expires {html.escape(expires)}.</p>
-<img class="qr" src="watch-release/preview-qr.png" alt="QR code for the registered-ID experiment"></section>''')
 stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 dev.mkdir(parents=True, exist_ok=True)
 (dev / "index.html").write_text(f'''<!doctype html>

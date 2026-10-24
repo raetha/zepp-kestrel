@@ -168,7 +168,7 @@ CI still uploads each `dev` build to Zepp's preview service (`tools/zepp_preview
 
 `cname` is a comma-separated list of the account's regional hosts; uploads go to the `api-mifit` one. When the token expires, the workflow fails with "token has expired": repeat both steps. Treat the token like a password.
 
-The `watch-release` experiment (a preview under the registered app ID 1132466) can be removed from the workflow and `tools/dev_site.py` once the store route is set up.
+Test builds install only as "WristWand DEV" (app ID 2132466). An earlier experiment also offered the build under the registered app ID 1132466 (shown as "WristWand"); it showed no Settings page either and was removed. Uninstall a leftover "WristWand" test install from the watch: it has its own storage and pairing and no longer updates.
 
 The release QR code (`watch/docs/install-qr.png`) encodes `zpkd1://raetha.github.io/zepp-wristwand/watch/wristwand.zpk`. Regenerate with `npm run qr` if the repo moves.
 
