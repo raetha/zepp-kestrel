@@ -16,8 +16,8 @@
 
 import { accel, gyro, compass } from '../sensors.js'
 import { attitude } from '../../lib/aim.js'
-import { circularMean, angleDiff } from '../../../lib/circular.js'
-import { mean } from '../../../lib/stats.js'
+import { circularMean, angleDiff } from '../../lib/circular.js'
+import { mean } from '../../lib/stats.js'
 import * as haptics from '../haptics.js'
 import { sleep, guard, r1 } from './util.js'
 

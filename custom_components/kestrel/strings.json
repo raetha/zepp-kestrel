@@ -201,5 +201,16 @@
         "name": "Gesture jolt threshold"
       }
     }
+  },
+  "exceptions": {
+    "watch_unpaired": {
+      "message": "This watch is no longer paired with Kestrel. Pair it again from the watch."
+    }
+  },
+  "issues": {
+    "no_external_url": {
+      "title": "Kestrel watches only work at home",
+      "description": "Home Assistant has no address that works away from home (a Home Assistant Cloud remote connection or an external URL), so paired watches can only reach it on your home network. Set one under Settings → System → Network, or ignore this if that's what you want; the watch picks the address up when it next pairs."
+    }
   }
 }

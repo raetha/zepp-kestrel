@@ -8,6 +8,7 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 
 ### Changed
 
+- Licence: MIT for the whole project.
 - Renamed from WristWand to Kestrel (domain `kestrel`), with brand images that Home Assistant shows for the integration. Remove the old WristWand integration, add Kestrel, and pair the watch again. The API moved to `/api/kestrel/`, events are `kestrel_fired` and `kestrel_probe`, and the label that narrows the device list is `kestrel`.
 
 ### Added
@@ -28,6 +29,9 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 - The device list leaves out devices' configuration and diagnostic entities (restart buttons, firmware switches and the like) and holds up to 1000 entities, up from 300; past that, the watch is told how many were left out.
 - Entities on each watch's device: Last triggered (with how, where and when), Room, Last seen, Home Assistant address, Painted devices and Calibrated rooms sensors, and Gesture trigger and Away mode switches, and a Gesture select (flick, snap or tap; each keeps its own calibration). Every other setting has an entity too: Instant toggle (switch) and its delay, Room from and Away mode follows (selects), and the current gesture's thresholds (numbers, disabled by default).
 - Instant toggle: trigger a device by holding the watch's aim on it (setting, off by default; 1–10 s).
-- One endpoint for settings changes from the watch and the Zepp app's settings page; every field is checked. The device shows the watch app's version.
+- One endpoint for settings changes from the watch and the Zepp app's settings page; every field is checked.
+- A repair notice when watches are paired but Home Assistant has no address that works away from home.
+- The `kestrel_fired` event says how the device was triggered (`via`) and from which room (`area_id`).
+- Documentation: use cases, supported devices and functions, events, automation examples, known limitations, troubleshooting and removal. The device shows the watch app's version.
 - Diagnostics download (tokens redacted), for the integration or for one watch from its device page. It includes the watch's recent probe results.
 - Measurement results from the watch's Probes arrive as `kestrel_probe` events. The newest 500 are kept for the diagnostics download; unpairing a watch deletes its results.

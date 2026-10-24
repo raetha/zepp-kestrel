@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { wrap360, angleDiff, circularMean } from '../circular.js'
-import { percentile, summarize } from '../stats.js'
-import { RateMeter } from '../rate.js'
+import { wrap360, angleDiff, circularMean } from '../lib/circular.js'
+import { percentile, summarize } from '../lib/stats.js'
+import { RateMeter } from '../lib/rate.js'
 
 const near = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} !~ ${b}`)
 

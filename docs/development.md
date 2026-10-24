@@ -13,7 +13,6 @@ This is the canonical guide for the repository. Read it before changing anything
 | `watch/app-side/` | Side service, running in the Zepp phone app: answers the watch and talks to Home Assistant (`ha.js`). |
 | `watch/setting/` | Settings page in the Zepp phone app. |
 | `watch/test/` | `node --test` suites for `watch/lib/`. |
-| `lib/` | Generic helpers with no tie to watches (MIT): circular statistics, summary statistics, a rate meter. Tests in `lib/test/`. Watch code imports them by relative path. |
 | `watch/docs/` | Install QR code and emulator screenshots. |
 | `watch/CHANGELOG.md` | The watch app's version history; its sections become release notes. |
 | `custom_components/kestrel/` | The Home Assistant component (MIT): the watch API (`http.py`), paired watches and their devices (`watches.py`), targets and service mapping (`targets.py`), config flow, diagnostics, and `quality_scale.yaml` (the status of every quality-scale rule). At the repo root because HACS expects it there. |
@@ -49,8 +48,8 @@ Prefer a maintained library over our own code; write our own when nothing mainta
 | Need | Choice | Why |
 | --- | --- | --- |
 | Watch ↔ phone messaging, side-service HTTP | `@zeppos/zml` | Zepp's official library. |
-| Mean, median, quantiles, standard deviation | `simple-statistics` (ISC) | Maintained; about 3.4 KB bundled for what we use. `lib/stats.js` wraps it. |
-| Circular statistics (compass headings) | Our own `lib/circular.js` | `angles` (MIT, maintained) has normalising, distances and a plain average, but no weighted mean and no spread measure, which the paint model needs; it also keeps a global scale setting. |
+| Mean, median, quantiles, standard deviation | `simple-statistics` (ISC) | Maintained; about 3.4 KB bundled for what we use. `watch/lib/stats.js` wraps it. |
+| Circular statistics (compass headings) | Our own `watch/lib/circular.js` | `angles` (MIT, maintained) has normalising, distances and a plain average, but no weighted mean and no spread measure, which the paint model needs; it also keeps a global scale setting. |
 | Pitch and roll from gravity | Our own `watch/lib/aim.js` | Two textbook formulas. Sensor-fusion libraries (for example `ahrs`, unmaintained since 2023) need raw magnetometer readings, which Zepp OS doesn't expose (the compass API gives only a heading). |
 | Snap / tap / flick detection | Our own `watch/lib/spike.js` | Nothing maintained exists for this; it will be tuned on our own recordings. |
 | Bluetooth scanning | Zepp's `@zos/ble` directly | We only scan and read signal strength. `@silver-zepp/easy-ble` (MIT, last published 2024) helps with connecting to devices, which we don't do. |
@@ -169,16 +168,7 @@ The release QR code (`watch/docs/install-qr.png`) encodes `zpkd1://raetha.github
 
 ## Licensing
 
-Open source, but nobody else may sell the watch app. The dividing line is whether code could power someone else's paid watch app:
-
-| Path | Licence | Why |
-| --- | --- | --- |
-| `watch/` (including `watch/lib/`) | CC BY-NC-SA 4.0 | The app, and the pointing, gesture, room-detection and protocol logic that would let someone build a paid copy. Zepp and other watch brands have paid stores. |
-| `custom_components/kestrel/`, `ha/` (the HA component) | MIT | Home Assistant's ecosystem is free, with no paid store. |
-| `lib/` | MIT | Generic helpers an unrelated project could use. |
-| `tools/`, `.github/`, repo docs and config | MIT | Tooling. |
-
-When adding code: generic with no tie to watches goes in `lib/`; anything watch- or Zepp-specific goes in `watch/`. The name "Kestrel" and its icon aren't licensed for reuse. See the root `LICENSE`.
+MIT for everything (`LICENSE`), like Home Assistant and most of its ecosystem: anyone may use, change and share the code, commercially too. Forks are asked (README) to use another name and icon. Until 2026-10 the watch app was CC BY-NC-SA 4.0, with generic helpers in a separate MIT `lib/`; that split is gone and the helpers live in `watch/lib/`.
 
 ## Packaging for delivery
 

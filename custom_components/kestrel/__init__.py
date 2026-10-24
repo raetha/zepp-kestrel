@@ -19,6 +19,7 @@ from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN
 from .http import VIEWS
+from .issues import check_external_url
 from .watches import Watches
 
 type KestrelConfigEntry = ConfigEntry[Watches]
@@ -41,6 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: KestrelConfigEntry) -> b
     await watches.async_load()
     watches.sync_devices()
     entry.runtime_data = watches
+    check_external_url(hass, bool(watches.watches))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

@@ -3,7 +3,7 @@
 // wrist's turn about the forearm (lib/aim.js); turning the thumb up makes it
 // smaller (about -80 at thumb up on a Balance 3).
 
-import { angleDiff } from '../../lib/circular.js'
+import { angleDiff } from './circular.js'
 
 export const DIM_DEGREES_FOR_FULL = 90 // a quarter turn is the whole range
 export const DIM_STEP = 5 // percent

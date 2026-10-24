@@ -11,7 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from homeassistant.components.number import NumberEntity, NumberEntityDescription, NumberMode
+from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberEntityDescription, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
@@ -49,6 +49,7 @@ NUMBERS: tuple[WatchNumberDescription, ...] = (
     WatchNumberDescription(
         key="instant_toggle_delay",
         translation_key="instant_toggle_delay",
+        device_class=NumberDeviceClass.DURATION,
         entity_category=EntityCategory.CONFIG,
         native_min_value=DWELL_SECONDS[0],
         native_max_value=DWELL_SECONDS[1],
@@ -102,4 +103,4 @@ class WatchNumber(KestrelEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         change = self.entity_description.change(settings_of(self.watch), value)
-        await self.watches.async_update_settings(self.watch_id, change)  # updates the entity
+        await self.async_update_settings(change)

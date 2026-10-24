@@ -14,7 +14,7 @@ every change, so the watch can tell whether Home Assistant changed something
 from __future__ import annotations
 
 import copy
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar
@@ -127,7 +127,7 @@ def thresholds(gesture: dict[str, Any]) -> dict[str, float | None] | None:
     """The chosen gesture's thresholds (as the watch uses them), or None if it needs calibrating."""
     cal = (gesture.get("calibrations") or {}).get(gesture.get("kind"))
     if cal:
-        return cal
+        return cast(dict[str, float | None], cal)
     return dict(FLICK_DEFAULT) if gesture.get("kind") == "flick" else None
 
 

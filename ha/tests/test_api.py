@@ -150,6 +150,7 @@ async def test_fire_toggles_fires_an_event_and_drops_retries(hass, setup_entry, 
     assert len(calls) == 1
     assert calls[0].data["entity_id"] == ["light.lamp"]
     assert len(events) == 1
+    assert events[0].data["target"] == "light.lamp" and events[0].data["via"] is None and events[0].data["area_id"] is None
     assert events[0].data["watch_name"] == "Balance 3"
     assert events[0].data["target"] == "light.lamp"
 

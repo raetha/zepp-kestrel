@@ -84,6 +84,95 @@ Under **More → Probes** on the watch. Results show on the watch, and once the 
 | BLE scan | In each room, pick a label and Scan | How many steady Bluetooth devices each room has |
 | Latency | Run, with HA set up | Watch ↔ phone and phone ↔ HA round trips (target: under 500 ms) |
 
+## The Home Assistant integration
+
+### Use cases
+
+- Point at a lamp across the room and flick your wrist (or just hold the aim, with instant toggle) to switch it, without a phone or a wall switch.
+- Twist your wrist to dim a light you're pointing at.
+- Trigger scenes or scripts by pointing at a spot: paint a corner of the room as a "movie time" script.
+- Build automations on what you point at: the `kestrel_fired` event and the Last triggered sensor say what was triggered, how and where.
+
+### Supported devices
+
+Zepp OS watches with a compass, an accelerometer and a gyroscope, on Zepp OS 3.6 (API level 3.6) or later, with the Zepp app on a phone. Developed on the Amazfit Balance 3 (480 × 480, round) and checked on the Zepp OS emulator (Balance 2 firmware). Other round watches should work; layouts are designed at 480 px wide and scale. The watch can trigger lights, switches, fans, media players, locks, covers, climate entities, scenes, scripts, buttons and input booleans.
+
+### Supported functions
+
+- **Pairing**: a code shown in Home Assistant, typed on the watch; each watch gets its own token, limited to Kestrel's API.
+- **Triggering**: toggle (or the domain's natural action: press a button, run a scene or script, play/pause media); locks always ask for a confirming tap; dimming with a wrist twist.
+- **Entities per watch**: see the table above (sensors, switches, selects, numbers).
+- **Configure**: paints (remove, reassign), room calibrations, and every setting.
+- **Diagnostics**: per integration and per watch, with recent probe results; tokens redacted.
+
+### Events (triggers)
+
+`kestrel_fired` fires for every action a watch runs:
+
+| Field | Meaning |
+| --- | --- |
+| `watch_id`, `watch_name` | Which watch |
+| `target` | The entity triggered |
+| `action` | `toggle` or `dim` |
+| `via` | `button`, `tap`, `flick`, `snap`, `dim` or `dwell` (instant toggle) |
+| `area_id` | The room the watch was in, if known |
+
+`kestrel_probe` carries measurement results from the watch's Probes screen (for development).
+
+### Automation examples
+
+Announce what was pointed at, for testing:
+
+```yaml
+triggers:
+  - trigger: event
+    event_type: kestrel_fired
+actions:
+  - action: persistent_notification.create
+    data:
+      message: "{{ trigger.event.data.watch_name }} → {{ trigger.event.data.target }} ({{ trigger.event.data.via }})"
+```
+
+Turn the gesture trigger off during a workout (here with a Zepp2Hass workout sensor; use your own):
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.amazfit_workout_active
+actions:
+  - action: "switch.turn_{{ 'off' if trigger.to_state.state == 'on' else 'on' }}"
+    target:
+      entity_id: switch.amazfit_watch_gesture_trigger
+```
+
+### How data updates
+
+Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync of what changed), when you trigger something, and when you change something on it; entities update from those requests. Changes made in Home Assistant reach the watch on its next sync (every time the app opens, or Sync).
+
+### Known limitations
+
+- Pointing relies on the watch's compass: it must be calibrated (the watch says when it isn't), and metal nearby bends it. Paint each device from where you use it; repeatable distortion is fine.
+- The watch only works while Kestrel is open on it: Zepp OS doesn't let apps run in the background.
+- Sideloaded test builds get no settings page in the Zepp app (only store installs do); settings are in Home Assistant and on the watch.
+- Without an address that works away from home (Home Assistant Cloud or an external URL), watches only work on the home network. Home Assistant shows a repair notice when that's the case.
+- Up to 1000 entities are offered to a watch; the `kestrel` label narrows the list.
+- Finger snaps and taps move the watch little, so they may not calibrate well; a wrist flick is the most reliable gesture.
+
+### Troubleshooting
+
+- **"Phone not reachable"**: the Zepp app must be running on the phone (in the background is fine) and connected to the watch over Bluetooth.
+- **Pairing can't find Home Assistant**: your phone must be on the home Wi-Fi, with the Kestrel integration added. Choose Type address on the watch and enter Home Assistant's IP (and port, if not 80 or 8123). More shows the address in use once paired.
+- **Nothing locks on when pointing**: calibrate the compass (the Compass app, or turn the watch in a circle when asked), then paint again from where you stand.
+- **Wrong device triggers**: use "Not it?" right after to correct it, or paint again from that spot.
+- **Something else**: Settings → Devices & services → Kestrel → your watch → ⋮ → Download diagnostics, and attach it to an issue.
+
+### Removing Kestrel
+
+1. On the watch: More → Unpair (or just delete the watch's device in Home Assistant, which unpairs it).
+2. In Home Assistant: Settings → Devices & services → Kestrel → ⋮ → Delete. This forgets every paired watch with its paints and rooms.
+3. In HACS, remove the Kestrel repository if you added it as a custom repository.
+4. Uninstall Kestrel from the watch in the Zepp app.
+
 ## Development
 
 See [docs/development.md](docs/development.md): layout, emulator, branches, test builds and releases.
@@ -99,8 +188,6 @@ If you find this useful, you can [sponsor the project](https://github.com/sponso
 
 ## License
 
-- **The watch app** (`watch/`): [CC BY-NC-SA 4.0](LICENSES/CC-BY-NC-SA-4.0.txt). Share and remix it non-commercially with credit, but don't sell it or its derivatives.
-- **The Home Assistant component** (`custom_components/kestrel/`), **generic helpers** (`lib/`) **and tooling** (`tools/`, CI): [MIT](LICENSES/MIT.txt).
-- **The name "Kestrel"** and its icon aren't licensed for reuse.
+[MIT](LICENSE), all of it: the watch app, the Home Assistant integration and the tooling. Forks are welcome; please give them a different name and icon, so people can tell them apart from Kestrel.
 
-Details are in [LICENSE](LICENSE). Kestrel is an independent project and is not affiliated with Zepp Health, Amazfit or Home Assistant.
+Kestrel is an independent project and is not affiliated with Zepp Health, Amazfit or Home Assistant.

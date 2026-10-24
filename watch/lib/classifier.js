@@ -4,7 +4,7 @@
 // aim with a 2D Gaussian on (heading difference, pitch difference); a device's
 // score is its best spot. The state machine on top decides how sure we are.
 
-import { angleDiff } from '../../lib/circular.js'
+import { angleDiff } from './circular.js'
 
 export const STATE = {
   RESTING: 'resting', // arm not held out and still

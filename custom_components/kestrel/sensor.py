@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -29,7 +29,7 @@ class WatchSensorDescription(SensorEntityDescription):
 
 
 def _status(w: dict[str, Any]) -> dict[str, Any]:
-    return w.get("status", {})
+    return cast(dict[str, Any], w.get("status", {}))
 
 
 def _time(value: str | None) -> datetime | None:

@@ -10,11 +10,11 @@ Kestrel: point an Amazfit / Zepp OS watch at a smart-home device and trigger it,
 - `watch/DRAFT` and `ha/DRAFT` keep each component from being released until the owner says its first release is ready.
 - Two components: the watch app (`watch/`) and the Home Assistant component (`custom_components/kestrel/`, at the repo root where HACS expects it; its tests, changelog and DRAFT are in `ha/`).
 - Name: **Kestrel** (renamed from WristWand before the first release). The logo is `brand/kestrel.svg` (a kestrel diving at a target); its renders are the watch icon (`watch/assets/default.r/icon.png`, 248 px) and the Home Assistant brand images (`custom_components/kestrel/brand/`, 256 and 512 px). Storage and message keys start with `kestrel.`. It is inspired by commercial point-and-snap apps for other watches but must never use their names, code, assets or branding.
-- Licences (`LICENSE`). The test is whether code could power someone else's paid watch app. Everything in `watch/` (including `watch/lib/`: pointing, gestures, room detection, protocol) is CC BY-NC-SA 4.0. `lib/` (generic helpers an unrelated project could use), the HA component (`custom_components/kestrel/`, `ha/`; HA has no paid store), `tools/` and CI are MIT. New code: generic with no tie to watches → `lib/`; anything watch- or Zepp-specific → `watch/`.
+- Licence: MIT for everything (`LICENSE`), like Home Assistant's ecosystem; forks are asked to use another name and icon. All watch code is in `watch/` (generic helpers too, in `watch/lib/`).
 
 ## Validate on the real firmware
 
-- `npm test` runs the pure-JS library tests (`lib/` and `watch/lib/`). Fast, but no Zepp runtime.
+- `npm test` runs the pure-JS library tests (`watch/lib/`). Fast, but no Zepp runtime.
 - HA component: keep `custom_components/kestrel/quality_scale.yaml` current with each change (`docs/development.md` → "The Home Assistant component and the quality scale"). State on `entry.runtime_data`, one device per watch, ≥95% test coverage. HA's deprecation checks fail tests on deprecated APIs: fix, don't silence.
 - HA component tests run against a real HA core (Python 3.14): `uv venv .venv --python 3.14 && uv pip install --python .venv/bin/python -r ha/requirements_test.txt`, then `cd ha && ../.venv/bin/pytest -q`.
 - The emulator runs the real Zepp OS firmware (Balance 2 image, API 4.2) in QEMU, headless. Use it to catch crashes and layout problems before a push. First-time setup in a fresh container (about 5 minutes, about 240 MB):
@@ -45,5 +45,5 @@ Kestrel: point an Amazfit / Zepp OS watch at a smart-home device and trigger it,
 - The watch's own vibration jolts the accelerometer enough to look like a snap or tap: `haptics.onBuzz()` lets gesture detection ignore it (`GestureDetector.quiet()`), and Point ignores gestures for 3 s after each trigger.
 - The emulator feeds synthetic motion at about 25 Hz in every frequency mode and a wandering compass. Its sensor numbers say nothing about the real watch.
 - On every launch the emulator log shows `Mini Program Error TypeError: cannot set property 'exports' of undefined` from `app.js`. It comes after ZML's `BaseApp` has registered the app and doesn't stop anything working; watch for it on the real watch.
-- `lib/` and `watch/lib/` must stay free of `@zos/*` imports so Node can test them; each has a `package.json` setting `"type": "module"`. Watch code imports `lib/` by relative path (`../../../lib/stats.js`); Zeus bundles it.
+- `watch/lib/` must stay free of `@zos/*` imports so Node can test it (`watch/test/`); its `package.json` sets `"type": "module"`. Pages import it by relative path; Zeus bundles it.
 - Dependencies live in the root `package.json`; Zeus resolves them from `watch/` and `watch-dev/` by walking up.

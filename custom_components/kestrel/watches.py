@@ -8,7 +8,7 @@ import secrets
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
@@ -32,6 +32,7 @@ from .const import (
     STORAGE_VERSION,
     signal_watch_updated,
 )
+from .issues import check_external_url
 from .watchdata import PAINTS_MAX_SPOTS, SECTIONS, clean_paints, clean_rooms, clean_settings, settings_of
 
 
@@ -58,13 +59,13 @@ class Watches:
     hass: HomeAssistant
     entry_id: str
     version: str = ""
-    store: Store = field(init=False)
-    probe_store: Store = field(init=False)
+    store: Store[dict[str, Any]] = field(init=False)
+    probe_store: Store[dict[str, Any]] = field(init=False)
     watches: dict[str, dict[str, Any]] = field(default_factory=dict)
     pairings: dict[str, Pairing] = field(default_factory=dict)
-    starts: dict[str, deque] = field(default_factory=dict)
-    seen_seqs: dict[str, deque] = field(default_factory=dict)
-    probes: deque = field(default_factory=lambda: deque(maxlen=PROBES_KEPT))
+    starts: dict[str, deque[float]] = field(default_factory=dict)
+    seen_seqs: dict[str, deque[Any]] = field(default_factory=dict)
+    probes: deque[dict[str, Any]] = field(default_factory=lambda: deque(maxlen=PROBES_KEPT))
 
     def __post_init__(self) -> None:  # noqa: D105
         self.store = Store(self.hass, STORAGE_VERSION, STORAGE_KEY)
@@ -129,6 +130,7 @@ class Watches:
         self.watches[watch_id] = watch
         await self._async_save()
         self._device(watch)
+        check_external_url(self.hass, True)
         async_dispatcher_send(self.hass, SIGNAL_WATCH_ADDED, watch_id)
         return "ok", watch, token
 
@@ -163,7 +165,7 @@ class Watches:
         return out
 
     def paints(self, watch_id: str) -> dict[str, list[dict[str, Any]]]:
-        return self.watches.get(watch_id, {}).get("paints", {})
+        return cast(dict[str, list[dict[str, Any]]], self.watches.get(watch_id, {}).get("paints", {}))
 
     async def _async_set(self, watch_id: str, section: str, value: Any) -> int:
         w = self.watches[watch_id]
@@ -171,7 +173,7 @@ class Watches:
         w[f"{section}_rev"] = w.get(f"{section}_rev", 0) + 1
         await self._async_save()
         async_dispatcher_send(self.hass, signal_watch_updated(watch_id))
-        return w[f"{section}_rev"]
+        return int(w[f"{section}_rev"])
 
     async def async_save_paints(self, watch_id: str, paints: dict[str, Any]) -> int:
         """Replace a watch's paints with a cleaned copy; returns the new revision."""
@@ -217,7 +219,7 @@ class Watches:
     # ------------------------------------------------------------ status (sensors)
     def status(self, watch_id: str) -> dict[str, Any]:
         """What a watch last reported: last_seen, address, app_version, room, last_fired."""
-        return self.watches.get(watch_id, {}).get("status", {})
+        return cast(dict[str, Any], self.watches.get(watch_id, {}).get("status", {}))
 
     def note_status(self, watch_id: str, **fields: Any) -> None:
         """Record what a watch reported (None = not reported). Saved lazily; entities update.

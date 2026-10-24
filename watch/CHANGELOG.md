@@ -39,7 +39,7 @@ All notable changes to the Kestrel watch app. The format is based on
 - Corrections: after a trigger, "Not it?" offers the next most likely device for 5 seconds. Choosing it undoes the first where possible, toggles the right one, and teaches the watch where you aimed.
 - Each trigger sends a short record of the aim to Home Assistant (in the diagnostics download), to tune pointing.
 - More screen on Home: Gesture, Rooms, Probes and Unpair.
-- Licence: CC BY-NC-SA 4.0 for the watch app (share and adapt non-commercially, with credit, but don't sell it).
+- Licence: MIT, like the rest of the project.
 
 ### Changed
 

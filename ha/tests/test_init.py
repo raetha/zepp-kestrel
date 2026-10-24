@@ -134,3 +134,41 @@ async def test_probe_results_are_kept_for_diagnostics(hass, setup_entry, hass_cl
     assert watches.probes_for() == []
     other = dr.async_get(hass).async_get_or_create(config_entry_id=setup_entry.entry_id, identifiers={("other", "x")})
     assert (await async_get_device_diagnostics(hass, setup_entry, other))["probes"] == []
+
+
+async def test_no_external_url_is_a_repair_issue_once_a_watch_pairs(hass, setup_entry):
+    from homeassistant.core_config import async_process_ha_core_config
+    from homeassistant.helpers import issue_registry as ir
+
+    from custom_components.kestrel.const import DOMAIN
+
+    reg = ir.async_get(hass)
+    assert reg.async_get_issue(DOMAIN, "no_external_url") is None  # nothing paired yet
+    watches = setup_entry.runtime_data
+    pairing = watches.start_pairing("Balance 3")
+    await watches.async_confirm(pairing.pairing_id, pairing.code)
+    assert reg.async_get_issue(DOMAIN, "no_external_url") is not None
+
+    await async_process_ha_core_config(hass, {"external_url": "https://ha.example.com"})
+    assert await hass.config_entries.async_reload(setup_entry.entry_id)
+    assert reg.async_get_issue(DOMAIN, "no_external_url") is None
+
+
+async def test_settings_on_an_unpaired_watch_raise(hass, setup_entry):
+    import pytest
+
+    from homeassistant.exceptions import HomeAssistantError
+    from homeassistant.helpers import entity_registry as er
+
+    from custom_components.kestrel.const import DOMAIN
+
+    watches = setup_entry.runtime_data
+    pairing = watches.start_pairing("Balance 3")
+    _, watch, _ = await watches.async_confirm(pairing.pairing_id, pairing.code)
+    await hass.async_block_till_done()
+    switch = er.async_get(hass).async_get_entity_id("switch", DOMAIN, f"{watch['id']}_instant_toggle")
+    watches.watches.pop(watch["id"])  # unpaired behind the entity's back
+    entity = hass.data["entity_components"]["switch"].get_entity(switch)
+    with pytest.raises(HomeAssistantError) as err:  # Home Assistant skips unavailable entities; a race still lands here
+        await entity.async_turn_on()
+    assert err.value.translation_key == "watch_unpaired"

@@ -8,7 +8,7 @@ watch picks the changes up on its next Sync.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import voluptuous as vol
 
@@ -52,6 +52,12 @@ class KestrelConfigFlow(ConfigFlow, domain=DOMAIN):
         return KestrelOptionsFlow()
 
 
+def _schema(fields: dict[Any, Any]) -> Any:
+    """A form schema. Typed loosely: Home Assistant 2026.10+ types forms with probatio, which
+    voluptuous is an alias of there; older versions use voluptuous itself."""
+    return vol.Schema(fields)
+
+
 def _select(options: list[tuple[str, str]], translation_key: str | None = None) -> SelectSelector:
     config = SelectSelectorConfig(
         options=[SelectOptionDict(value=v, label=label) for v, label in options],
@@ -71,7 +77,7 @@ class KestrelOptionsFlow(OptionsFlow):
 
     @property
     def _watches(self) -> Watches:
-        return self.config_entry.runtime_data
+        return cast(Watches, self.config_entry.runtime_data)
 
     def _done(self) -> ConfigFlowResult:
         # Everything lives in the watches' storage; the entry's options stay as they are.
@@ -89,7 +95,7 @@ class KestrelOptionsFlow(OptionsFlow):
             self.watch_id = user_input["watch"]
             return await self.async_step_watch()
         options = [(wid, w["name"]) for wid, w in watches.items()]
-        return self.async_show_form(step_id="init", data_schema=vol.Schema({vol.Required("watch"): _select(options)}))
+        return self.async_show_form(step_id="init", data_schema=_schema({vol.Required("watch"): _select(options)}))
 
     async def async_step_watch(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """What to manage for this watch."""
@@ -121,7 +127,7 @@ class KestrelOptionsFlow(OptionsFlow):
             n = len(paints[entity_id])
             return f"{name} ({n} spot{'s' if n != 1 else ''})"
 
-        schema = vol.Schema(
+        schema = _schema(
             {
                 vol.Required("device"): _select([(e, label(e)) for e in sorted(paints, key=label)]),
                 vol.Required("action", default="remove_last"): _select(
@@ -137,7 +143,7 @@ class KestrelOptionsFlow(OptionsFlow):
         if user_input is not None:
             await self._watches.async_reassign_paint(self.watch_id, self.paint, user_input["entity"])
             return self._done()
-        schema = vol.Schema({vol.Required("entity"): EntitySelector(EntitySelectorConfig(domain=list(SUPPORTED_DOMAINS)))})
+        schema = _schema({vol.Required("entity"): EntitySelector(EntitySelectorConfig(domain=list(SUPPORTED_DOMAINS)))})
         return self.async_show_form(step_id="reassign", data_schema=schema, description_placeholders={"device": self.paint})
 
     # ------------------------------------------------------------ rooms
@@ -151,7 +157,7 @@ class KestrelOptionsFlow(OptionsFlow):
             await self._watches.async_remove_room(self.watch_id, user_input["room"])
             return self._done()
         options = [(area_id, f"{r['name']} ({len(r['fingerprint'])} devices heard)") for area_id, r in rooms.items()]
-        return self.async_show_form(step_id="rooms", data_schema=vol.Schema({vol.Required("room"): _select(options)}))
+        return self.async_show_form(step_id="rooms", data_schema=_schema({vol.Required("room"): _select(options)}))
 
     # ------------------------------------------------------------ settings
     async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -219,7 +225,7 @@ class KestrelOptionsFlow(OptionsFlow):
         }
         return self.async_show_form(
             step_id="settings",
-            data_schema=vol.Schema(fields),
+            data_schema=_schema(fields),
             errors=errors,
             description_placeholders={"kind": g["kind"]},
         )

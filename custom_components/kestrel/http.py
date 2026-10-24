@@ -27,12 +27,12 @@ import hashlib
 import json
 import logging
 from http import HTTPStatus
-from typing import Any
+from typing import Any, cast
 
 from aiohttp import web
 
 from homeassistant.components import persistent_notification
-from homeassistant.components.http import KEY_HASS, HomeAssistantView
+from homeassistant.helpers.http import KEY_HASS, HomeAssistantView
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.helpers import area_registry as ar
 from homeassistant.exceptions import HomeAssistantError
@@ -50,7 +50,7 @@ _LOGGER = logging.getLogger(__name__)
 def _watches(hass: HomeAssistant) -> Watches | None:
     """The loaded entry's paired watches, or None while Kestrel isn't set up."""
     entries = hass.config_entries.async_loaded_entries(DOMAIN)
-    return entries[0].runtime_data if entries else None
+    return cast(Watches, entries[0].runtime_data) if entries else None
 
 
 def _error(message: str, status: HTTPStatus) -> web.Response:
@@ -104,9 +104,9 @@ class InfoView(HomeAssistantView):
 
     async def get(self, request: web.Request) -> web.Response:
         hass = request.app[KEY_HASS]
-        if _watches(hass) is None:
-            return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
         watches = _watches(hass)
+        if watches is None:
+            return _error("Kestrel is not set up in Home Assistant", HTTPStatus.NOT_FOUND)
         return web.json_response({"name": NAME, "version": watches.version, "ha_name": hass.config.location_name})
 
 
@@ -162,6 +162,7 @@ class PairConfirmView(HomeAssistantView):
             persistent_notification.async_dismiss(hass, _notification_id(pairing_id))
             return _error("This pairing has expired: start again", HTTPStatus.GONE)
         persistent_notification.async_dismiss(hass, _notification_id(pairing_id))
+        assert watch is not None
         _LOGGER.info("Paired watch %s (%s)", watch["name"], watch["id"])
         return web.json_response(
             {
@@ -382,7 +383,14 @@ class FireView(_WatchView):
         )
         hass.bus.async_fire(
             EVENT_FIRED,
-            {"watch_id": watch["id"], "watch_name": watch["name"], "target": target, "action": action},
+            {
+                "watch_id": watch["id"],
+                "watch_name": watch["name"],
+                "target": target,
+                "action": action,
+                "via": str(body.get("via") or "")[:16] or None,
+                "area_id": room["id"] if room else None,
+            },
             context=context,
         )
         state = hass.states.get(target)

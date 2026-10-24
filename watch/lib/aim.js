@@ -16,7 +16,7 @@
 // 90 degrees clockwise of where the forearm points, so the forearm's heading
 // is that minus 90.
 
-import { wrap360 } from '../../lib/circular.js'
+import { wrap360 } from './circular.js'
 
 const DEG = 180 / Math.PI
 const clamp1 = (v) => Math.max(-1, Math.min(1, v))

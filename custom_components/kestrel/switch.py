@@ -71,4 +71,4 @@ class WatchSwitch(KestrelEntity, SwitchEntity):
 
     async def _async_set(self, on: bool) -> None:
         d = self.entity_description
-        await self.watches.async_update_settings(self.watch_id, {d.group: {d.field: on}})  # updates the entity
+        await self.async_update_settings({d.group: {d.field: on}})

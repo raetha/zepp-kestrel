@@ -2,8 +2,8 @@
 // "spot" (where the device is, seen from where the user stood), and keep a
 // device's spots in a bounded list.
 
-import { circularMean } from '../../lib/circular.js'
-import { mean, stdev } from '../../lib/stats.js'
+import { circularMean } from './circular.js'
+import { mean, stdev } from './stats.js'
 
 export const MAX_SPOTS = 6 // per device; oldest dropped first
 export const MIN_SAMPLES = 20 // a paint with fewer usable samples is rejected

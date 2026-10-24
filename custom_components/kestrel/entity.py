@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityDescription
@@ -37,6 +38,12 @@ class KestrelEntity(Entity):
     def available(self) -> bool:
         return self.watch_id in self.watches.watches
 
+    async def async_update_settings(self, values: dict[str, Any]) -> None:
+        """Change this watch's settings (the watch picks them up on its next sync)."""
+        if self.watch_id not in self.watches.watches:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="watch_unpaired")
+        await self.watches.async_update_settings(self.watch_id, values)  # updates the entities
+
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(
             async_dispatcher_connect(self.hass, signal_watch_updated(self.watch_id), self.async_write_ha_state)
@@ -47,7 +54,7 @@ def add_per_watch(
     hass: HomeAssistant,
     entry: ConfigEntry[Watches],
     async_add_entities: AddConfigEntryEntitiesCallback,
-    make: Callable[[Watches, str], list[Entity]],
+    make: Callable[[Watches, str], Sequence[Entity]],
 ) -> None:
     """Entities for every paired watch now, and for each watch paired later."""
     watches = entry.runtime_data

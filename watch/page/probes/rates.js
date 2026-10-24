@@ -3,7 +3,7 @@
 // needs roughly 50 Hz or more from the accelerometer. Compass modes need API 4.0.
 
 import { SENSORS } from '../sensors.js'
-import { RateMeter } from '../../../lib/rate.js'
+import { RateMeter } from '../../lib/rate.js'
 import { sleep, guard } from './util.js'
 
 const RUN_MS = 5000

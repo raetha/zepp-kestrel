@@ -1,12 +1,13 @@
 # Integration quality scale: where Kestrel stands on each rule.
 # https://developers.home-assistant.io/docs/core/integration-quality-scale/
 # status: done | todo | exempt (with a comment saying why). Review before each release;
-# rule list checked against home-assistant/core script/hassfest/quality_scale.py (2026-10).
+# All 54 rules, checked against developers.home-assistant.io/docs/core/integration-quality-scale/rules
+# and audited against the code (2026-10-24). Every rule is done or exempt with a reason.
 rules:
   # Bronze
   action-setup:
     status: exempt
-    comment: No service actions; watches use the HTTP API, registered once in async_setup.
+    comment: No service actions of its own; watches use the HTTP API (registered once in async_setup), entities use the platforms' actions.
   appropriate-polling:
     status: exempt
     comment: No polling: watches push requests, and entities update from them.
@@ -35,13 +36,14 @@ rules:
     status: done
     comment: README "Try the test build"; update for HACS default repositories at release.
   docs-removal-instructions:
-    status: todo
+    status: done
+    comment: README "Removing Kestrel".
   docs-triggers:
-    status: todo
-    comment: Document the kestrel_fired and kestrel_probe events (device triggers planned).
+    status: done
+    comment: README "Events (triggers)": kestrel_fired fields, kestrel_probe.
   entity-event-setup:
     status: done
-    comment: Entities subscribe to dispatcher signals in async_added_to_hass, removed with async_on_remove.
+    comment: Entities subscribe to the watch's dispatcher signal in async_added_to_hass, removed with async_on_remove.
   entity-unique-id:
     status: done
     comment: <watch id>_<key>.
@@ -61,14 +63,14 @@ rules:
 
   # Silver
   action-exceptions:
-    status: exempt
-    comment: No service actions. API errors return JSON messages to the watch.
+    status: done
+    comment: Entity actions on a watch that was unpaired raise HomeAssistantError (translated). The watch API returns JSON errors.
   config-entry-unloading:
     status: done
     comment: HTTP views can't be unregistered; they answer 404 while no entry is loaded.
   docs-configuration-parameters:
     status: done
-    comment: README "Managing things in Home Assistant" covers every option; strings carry data_description.
+    comment: README "Managing things in Home Assistant" and the entity table cover every setting; strings carry data_description.
   docs-installation-parameters:
     status: exempt
     comment: The config flow has no fields.
@@ -79,10 +81,10 @@ rules:
     status: done
   log-when-unavailable:
     status: exempt
-    comment: Nothing is polled; watches report their own connection problems.
+    comment: Nothing is polled or connected to; a watch away from home isn't unavailable (Last seen shows when it last talked).
   parallel-updates:
     status: done
-    comment: PARALLEL_UPDATES = 0: entities are pushed, and switches only change stored settings.
+    comment: PARALLEL_UPDATES = 0 on every platform: entities are pushed, and actions only change stored settings.
   reauthentication-flow:
     status: exempt
     comment: No credentials; a removed watch pairs again from the watch.
@@ -104,48 +106,52 @@ rules:
     status: exempt
     comment: No discovery.
   docs-data-update:
-    status: exempt
-    comment: No data is fetched.
+    status: done
+    comment: README "How data updates": pushed by the watch, nothing polled.
   docs-examples:
-    status: todo
-    comment: Automation examples with kestrel_fired.
+    status: done
+    comment: README "Automation examples".
   docs-known-limitations:
-    status: todo
+    status: done
+    comment: README "Known limitations".
   docs-supported-devices:
-    status: todo
-    comment: Zepp OS watches with a compass.
+    status: done
+    comment: README "Supported devices".
   docs-supported-functions:
-    status: todo
+    status: done
+    comment: README "Supported functions" and the entity table.
   docs-troubleshooting:
-    status: todo
+    status: done
+    comment: README "Troubleshooting".
   docs-use-cases:
-    status: todo
+    status: done
+    comment: README "Use cases".
   dynamic-devices:
     status: done
     comment: Devices are added when a watch pairs.
   entity-category:
     status: done
-    comment: Last seen, address and counts are diagnostic; the switches are configuration.
+    comment: Last seen, address and counts are diagnostic; switches, selects and numbers are configuration.
   entity-device-class:
     status: done
-    comment: Last seen is a timestamp; the others have no fitting device class.
+    comment: Last seen: timestamp; Instant toggle delay: duration. The rest have no fitting device class.
   entity-disabled-by-default:
-    status: exempt
-    comment: None are noisy: Last seen moves on at most once a minute.
+    status: done
+    comment: The gesture threshold numbers (rarely needed) are disabled by default.
   entity-translations:
     status: done
   exception-translations:
-    status: exempt
-    comment: No exceptions are raised to the user interface.
+    status: done
+    comment: watch_unpaired in strings.json.
   icon-translations:
     status: done
-    comment: icons.json.
+    comment: icons.json for every entity.
   reconfiguration-flow:
     status: exempt
     comment: Nothing to reconfigure.
   repair-issues:
-    status: todo
-    comment: Consider a repair issue when Home Assistant has no external URL (watches then only work at home).
+    status: done
+    comment: no_external_url: watches paired but no address that works away from home (issues.py).
   stale-devices:
     status: done
     comment: Devices of watches no longer paired are removed at setup; deleting a device unpairs the watch.
@@ -158,5 +164,5 @@ rules:
     status: exempt
     comment: No HTTP client.
   strict-typing:
-    status: todo
-    comment: Fully annotated; add py.typed and a mypy --strict check in CI.
+    status: done
+    comment: mypy --strict passes (ha/mypy.ini); CI runs it. Custom integrations can't join core's .strict-typing list.

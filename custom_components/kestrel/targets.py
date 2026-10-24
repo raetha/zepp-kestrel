@@ -38,10 +38,8 @@ def list_targets(hass: HomeAssistant, limit: int | None = MAX_TARGETS) -> list[d
     area_reg = ar.async_get(hass)
     label_id = _label_id(hass)
 
-    def labelled(entry: er.RegistryEntry | None, device: dr.DeviceEntry | None) -> bool:
-        return bool(label_id) and (
-            (entry is not None and label_id in entry.labels) or (device is not None and label_id in device.labels)
-        )
+    def labelled(entry: er.RegistryEntry | None, device_labels: set[str]) -> bool:
+        return bool(label_id) and ((entry is not None and label_id in entry.labels) or label_id in device_labels)
 
     rows: list[tuple[dict[str, Any], bool]] = []
     for state in hass.states.async_all(SUPPORTED_DOMAINS):
@@ -64,7 +62,7 @@ def list_targets(hass: HomeAssistant, limit: int | None = MAX_TARGETS) -> list[d
                     "dimmable": domain == "light" and any(m != "onoff" for m in modes),
                     "confirm": domain in CONFIRM_DOMAINS,
                 },
-                labelled(entry, device),
+                labelled(entry, set(device.labels) if device else set()),
             )
         )
 

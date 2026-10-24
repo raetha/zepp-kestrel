@@ -76,7 +76,7 @@ class WatchSelect(KestrelEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         d = self.entity_description
-        await self.watches.async_update_settings(self.watch_id, {d.group: {d.field: option}})
+        await self.async_update_settings({d.group: {d.field: option}})
 
 
 class AwayPersonSelect(KestrelEntity, SelectEntity):
@@ -96,4 +96,4 @@ class AwayPersonSelect(KestrelEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         person = None if option == NOBODY else option
-        await self.watches.async_update_settings(self.watch_id, {"away": {"person": person}})
+        await self.async_update_settings({"away": {"person": person}})
