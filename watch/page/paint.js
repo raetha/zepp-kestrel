@@ -5,7 +5,7 @@
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
-import { text, setText, button, clear, fit, ask, listenKeys, COLOR } from './ui.js'
+import { text, setText, button, clear, fit, ask, listenKeys, COLOR, SIZE } from './ui.js'
 import { startAim } from './aim.js'
 import { targets, paints, setPaint, areas, rooms } from './store.js'
 import { targetsInArea, areaChoices, ALL } from '../lib/areas.js'
@@ -33,8 +33,8 @@ Page(
       },
 
       build() {
-        this.titleW = text({ y: 34, h: 40, size: 28, value: 'Paint' })
-        this.msgW = text({ x: 60, y: 80, w: 360, h: 200, size: 21, value: '' })
+        this.titleW = text({ y: 32, h: 44, size: SIZE.title, value: 'Paint' })
+        this.msgW = text({ x: 56, y: 80, w: 368, h: 240, value: '' })
         this.unkeys = listenKeys(() => this.onSelect && this.onSelect())
         this.findRoom()
       },
@@ -72,7 +72,7 @@ Page(
         const choices = areaChoices(targets(), areas())
         const pages = Math.ceil(choices.length / PER_PAGE)
         this.areaPage = Math.min(this.areaPage || 0, pages - 1)
-        setText(this.titleW, pages > 1 ? `Which room? (${this.areaPage + 1}/${pages})` : 'Which room?')
+        setText(this.titleW, pages > 1 ? `Room? ${this.areaPage + 1}/${pages}` : 'Which room?')
         setText(this.msgW, '')
         choices.slice(this.areaPage * PER_PAGE, (this.areaPage + 1) * PER_PAGE).forEach((c, i) => {
           this.add(
@@ -80,9 +80,9 @@ Page(
               x: 70,
               w: 340,
               y: 80 + i * 62,
-              h: 54,
-              size: 21,
-              label: `${fit(c.name, 16)} (${c.count})`,
+              h: 56,
+              size: SIZE.body,
+              label: `${fit(c.name, 15)} (${c.count})`,
               onClick: () => {
                 this.area = { id: c.id, name: c.name }
                 // a picked room counts as where you stand if the watch can recognise it later
@@ -94,8 +94,8 @@ Page(
           )
         })
         if (pages > 1) {
-          this.add(button({ x: 130, w: 100, y: 334, h: 48, label: '‹', onClick: () => this.turnAreas(-1, pages) }))
-          this.add(button({ x: 250, w: 100, y: 334, h: 48, label: '›', onClick: () => this.turnAreas(1, pages) }))
+          this.add(button({ x: 120, w: 110, y: 336, h: 54, size: 32, label: '‹', onClick: () => this.turnAreas(-1, pages) }))
+          this.add(button({ x: 250, w: 110, y: 336, h: 54, size: 32, label: '›', onClick: () => this.turnAreas(1, pages) }))
         }
       },
 
@@ -117,8 +117,8 @@ Page(
         const pages = Math.max(1, Math.ceil(all.length / PER_PAGE))
         this.page = Math.min(this.page, pages - 1)
         const p = paints()
-        const name = this.area && this.area.id !== ALL.id ? fit(this.area.name, 12) : 'Paint'
-        setText(this.titleW, pages > 1 ? `${name} (${this.page + 1}/${pages})` : name)
+        const name = this.area && this.area.id !== ALL.id ? fit(this.area.name, pages > 1 ? 12 : 14) : 'Paint'
+        setText(this.titleW, pages > 1 ? `${name} ${this.page + 1}/${pages}` : name)
         setText(this.msgW, all.length ? '' : 'No devices in this room.')
         all.slice(this.page * PER_PAGE, (this.page + 1) * PER_PAGE).forEach((t, i) => {
           const done = p[t.id] && p[t.id].length
@@ -127,19 +127,19 @@ Page(
               x: 70,
               w: 340,
               y: 80 + i * 62,
-              h: 54,
-              size: 21,
-              label: `${done ? '● ' : ''}${fit(t.name, 20)}`,
+              h: 56,
+              size: SIZE.body,
+              label: `${done ? '● ' : ''}${fit(t.name, 19)}`,
               onClick: () => this.ready(t),
             }),
           )
         })
         if (pages > 1) {
-          this.add(button({ x: 70, w: 100, y: 334, h: 48, label: '‹', onClick: () => this.turn(-1, pages) }))
-          this.add(button({ x: 310, w: 100, y: 334, h: 48, label: '›', onClick: () => this.turn(1, pages) }))
+          this.add(button({ x: 70, w: 92, y: 336, h: 54, size: 32, label: '‹', onClick: () => this.turn(-1, pages) }))
+          this.add(button({ x: 318, w: 92, y: 336, h: 54, size: 32, label: '›', onClick: () => this.turn(1, pages) }))
         }
-        if (areas().length) this.add(button({ x: 175, w: 130, y: 334, h: 48, size: 18, label: 'Room', onClick: () => this.pickArea() }))
-        this.add(text({ y: 392, h: 26, size: 16, color: COLOR.quiet, value: '● already painted' }))
+        if (areas().length) this.add(button({ x: 168, w: 144, y: 336, h: 54, size: SIZE.small, label: 'Room', onClick: () => this.pickArea() }))
+        this.add(text({ y: 398, h: 32, size: SIZE.small, color: COLOR.quiet, value: '● painted' }))
       },
 
       turn(d, pages) {
@@ -152,14 +152,14 @@ Page(
         clear(this.widgets)
         this.target = t
         const spots = (paints()[t.id] || []).length
-        setText(this.titleW, fit(t.name, 20))
+        setText(this.titleW, fit(t.name, 16))
         setText(
           this.msgW,
-          `Stand where you'd use it and point at it.\nPress Start, then sweep your arm slowly across it for 15 s.${spots ? `\n\nPainted from ${spots} spot${spots > 1 ? 's' : ''} so far.` : ''}`,
+          `Stand where you'd use it and point at it. Press Start, then sweep slowly across it for 15 s.${spots ? `\n\nPainted from ${spots} spot${spots > 1 ? 's' : ''}.` : ''}`,
         )
         this.onSelect = () => this.paint()
-        this.add(button({ x: 120, w: 240, y: 330, h: 58, label: 'Start', primary: true, onClick: () => this.paint() }))
-        this.add(button({ x: 150, w: 180, y: 398, h: 46, size: 20, label: 'Back', onClick: () => this.list() }))
+        this.add(button({ x: 110, w: 260, y: 326, h: 58, label: 'Start', primary: true, onClick: () => this.paint() }))
+        this.add(button({ x: 140, w: 200, y: 394, h: 52, size: SIZE.body, label: 'Back', onClick: () => this.list() }))
       },
 
       async paint() {
@@ -220,8 +220,8 @@ Page(
           setText(
             this.msgW,
             problem === 'few'
-              ? 'Not enough compass readings. Calibrate the compass (open the Compass app and follow its prompt), then try again.'
-              : `The compass was unsteady (±${Math.round(spot.headingSpread)}°). Sweep a little less widely, away from metal, and try again.`,
+              ? 'Too few compass readings. Calibrate the compass in the Compass app, then try again.'
+              : `The compass was unsteady (±${Math.round(spot.headingSpread)}°). Sweep less widely, away from metal, and try again.`,
           )
         } else {
           const spots = addSpot(paints()[t.id], spot)
@@ -230,11 +230,11 @@ Page(
           const n = spots.filter((x) => x.kind !== 'correction').length
           setText(
             this.msgW,
-            `Saved${this.room ? ` in ${this.room.name}` : ''}: ${Math.round(spot.heading)}° ±${Math.round(spot.headingSpread)}, pitch ${Math.round(spot.pitch)}°.\n\nSpot ${n} of up to ${MAX_SPOTS}. Painting again from another place you use it improves aim.`,
+            `Saved${this.room ? ` in ${this.room.name}` : ''}: ${Math.round(spot.heading)}° ±${Math.round(spot.headingSpread)}, pitch ${Math.round(spot.pitch)}°.\n\nSpot ${n} of ${MAX_SPOTS}. Painting from another place you use it improves aim.`,
           )
         }
-        this.add(button({ x: 90, w: 140, y: 340, h: 56, size: 22, label: 'Again', onClick: () => this.ready(t) }))
-        this.add(button({ x: 250, w: 140, y: 340, h: 56, size: 22, label: 'Done', primary: true, onClick: () => this.list() }))
+        this.add(button({ x: 84, w: 148, y: 340, h: 58, label: 'Again', onClick: () => this.ready(t) }))
+        this.add(button({ x: 248, w: 148, y: 340, h: 58, label: 'Done', primary: true, onClick: () => this.list() }))
       },
 
       onDestroy() {

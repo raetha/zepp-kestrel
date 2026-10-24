@@ -11,7 +11,7 @@ import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
 import { prop } from '@zos/ui'
-import { text, setText, button, setLabel, ask, listenKeys, COLOR } from './ui.js'
+import { text, setText, button, setLabel, ask, listenKeys, COLOR, SIZE } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
 
 import { ratesProbe } from './probes/rates.js'
@@ -45,10 +45,10 @@ Page(
         const probe = PROBES[this.mode]
         const live = (fn) => (...args) => (page.alive ? fn(...args) : undefined)
 
-        this.titleW = text({ y: 36, h: 40, size: 28, value: probe.title })
-        this.bodyW = text({ x: 56, y: 86, w: 368, h: 206, size: 21, value: '' })
-        this.sentW = text({ x: 90, y: 294, w: 300, h: 30, size: 17, color: COLOR.quiet, value: '' })
-        this.secondaryW = button({ x: 90, y: 330, w: 300, h: 54, label: '', size: 22, onClick: () => page.onSecondary && page.onSecondary() })
+        this.titleW = text({ y: 32, h: 44, size: SIZE.title, value: probe.title })
+        this.bodyW = text({ x: 50, y: 82, w: 380, h: 212, size: SIZE.small, value: '' })
+        this.sentW = text({ x: 50, y: 294, w: 380, h: 32, size: SIZE.small, color: COLOR.quiet, value: '' })
+        this.secondaryW = button({ x: 90, y: 330, w: 300, h: 56, label: '', size: SIZE.body, onClick: () => page.onSecondary && page.onSecondary() })
         this.primaryW = button({ x: 120, y: 396, w: 240, h: 56, label: '', primary: true, onClick: () => page.onPrimary && page.onPrimary() })
         this.secondaryW.setProperty(prop.VISIBLE, false)
 

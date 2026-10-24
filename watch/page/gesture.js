@@ -7,7 +7,7 @@
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
-import { text, setText, button, setLabel, ask, listenKeys, COLOR } from './ui.js'
+import { text, setText, button, setLabel, ask, listenKeys, COLOR, SIZE } from './ui.js'
 import { accel, gyro } from './sensors.js'
 import { gesture, setGesture } from './store.js'
 import { sync } from './sync.js'
@@ -46,11 +46,11 @@ Page(
 
       build() {
         this.unkeys = listenKeys(() => this.calibrate())
-        text({ y: 30, h: 40, size: 28, value: 'Gesture' })
-        this.bodyW = text({ x: 56, y: 76, w: 368, h: 186, size: 20, value: '' })
-        this.kindW = button({ x: 90, y: 268, w: 300, h: 50, size: 21, label: '', onClick: () => this.nextKind() })
-        this.toggleW = button({ x: 90, y: 326, w: 300, h: 50, size: 21, label: '', onClick: () => this.toggle() })
-        this.calW = button({ x: 120, y: 388, w: 240, h: 56, label: 'Calibrate', primary: true, onClick: () => this.calibrate() })
+        text({ y: 30, h: 44, size: SIZE.title, value: 'Gesture' })
+        this.bodyW = text({ x: 50, y: 76, w: 380, h: 190, size: SIZE.small, value: '' })
+        this.kindW = button({ x: 80, y: 268, w: 320, h: 54, size: SIZE.body, label: '', onClick: () => this.nextKind() })
+        this.toggleW = button({ x: 80, y: 328, w: 320, h: 54, size: SIZE.body, label: '', onClick: () => this.toggle() })
+        this.calW = button({ x: 125, y: 390, w: 230, h: 56, label: 'Calibrate', primary: true, onClick: () => this.calibrate() })
         this.show()
       },
 

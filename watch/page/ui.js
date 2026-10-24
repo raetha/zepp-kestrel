@@ -1,5 +1,9 @@
 // Tiny UI helpers for the 480 x 480 round screen. Layout is designed at
 // 480 wide; px() scales it for other round Zepp OS watches.
+//
+// Text is sized to be read at arm's length (about 45 cm): nothing smaller than
+// SIZE.small, and secondary text is light grey rather than dim, so it stays
+// legible in the watch's red night mode.
 
 import { createWidget, deleteWidget, widget, align, prop, text_style } from '@zos/ui'
 import { px } from '@zos/utils'
@@ -10,7 +14,7 @@ import { note, safe } from './trail.js'
 export const COLOR = {
   bg: 0x000000,
   text: 0xffffff,
-  quiet: 0x9a9a9a,
+  quiet: 0xc8c8c8, // secondary text; darker greys fade out in night mode
   accent: 0x7c5cff,
   accentPressed: 0x5a3fd6,
   button: 0x2a2a2a,
@@ -21,7 +25,15 @@ export const COLOR = {
   candidate: 0x3ddc84,
 }
 
-export function text({ x = 60, y, w = 360, h = 40, size = 24, color = COLOR.text, value = '', center = true }) {
+/** Text sizes, at 480 wide. */
+export const SIZE = {
+  title: 34,
+  body: 25,
+  button: 27,
+  small: 23, // the smallest text anywhere: hints, captions, the version
+}
+
+export function text({ x = 60, y, w = 360, h = 40, size = SIZE.body, color = COLOR.text, value = '', center = true }) {
   return createWidget(widget.TEXT, {
     x: px(x),
     y: px(y),
@@ -40,7 +52,7 @@ export function setText(w, value) {
   w.setProperty(prop.TEXT, value)
 }
 
-export function button({ x = 110, y, w = 260, h = 60, label, onClick, primary = false, size = 26 }) {
+export function button({ x = 110, y, w = 260, h = 60, label, onClick, primary = false, size = SIZE.button }) {
   return createWidget(widget.BUTTON, {
     x: px(x),
     y: px(y),

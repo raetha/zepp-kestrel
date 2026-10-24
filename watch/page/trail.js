@@ -1,29 +1,22 @@
 // Stores the trail (lib/trail.js) on the watch, and wraps page lifecycles and
 // callbacks so an error is recorded (and contained) instead of closing the app.
 
-import { LocalStorage } from '@zos/storage'
+import { get, set } from './kv.js'
 import { getDeviceInfo } from '@zos/device'
 import { getPackageInfo } from '@zos/app'
 import { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } from '@zos/interaction'
 import { append, splitPrevious, describeError } from '../lib/trail.js'
 
 const KEY = 'ww.trail'
-let ls = null
 
 function read() {
-  try {
-    ls = ls || new LocalStorage()
-    const v = ls.getItem(KEY)
-    return v ? JSON.parse(v) : []
-  } catch (e) {
-    return []
-  }
+  const v = get(KEY, [])
+  return Array.isArray(v) ? v : []
 }
 
 function write(list) {
   try {
-    ls = ls || new LocalStorage()
-    ls.setItem(KEY, JSON.stringify(list))
+    set(KEY, list)
   } catch (e) {
     // the trail is best effort
   }

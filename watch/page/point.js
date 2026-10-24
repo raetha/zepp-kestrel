@@ -21,7 +21,7 @@ import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
 import { setWakeUpRelaunch } from '@zos/display'
 import { event as uiEvent } from '@zos/ui'
-import { text, setText, button, clear, circle, setColor, fit, ask, listenKeys, COLOR } from './ui.js'
+import { text, setText, button, clear, circle, setColor, fit, ask, listenKeys, COLOR, SIZE } from './ui.js'
 import { startAim } from './aim.js'
 import { paintedDevices, paints, setPaint, gesture } from './store.js'
 import { syncSoon } from './sync.js'
@@ -115,15 +115,15 @@ Page(
 
       build() {
         if (!this.allDevices.length) {
-          text({ y: 34, h: 40, size: 28, value: 'Point' })
-          text({ x: 60, y: 120, w: 360, h: 200, size: 22, value: 'Nothing painted yet. Go back and choose Paint a device.' })
+          text({ y: 34, h: 44, size: SIZE.title, value: 'Point' })
+          text({ x: 60, y: 120, w: 360, h: 200, value: 'Nothing painted yet. Go back and choose Paint a device.' })
           return
         }
         this.ring = circle({ x: 240, y: 240, r: 150, color: STATE_COLOR[STATE.RESTING] })
-        this.nameW = text({ x: 100, y: 200, w: 280, h: 50, size: 30, value: '' })
-        this.hintW = text({ x: 100, y: 252, w: 280, h: 60, size: 20, color: 0xdddddd, value: this.hint(STATE.RESTING) })
-        this.topW = text({ y: 40, h: 34, size: 20, color: COLOR.quiet, value: '' })
-        this.resultW = text({ x: 80, y: 404, w: 320, h: 40, size: 20, value: '' })
+        this.nameW = text({ x: 95, y: 186, w: 290, h: 84, size: 32, value: '' })
+        this.hintW = text({ x: 100, y: 272, w: 280, h: 64, size: SIZE.small, color: 0xe6e6e6, value: this.hint(STATE.RESTING) })
+        this.topW = text({ x: 110, y: 34, w: 260, h: 34, size: SIZE.small, color: COLOR.quiet, value: '' })
+        this.resultW = text({ x: 90, y: 400, w: 300, h: 40, size: SIZE.small, value: '' })
         this.applyRoom()
         // the circle: tap triggers, hold dims
         for (const w of [this.ring, this.nameW, this.hintW]) {
@@ -287,9 +287,9 @@ Page(
           x: 90,
           w: 300,
           y: 330,
-          h: 54,
-          size: 21,
-          label: `Not it? ${fit(other.name, 14)}`,
+          h: 56,
+          size: SIZE.small,
+          label: `Not it? ${fit(other.name, 13)}`,
           onClick: () => this.correct(firedId, ctx),
         })
         this.correctTimer = setTimeout(() => this.clearCorrection(), CORRECT_MS)
@@ -334,13 +334,13 @@ Page(
           this.last = { state: null, best: null, runnerUp: null }
         }
         this.widgets.push(
-          button({ x: 100, w: 130, y: 330, h: 56, size: 22, label: 'Cancel', onClick: done }),
+          button({ x: 90, w: 145, y: 330, h: 58, size: SIZE.body, label: 'Cancel', onClick: done }),
           button({
-            x: 250,
-            w: 130,
+            x: 245,
+            w: 145,
             y: 330,
-            h: 56,
-            size: 22,
+            h: 58,
+            size: SIZE.body,
             label: 'Confirm',
             primary: true,
             onClick: () => {

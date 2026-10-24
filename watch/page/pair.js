@@ -5,7 +5,7 @@ import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
 import { replace } from '@zos/router'
 import { getDeviceInfo } from '@zos/device'
-import { text, setText, button, clear, fit, ask, COLOR } from './ui.js'
+import { text, setText, button, clear, fit, ask, COLOR, SIZE } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
 import { saveTargets } from './store.js'
 import * as haptics from './haptics.js'
@@ -31,8 +31,8 @@ Page(
       },
 
       build() {
-        this.titleW = text({ y: 34, h: 40, size: 28, value: 'Pair' })
-        this.msgW = text({ x: 60, y: 80, w: 360, h: 120, size: 21, value: '' })
+        this.titleW = text({ y: 32, h: 44, size: SIZE.title, value: 'Pair' })
+        this.msgW = text({ x: 56, y: 80, w: 368, h: 210, value: '' })
         this.discover()
       },
 
@@ -56,8 +56,8 @@ Page(
             found.slice(0, 3).forEach((ha, i) =>
               this.add(button({ x: 90, w: 300, y: 150 + i * 70, h: 58, label: fit(ha.haName, 20), primary: true, onClick: () => this.start(ha) })),
             )
-            this.add(button({ x: 70, w: 166, y: 370, h: 50, size: 20, label: 'Search again', onClick: () => this.discover() }))
-            this.add(button({ x: 244, w: 166, y: 370, h: 50, size: 20, label: 'Type address', onClick: () => this.addressPad() }))
+            this.add(button({ x: 64, w: 172, y: 366, h: 54, size: SIZE.small, label: 'Search again', onClick: () => this.discover() }))
+            this.add(button({ x: 244, w: 172, y: 366, h: 54, size: SIZE.small, label: 'Type address', onClick: () => this.addressPad() }))
           })
           .catch(() => this.nothing('Phone not reachable. Is the Zepp app open and connected?'))
       },
@@ -67,10 +67,10 @@ Page(
         setText(
           this.msgW,
           error ||
-            'No Home Assistant with WristWand found. Your phone must be on the home Wi-Fi, and the WristWand integration added in HA. Using another address or port? Type it.',
+            'No Home Assistant with WristWand found. Is the phone on the home Wi-Fi, and the integration added in HA? Or type its address.',
         )
-        this.add(button({ x: 120, w: 240, y: 300, h: 56, label: 'Try again', primary: true, onClick: () => this.discover() }))
-        this.add(button({ x: 120, w: 240, y: 366, h: 52, size: 22, label: 'Type address', onClick: () => this.addressPad() }))
+        this.add(button({ x: 110, w: 260, y: 300, h: 58, label: 'Try again', primary: true, onClick: () => this.discover() }))
+        this.add(button({ x: 120, w: 240, y: 368, h: 54, size: SIZE.body, label: 'Type address', onClick: () => this.addressPad() }))
       },
 
       // ------------------------------------------------------------ typed address, e.g. 192.168.1.20:8123
@@ -79,7 +79,7 @@ Page(
         this.address = this.address || ''
         setText(this.titleW, 'HA address')
         setText(this.msgW, '')
-        this.add(text({ y: 74, h: 26, size: 17, color: COLOR.quiet, value: 'IP, and :port if not 80 or 8123' }))
+        this.add(text({ y: 74, h: 30, size: SIZE.small, color: COLOR.quiet, value: 'IP, and :port if unusual' }))
         this.addrW = this.add(text({ x: 50, y: 100, w: 380, h: 40, size: 28, value: this.address || '_' }))
         const keys = ['1', '2', '3', '.', '4', '5', '6', ':', '7', '8', '9', 'Del', '0', 'OK']
         keys.forEach((k, i) => {
@@ -92,7 +92,7 @@ Page(
               y: 148 + row * 62,
               w: wide ? 164 : 78,
               h: 54,
-              size: k.length > 1 ? 22 : 28,
+              size: k.length > 1 ? SIZE.body : 30,
               label: k,
               primary: wide,
               onClick: () => this.addrKey(k),
@@ -127,7 +127,7 @@ Page(
         this.code = ''
         setText(this.titleW, 'Enter the code')
         setText(this.msgW, '')
-        this.add(text({ y: 74, h: 30, size: 18, color: COLOR.quiet, value: 'shown in Home Assistant' }))
+        this.add(text({ y: 74, h: 30, size: SIZE.small, color: COLOR.quiet, value: 'shown in Home Assistant' }))
         this.codeW = this.add(text({ y: 98, h: 40, size: 34, value: this.codeText() }))
         const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'Del', '0', 'OK']
         keys.forEach((k, i) => {
@@ -139,7 +139,7 @@ Page(
               y: 146 + row * 70,
               w: 96,
               h: 60,
-              size: 28,
+              size: 30,
               label: k,
               primary: k === 'OK',
               onClick: () => this.key(k),

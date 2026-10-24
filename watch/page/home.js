@@ -4,7 +4,7 @@
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked, previousRuns, forgetPreviousRuns, noteLaunch, appVersion } from './trail.js'
 import { push } from '@zos/router'
-import { text, setText, setLabel, button, clear, ask, COLOR } from './ui.js'
+import { text, setText, setLabel, button, clear, ask, COLOR, SIZE } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
 import { targets, paintedDevices } from './store.js'
 import { sync } from './sync.js'
@@ -37,10 +37,10 @@ Page(
       },
 
       build() {
-        text({ y: 34, h: 44, size: 32, value: 'WristWand' })
+        text({ y: 30, h: 46, size: SIZE.title, value: 'WristWand' })
         // the build, so it's clear which test build is running
-        text({ y: 438, h: 24, size: 15, color: COLOR.quiet, value: appVersion() })
-        this.statusW = text({ y: 80, h: 30, size: 19, color: COLOR.quiet, value: 'Checking…' })
+        text({ x: 90, y: 414, w: 300, h: 36, size: 26, color: COLOR.quiet, value: appVersion() })
+        this.statusW = text({ x: 50, y: 78, w: 380, h: 64, size: SIZE.small, color: COLOR.quiet, value: 'Checking…' })
         ask(this, METHOD.STATUS, undefined, 5000)
           .then((st) => {
             if (!this.alive) return
@@ -58,7 +58,7 @@ Page(
         const add = (w) => this.widgets.push(w)
         const go = (url) => () => push({ url })
         const btn = (i, label, onClick, primary = false) =>
-          add(button({ x: 120, w: 240, y: 126 + i * 66, h: 54, label, onClick, primary }))
+          add(button({ x: 110, w: 260, y: 146 + i * 64, h: 56, label, onClick, primary }))
 
         if (st.offline) {
           setText(this.statusW, 'Phone not reachable')
@@ -76,7 +76,7 @@ Page(
         }
         btn(0, 'Point', go('page/point'), true)
         btn(1, 'Paint a device', go('page/paint'))
-        this.syncW = button({ x: 120, w: 240, y: 126 + 2 * 66, h: 54, label: `Sync (${targets().length})`, onClick: () => this.sync() })
+        this.syncW = button({ x: 110, w: 260, y: 146 + 2 * 64, h: 56, label: `Sync (${targets().length})`, onClick: () => this.sync() })
         add(this.syncW)
         btn(3, 'More', go('page/more'))
       },

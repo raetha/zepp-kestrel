@@ -2,23 +2,8 @@
 // integration) holds the master copy of paints, rooms and settings; see
 // page/sync.js and lib/sync.js for how they're kept in step.
 
-import { LocalStorage } from '@zos/storage'
 import { markDirty } from '../lib/sync.js'
-
-const ls = new LocalStorage()
-
-function read(key, fallback) {
-  try {
-    const v = ls.getItem(key)
-    return v === undefined || v === null || v === '' ? fallback : JSON.parse(v)
-  } catch (e) {
-    return fallback
-  }
-}
-
-function write(key, value) {
-  ls.setItem(key, JSON.stringify(value))
-}
+import { get as read, set as write } from './kv.js'
 
 /** [{ id, name, domain, area, dimmable, confirm }] from the last sync */
 export const targets = () => read('targets', [])
