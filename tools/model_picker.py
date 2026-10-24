@@ -18,10 +18,9 @@ from components import REPO  # noqa: E402
 from make_qr import make  # noqa: E402
 
 STATUS = {
-    "tested": "tested on the watch",
-    "emulator": "runs in the emulator; not yet tried on a watch",
-    "partial": "runs in the emulator, with limits (see the README)",
-    "untested": "should work; no emulator image to check it on",
+    "tested": "tested",
+    "emulator": "checked in the emulator",
+    "untested": "untested",
 }
 
 

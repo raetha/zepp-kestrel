@@ -26,7 +26,7 @@ Test builds are for development and change often.
 
 **2. Install the watch app.**
 1. In the Zepp app, turn on Developer Mode: Profile → Settings → About, tap the Zepp logo 7 times.
-2. Open the [test-build page](https://raetha.github.io/zepp-kestrel/dev/) on another screen.
+2. Open the [test-build page](https://raetha.github.io/zepp-kestrel/dev/) on another screen and pick your watch (each screen size needs its own package; see [Supported devices](#supported-devices)).
 3. In the Zepp app: Profile → your watch → Developer Mode → scan icon (top right). Scan the QR code and confirm. It never changes and always installs the newest build; the home screen shows the build number at the bottom.
 
 **3. Pair.** With your phone on the home Wi-Fi, open Kestrel DEV on the watch → Pair with HA. Pick your Home Assistant, then type the 6-digit code from the notification Home Assistant shows. The watch then fetches your devices. (If the Zepp app asks for Local Network access, allow it: that's how the phone finds `homeassistant.local`.)
@@ -105,18 +105,50 @@ Under **More → Probes** on the watch. Results show on the watch, and once the 
 
 ### Supported devices
 
-Zepp OS watches on API level 3.6 or later with a compass, with the Zepp app on a phone. A gyroscope helps (steadier aim, and the wrist flick needs it); without one, stillness comes from the accelerometer and snaps and taps still work. A watch without a compass says so: it can't tell where you point. Tested on the Amazfit Balance 3; checked on the Zepp OS emulator (Balance 2 firmware). Builds cover every round and square screen size; layouts are designed for 480 × 480 round, scale to the screen, and sit centred on square ones.
+Zepp OS watches with a compass (API level 3.6 or later, and in practice Zepp OS 4), with the Zepp app on a phone. A gyroscope helps (steadier aim, and the wrist flick needs it); without one, stillness comes from the accelerometer and snaps and taps still work. A watch without a compass says so: it can't tell where you point. Layouts are designed for 480 × 480 round, scale to the screen, and sit centred on square ones (square watches also show the system's title bar along the top).
 
-| Expected to work (untested unless marked) | Screen |
-| --- | --- |
-| Balance 3 (tested), Balance Ultra, Balance 2, Balance | Round 480 |
-| Cheetah 2 Ultra, Cheetah Pro, T-Rex Ultra 2, T-Rex 3, T-Rex 3 Pro 48 mm, Active Max | Round 480 |
-| Cheetah 2 Pro, Active 3 Premium, Active 2 (round), T-Rex 3 Pro 44 mm, GTR 4 | Round 466 |
-| Cheetah (round), T-Rex Ultra | Round 454 |
-| Falcon | Round 416 |
-| Active 2 (square), Bip 6, Active, Cheetah (square), GTS 4 | Square 390 × 450 |
+Each model below was run on Zepp's own emulator image of its firmware (`tools/compat/sweep.mjs`): the app installed, opened, and went through Home, Point, Paint and More. The emulator can't tell whether a watch really has a compass or gyroscope, so those columns come from specifications. The install pages offer the right package for each supported model; please report how it goes on yours.
 
-Not supported: watches before API level 3.6 (Active Edge, Bip 5, Bip 5 Unity, GTR Mini, T-Rex 2, GTR 3, GTS 3, GTS 4 mini, Band 7). Check that your model has a compass. The test-build page only offers the Balance 3 package; other watches get theirs from the release.
+<!-- models:start -->
+| Watch | Screen | API | Kestrel | Compass | Gyroscope | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| Balance 3 | round 480 | 4.4 | Works (tested on the watch) | yes | yes | Development watch. |
+| Balance 2 | round 480 | 4.2 | Runs in the emulator | yes | yes |  |
+| Balance | round 480 | 4.0 | Runs in the emulator | yes | yes |  |
+| Active Max | round 480 | 4.2 | Runs in the emulator | yes | yes |  |
+| T-Rex Ultra 2 | round 480 | 4.3 | Runs in the emulator | yes | not confirmed |  |
+| T-Rex 3 | round 480 | 4.0 | Runs in the emulator | yes | not confirmed |  |
+| T-Rex 3 Pro (44 mm) | round 466 | 4.2 | Runs in the emulator | yes | yes |  |
+| Active 3 Premium | round 466 | 4.3 | Runs in the emulator | yes | yes |  |
+| Active 2 (round) | round 466 | 4.2 | Runs in the emulator | not confirmed | not confirmed |  |
+| Active 2 (square) | square 390×450 | 4.2 | Runs in the emulator | yes | yes |  |
+| Bip 6 | square 390×450 | 4.2 | Runs in the emulator | not confirmed | not confirmed |  |
+| Bip Max | square 432×514 | 4.4 | Runs in the emulator | not confirmed | not confirmed |  |
+| Balance Ultra | round 480 | 4.4 | Should work (not checked) | not confirmed | not confirmed | No emulator image; uses the same package as the Balance 3. |
+| T-Rex 3 Pro (48 mm) | round 480 | 4.3 | Should work (not checked) | yes | yes | Its emulator image is a test build that couldn't open apps; same package as the T-Rex 3. |
+| Cheetah 2 Pro | round 466 | 4.3 | Should work (not checked) | yes | yes | No emulator image; same package as the Active 2. |
+| Falcon | round 416 | 3.6 | Not supported | – | – | Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS. |
+| Cheetah (round) | round 454 | 3.6 | Not supported | – | – | Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS. |
+| T-Rex Ultra | round 454 | 3.6 | Not supported | – | – | Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS. |
+| Cheetah Pro | round 480 | 3.6 | Not supported | – | – | Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS. |
+| Cheetah (square) | square 390×450 | 3.6 | Not supported | – | – | Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS. |
+| Active | square 390×450 | 3.6 | Not supported | – | – | Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS. |
+| Active Edge | round 360 | 3.5 | Not supported | – | – | API level 3.5, below the 3.6 Kestrel needs; Zeus still builds a package for its screen. |
+| Cheetah 2 Ultra | round 480 | 4.3 | Not supported | yes | not confirmed | Zeus builds no package for it. |
+| GTR 4 | 466×466 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+| GTS 4 | 390×450 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+| GTS 4 Mini | 336×384 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+| GTR 3 Pro | 480×480 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+| GTR 3 | 454×454 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+| GTS 3 | 390×450 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+| T-Rex 2 | 454×454 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+| GTR Mini | 416×416 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+| Bip 5 | 320×380 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+| Bip 5 Unity | 320×380 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+| Band 7 | 194×368 | < 3.6 | Not supported | – | – | Zeus builds no package for it (API level below 3.6). |
+
+Checked 2026-10-24. Compass and gyroscope are from the watches' specifications ("not confirmed": not found in them).
+<!-- models:end -->
 
 The watch can trigger lights, switches, fans, media players, locks, covers, climate entities, scenes, scripts, buttons, input buttons and input booleans.
 

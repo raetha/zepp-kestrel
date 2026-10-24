@@ -8,6 +8,8 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Added
 
+- Install pages (test builds and releases) list the watch models and show the QR code for the package built for the one you pick; releases also attach every package and the store bundle (`.zab`).
+- The README lists which watches Kestrel works on, from running it on each model's emulator image. Watches still on Zepp OS 3.x (Falcon, Cheetah, Cheetah Pro, T-Rex Ultra, Active) aren't supported: their firmware crashes running the app.
 - Open on Point: start the app straight on Point (More → Open on), so assigning Kestrel to the watch's shortcut button goes straight to pointing. Back goes to the home screen. Also in Home Assistant and the Zepp app's settings page.
 - Twist volume: hold and twist at a media player to change its volume, like dimming a light. Home Assistant keeps it safe: one twist changes it by at most 20%, twists are at least a second apart, and twisting never takes it above 80% (both limits can be changed; turning it down always works).
 - Scenes, scripts and buttons as virtual spots: Paint → Scenes & more lists them, and you paint any spot you like for each (the sofa for a movie scene). Input buttons can be triggered too.

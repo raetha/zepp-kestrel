@@ -63,6 +63,9 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: README watch table matches watch/models.json
+        run: python3 tools/models_table.py --check
+
       - name: Build the watch app with Zeus
         run: |
           set -e

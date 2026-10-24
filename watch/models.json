@@ -1,6 +1,475 @@
 {
-  "about": "Watch models for the README table and the install pages' watch picker. status: tested (on a real watch), emulator (ran on its emulator image), partial (ran with limits), untested (no emulator image), unsupported. Filled from tools/compat/sweep.mjs (emulator) and specifications (sensors).",
-  "models": [
-    {"name": "Balance 3", "screen": "round 480", "api": "4.4", "sources": [11141376, 11141377, 11141379, 11145472, 11145473, 11145475], "status": "tested", "compass": "yes", "gyro": "yes"}
-  ]
+ "about": "Watch models for the README table and the install pages' watch picker (tools/model_picker.py). status: tested (on a real watch), emulator (ran on its emulator image: tools/compat/sweep.mjs), untested (no usable emulator image; uses a package that ran on another model), unsupported. Compass and gyro come from specifications (the emulator feeds made-up sensor data on every model). Models marked tested or emulator needn't be checked again.",
+ "checked": "2026-10-24",
+ "models": [
+  {
+   "name": "Balance 3",
+   "screen": "round 480",
+   "api": "4.4",
+   "sources": [
+    11141376,
+    11141377,
+    11141379,
+    11145472,
+    11145473,
+    11145475
+   ],
+   "status": "tested",
+   "compass": "yes",
+   "gyro": "yes",
+   "note": "Development watch."
+  },
+  {
+   "name": "Balance 2",
+   "screen": "round 480",
+   "api": "4.2",
+   "sources": [
+    9568512,
+    9568513,
+    9568515,
+    9572608,
+    9572609,
+    9572611
+   ],
+   "status": "emulator",
+   "compass": "yes",
+   "gyro": "yes",
+   "note": ""
+  },
+  {
+   "name": "Balance",
+   "screen": "round 480",
+   "api": "4.0",
+   "sources": [
+    8519936,
+    8519937,
+    8519939
+   ],
+   "status": "emulator",
+   "compass": "yes",
+   "gyro": "yes",
+   "note": ""
+  },
+  {
+   "name": "Balance Ultra",
+   "screen": "round 480",
+   "api": "4.4",
+   "sources": [
+    11075840,
+    11075841
+   ],
+   "status": "untested",
+   "compass": "not confirmed",
+   "gyro": "not confirmed",
+   "note": "No emulator image; uses the same package as the Balance 3."
+  },
+  {
+   "name": "Active Max",
+   "screen": "round 480",
+   "api": "4.2",
+   "sources": [
+    10813697,
+    10813699
+   ],
+   "status": "emulator",
+   "compass": "yes",
+   "gyro": "yes",
+   "note": ""
+  },
+  {
+   "name": "T-Rex Ultra 2",
+   "screen": "round 480",
+   "api": "4.3",
+   "sources": [
+    10879232,
+    10879233,
+    10879235
+   ],
+   "status": "emulator",
+   "compass": "yes",
+   "gyro": "not confirmed",
+   "note": ""
+  },
+  {
+   "name": "T-Rex 3",
+   "screen": "round 480",
+   "api": "4.0",
+   "sources": [
+    8716544,
+    8716545,
+    8716547
+   ],
+   "status": "emulator",
+   "compass": "yes",
+   "gyro": "not confirmed",
+   "note": ""
+  },
+  {
+   "name": "T-Rex 3 Pro (48 mm)",
+   "screen": "round 480",
+   "api": "4.3",
+   "sources": [
+    10551552,
+    10551553,
+    10551555
+   ],
+   "status": "untested",
+   "compass": "yes",
+   "gyro": "yes",
+   "note": "Its emulator image is a test build that couldn't open apps; same package as the T-Rex 3."
+  },
+  {
+   "name": "T-Rex 3 Pro (44 mm)",
+   "screen": "round 466",
+   "api": "4.2",
+   "sources": [
+    10682624,
+    10682625,
+    10682627
+   ],
+   "status": "emulator",
+   "compass": "yes",
+   "gyro": "yes",
+   "note": ""
+  },
+  {
+   "name": "Active 3 Premium",
+   "screen": "round 466",
+   "api": "4.3",
+   "sources": [
+    10944768,
+    10944769,
+    10944771,
+    10948867
+   ],
+   "status": "emulator",
+   "compass": "yes",
+   "gyro": "yes",
+   "note": ""
+  },
+  {
+   "name": "Active 2 (round)",
+   "screen": "round 466",
+   "api": "4.2",
+   "sources": [
+    8913152,
+    8913153,
+    8913155,
+    8913159,
+    10092800,
+    10092801,
+    10092803,
+    10092807
+   ],
+   "status": "emulator",
+   "compass": "not confirmed",
+   "gyro": "not confirmed",
+   "note": ""
+  },
+  {
+   "name": "Cheetah 2 Pro",
+   "screen": "round 466",
+   "api": "4.3",
+   "sources": [
+    11010304,
+    11010305,
+    11010307
+   ],
+   "status": "untested",
+   "compass": "yes",
+   "gyro": "yes",
+   "note": "No emulator image; same package as the Active 2."
+  },
+  {
+   "name": "Active 2 (square)",
+   "screen": "square 390×450",
+   "api": "4.2",
+   "sources": [
+    9830656,
+    9830657,
+    9830659,
+    10223872,
+    10223873,
+    10223875
+   ],
+   "status": "emulator",
+   "compass": "yes",
+   "gyro": "yes",
+   "note": ""
+  },
+  {
+   "name": "Bip 6",
+   "screen": "square 390×450",
+   "api": "4.2",
+   "sources": [
+    9765120,
+    9765121,
+    10158337
+   ],
+   "status": "emulator",
+   "compass": "not confirmed",
+   "gyro": "not confirmed",
+   "note": ""
+  },
+  {
+   "name": "Bip Max",
+   "screen": "square 432×514",
+   "api": "4.4",
+   "sources": [
+    11206915
+   ],
+   "status": "emulator",
+   "compass": "not confirmed",
+   "gyro": "not confirmed",
+   "note": ""
+  },
+  {
+   "name": "Falcon",
+   "screen": "round 416",
+   "api": "3.6",
+   "sources": [
+    414,
+    415
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS."
+  },
+  {
+   "name": "Cheetah (round)",
+   "screen": "round 454",
+   "api": "3.6",
+   "sources": [
+    8192256,
+    8192257
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS."
+  },
+  {
+   "name": "T-Rex Ultra",
+   "screen": "round 454",
+   "api": "3.6",
+   "sources": [
+    6553856,
+    6553857
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS."
+  },
+  {
+   "name": "Cheetah Pro",
+   "screen": "round 480",
+   "api": "3.6",
+   "sources": [
+    8126720,
+    8126721
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS."
+  },
+  {
+   "name": "Cheetah (square)",
+   "screen": "square 390×450",
+   "api": "3.6",
+   "sources": [
+    8257793
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS."
+  },
+  {
+   "name": "Active",
+   "screen": "square 390×450",
+   "api": "3.6",
+   "sources": [
+    8323328,
+    8323329
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Crashes on its Zepp OS 3.x firmware as soon as a screen runs the app's background work (asynchronous functions); may work if the watch has a newer Zepp OS."
+  },
+  {
+   "name": "Active Edge",
+   "screen": "round 360",
+   "api": "3.5",
+   "sources": [
+    8388864,
+    8388865
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "API level 3.5, below the 3.6 Kestrel needs; Zeus still builds a package for its screen."
+  },
+  {
+   "name": "Cheetah 2 Ultra",
+   "screen": "round 480",
+   "api": "4.3",
+   "sources": [
+    9961728,
+    9961729
+   ],
+   "status": "unsupported",
+   "compass": "yes",
+   "gyro": "not confirmed",
+   "note": "Zeus builds no package for it."
+  },
+  {
+   "name": "GTR 4",
+   "screen": "466×466",
+   "api": null,
+   "sources": [
+    7930112,
+    7930113
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  },
+  {
+   "name": "GTS 4",
+   "screen": "390×450",
+   "api": null,
+   "sources": [
+    7995648,
+    7995649
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  },
+  {
+   "name": "GTS 4 Mini",
+   "screen": "336×384",
+   "api": null,
+   "sources": [
+    246,
+    247,
+    7536897
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  },
+  {
+   "name": "GTR 3 Pro",
+   "screen": "480×480",
+   "api": null,
+   "sources": [
+    229,
+    230
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  },
+  {
+   "name": "GTR 3",
+   "screen": "454×454",
+   "api": null,
+   "sources": [
+    226,
+    227
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  },
+  {
+   "name": "GTS 3",
+   "screen": "390×450",
+   "api": null,
+   "sources": [
+    224,
+    225
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  },
+  {
+   "name": "T-Rex 2",
+   "screen": "454×454",
+   "api": null,
+   "sources": [
+    418,
+    419
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  },
+  {
+   "name": "GTR Mini",
+   "screen": "416×416",
+   "api": null,
+   "sources": [
+    250,
+    251
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  },
+  {
+   "name": "Bip 5",
+   "screen": "320×380",
+   "api": null,
+   "sources": [
+    8454401
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  },
+  {
+   "name": "Bip 5 Unity",
+   "screen": "320×380",
+   "api": null,
+   "sources": [
+    8782081,
+    8782088,
+    8782089
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  },
+  {
+   "name": "Band 7",
+   "screen": "194×368",
+   "api": null,
+   "sources": [
+    252,
+    253,
+    254
+   ],
+   "status": "unsupported",
+   "compass": "",
+   "gyro": "",
+   "note": "Zeus builds no package for it (API level below 3.6)."
+  }
+ ]
 }
