@@ -161,12 +161,7 @@ Every push to `dev` (or `main`) publishes a test build on an unlisted page: **ht
 
 **On the iPhone Zepp app, sideloaded apps get no Settings page.** Only apps installed from the Zepp store appear under Device → Device App Settings. We tried our own `.zpk` QR code, a `.zab` QR code (the Zepp app can't parse it), and uploads to Zepp's own preview service exactly as `zeus preview` does (one package, intermediate products included), under both the test and the registered app ID: the app installs and its side service runs, but no Settings entry appears and the Developer Mode → Mini Program list stays empty. So the watch doesn't depend on the Settings page: it pairs with the Home Assistant component (see `docs/design.md` → "Pairing").
 
-CI still uploads each `dev` build to Zepp's preview service (`tools/zepp_preview.py`, which mirrors `zeus preview`) and shows that QR code first on the test-build page; it expires after **7 days** and each push makes a new one. That needs the owner's Zepp developer login as three repository secrets (**Settings → Secrets and variables → Actions**): `ZEPP_APPTOKEN`, `ZEPP_USERID`, `ZEPP_CNAME`. To get them, from any browser including a phone:
-
-1. Open https://user.zepp.com/universalLogin/index.html#/login?project_name=zeppos_zeus_cli&platform_app=com.huami.webapp&project_redirect_uri=http%3A%2F%2Flocalhost%3A8765%2Flogin%2Fcallback and sign in with the Zepp developer account.
-2. The browser then tries to open `http://localhost:8765/login/callback?apptoken=…&userid=…&cname=…` and fails to connect. That's expected: the address bar holds the values. Copy them into the three secrets (`apptoken` → `ZEPP_APPTOKEN`, `userid` → `ZEPP_USERID`, `cname` → `ZEPP_CNAME`; still URL-encoded is fine).
-
-`cname` is a comma-separated list of the account's regional hosts; uploads go to the `api-mifit` one. When the token expires, the workflow fails with "token has expired": repeat both steps. Treat the token like a password.
+Since the preview service gave nothing the plain `.zpk` doesn't, CI no longer uploads to it: the test-build page has one QR code, for our own `.zpk`, which never expires and always installs the newest build. (The upload tool, `tools/zepp_preview.py`, is in the git history if the store route ever needs it; it used the owner's Zepp developer login, which no longer needs to be kept as repository secrets.)
 
 Test builds install only as "WristWand DEV" (app ID 2132466). An earlier experiment also offered the build under the registered app ID 1132466 (shown as "WristWand"); it showed no Settings page either and was removed. Uninstall a leftover "WristWand" test install from the watch: it has its own storage and pairing and no longer updates.
 

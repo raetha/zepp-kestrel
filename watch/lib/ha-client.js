@@ -262,12 +262,16 @@ export class HaClient {
   /**
    * Everything the watch keeps in sync (component), or just the targets (direct
    * mode: nothing else is kept in Home Assistant). `only` limits it to some
-   * sections, e.g. ['paints'], skipping the large target list.
-   * -> { targets, areas, settings, paints, rooms, settings_rev, paints_rev, rooms_rev, room }
+   * sections, e.g. ['paints']; `have` ({ targets: hash, paints: rev, ... })
+   * says what the watch already has, so unchanged parts are left out.
+   * -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room }
    */
-  async sync(only = null) {
+  async sync(only = null, have = null) {
     if (this.status().mode === 'component') {
-      return (await this.component(`/api/wristwand/sync${only ? `?only=${only.join(',')}` : ''}`)) || {}
+      const q = []
+      if (only) q.push(`only=${only.join(',')}`)
+      if (have) q.push(`have=${Object.keys(have).map((k) => `${k}:${have[k]}`).join(',')}`)
+      return (await this.component(`/api/wristwand/sync${q.length ? `?${q.join('&')}` : ''}`)) || {}
     }
     return { targets: only ? undefined : await this.targets() }
   }

@@ -25,18 +25,8 @@ if (dev / "watch" / WATCH_ZPK).exists():
     w = dev / "watch"
     make(w / "install-qr.png", f"zpkd1://{PAGES}/dev/watch/{WATCH_ZPK}")
     meta = watch_meta()
-    if (w / "preview-qr.png").exists():
-        # Installed from Zepp's preview service: the Zepp app shows the Settings page.
-        expires = (w / "preview-expires.txt").read_text().strip()
-        primary = f'''<p class="note">Use this one: it includes the Settings page in the Zepp app.
-Expires {html.escape(expires)} (each push to dev makes a new one).</p>
-<img class="qr" src="watch/preview-qr.png" alt="QR code for the WristWand test build with settings">
-<h3>Backup: watch app only</h3>
-<p class="note">Never expires, but the Zepp app shows no Settings page for it (so no HA URL or token).</p>
-<img class="qr small" src="watch/install-qr.png" alt="QR code for the watch-only test build">'''
-    else:
-        primary = '''<p class="note">Watch app only: the Zepp app shows no Settings page for this install.
-(Preview installs with settings need the ZEPP_* secrets; see docs/development.md.)</p>
+    primary = '''<p class="note">Scan in the Zepp app: Profile → your watch → Developer Mode → scan.
+The QR code never changes; it always installs the newest build.</p>
 <img class="qr" src="watch/install-qr.png" alt="QR code for the WristWand test build">'''
     cards.append(f'''<section><h2>{html.escape(meta["appName"])} DEV</h2>
 <p>based on {html.escape(meta["version"]["name"])} · build {html.escape(build)} · {html.escape(sha)}</p>

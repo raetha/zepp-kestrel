@@ -22,6 +22,9 @@ All notable changes to the WristWand watch app. The format is based on
 - The BLE probe lists your Home Assistant areas.
 - Paint starts with the devices of the room you're in (from your room calibration or a Home Assistant sensor), or asks which room first, so you don't page through every device. The Room button switches rooms; All devices and No area are there too.
 - The home screen shows the build number, and Sync shows how many areas came from Home Assistant.
+- The app syncs with Home Assistant each time it starts, fetching only what changed (usually almost nothing); Sync fetches everything. The device list is sent more compactly.
+- Pairing again keeps the watch's paints and room calibrations and sends them to Home Assistant.
+- One QR code on the test-build page; it never expires.
 - Corrections: after a trigger, "Not it?" offers the next most likely device for 5 seconds. Choosing it undoes the first where possible, toggles the right one, and teaches the watch where you aimed.
 - Each trigger sends a short record of the aim to Home Assistant (in the diagnostics download), to tune pointing.
 - More screen on Home: Gesture, Rooms, Probes and Unpair.

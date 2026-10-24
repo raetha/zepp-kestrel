@@ -92,9 +92,10 @@ Page(
       },
 
       // Targets, areas, settings, paints and rooms from Home Assistant (page/sync.js).
+      // The Sync button fetches everything; the quiet sync at launch only what changed.
       sync(quiet = false) {
         if (!quiet) setText(this.statusW, 'Syncing…')
-        sync((m, p, t) => ask(this, m, p, t))
+        sync((m, p, t) => ask(this, m, p, t), null, { full: !quiet })
           .then((r) => {
             if (!this.alive) return
             if (!r.ok) {

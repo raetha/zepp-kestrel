@@ -10,7 +10,7 @@ export const METHOD = {
   PAIR_START: 'ww.pairStart', // { url, watchName } -> { pairingId } (HA shows a code)
   PAIR_CONFIRM: 'ww.pairConfirm', // { url, pairingId, code } -> { ok, haName, error }
   UNPAIR: 'ww.unpair',
-  SYNC: 'ww.sync', // { only? } -> { targets, areas, settings, paints, rooms, *_rev, room } (see ha-client sync)
+  SYNC: 'ww.sync', // { only?, have? } -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room } (see ha-client sync)
   FIRE: 'ww.fire', // { seq, target, action, value, confirmed } -> { ok, state, needsConfirm, error }
   SAVE: 'ww.save', // { section: 'paints' | 'rooms', value } -> { ok, rev } after a change on the watch
   SAVE_GESTURE: 'ww.saveGesture', // { gesture } -> { ok, rev, settings } after calibrating

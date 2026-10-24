@@ -79,10 +79,6 @@ jobs:
 
       - name: Build the DEV test build (from the tip of dev)
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-        env:
-          ZEPP_APPTOKEN: ${{ secrets.ZEPP_APPTOKEN }}
-          ZEPP_USERID: ${{ secrets.ZEPP_USERID }}
-          ZEPP_CNAME: ${{ secrets.ZEPP_CNAME }}
         run: |
           set -e
           out="$PWD/out-dev"
@@ -98,13 +94,6 @@ jobs:
           python3 tools/make_dev_variant.py "$GITHUB_RUN_NUMBER" "$short"
           (cd watch-dev && zeus build)
           python3 tools/extract_zpk.py watch-dev/dist "$out/watch/wristwand.zpk"
-          # A preview upload under the owner's Zepp account (docs/development.md ->
-          # "Preview installs"): the only install route that gets the app's Settings page.
-          if [ -n "$ZEPP_APPTOKEN" ]; then
-            python3 tools/zepp_preview.py watch-dev/dist "$out/watch"
-          else
-            echo "::warning::ZEPP_APPTOKEN not set: no preview install (the test build will have no Settings page)"
-          fi
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')

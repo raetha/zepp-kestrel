@@ -237,6 +237,7 @@ test('sync, section saves, gesture and room go to the component', async () => {
   const fetch = fakeFetch({
     [`GET ${url}/api/wristwand/sync`]: async () => ({ status: 200, body: { targets: [], paints: {}, paints_rev: 2 } }),
     [`GET ${url}/api/wristwand/sync?only=paints`]: async () => ({ status: 200, body: { paints: {}, paints_rev: 2 } }),
+    [`GET ${url}/api/wristwand/sync?have=targets:abc,paints:2`]: async () => ({ status: 200, body: { paints_rev: 2 } }),
     [`POST ${url}/api/wristwand/paints`]: async (r) => {
       assert.deepEqual(JSON.parse(r.body), { paints: { 'light.a': [] } })
       return { status: 200, body: { ok: true, rev: 3 } }
@@ -247,6 +248,7 @@ test('sync, section saves, gesture and room go to the component', async () => {
   const ha = new HaClient({ fetch, store })
   assert.equal((await ha.sync()).paints_rev, 2)
   assert.deepEqual(await ha.sync(['paints']), { paints: {}, paints_rev: 2 })
+  assert.deepEqual(await ha.sync(null, { targets: 'abc', paints: 2 }), { paints_rev: 2 })
   assert.deepEqual(await ha.saveSection('paints', { 'light.a': [] }), { ok: true, rev: 3 })
   assert.equal((await ha.saveGesture({ gyro: 500 })).settings.gesture.gyro, 500)
   assert.deepEqual(await ha.room(), { id: 'office', name: 'Office' })

@@ -18,6 +18,8 @@ token, sent as X-WristWand-Token, which only works on these endpoints.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from http import HTTPStatus
 from typing import Any
@@ -32,7 +34,7 @@ from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, SUPPORTED_DOMAINS, TOKEN_HEADER
 from .targets import list_targets, service_call
-from .watchdata import areas, away_block, current_room
+from .watchdata import SECTIONS, areas, away_block, current_room
 from .watches import Watches
 
 _LOGGER = logging.getLogger(__name__)
@@ -178,7 +180,17 @@ async def _json_object(request: web.Request) -> dict[str, Any] | None:
 
 
 class SyncView(_WatchView):
-    """Everything a watch keeps in sync: targets, areas, settings, paints and rooms."""
+    """Everything a watch keeps in sync: targets, areas, settings, paints and rooms.
+
+    The watch syncs on every launch over Bluetooth, so it says what it already
+    has and gets only what changed:
+      ?have=targets:<hash>,paints:<rev>,rooms:<rev>,settings:<rev>
+        a section (or the target and area lists) the watch already has at that
+        revision is left out; its revision is still sent.
+      ?only=paints,rooms  just those sections (after a change on the watch).
+    Targets are sent compactly (sync_targets). `watch_id` lets the watch notice
+    it was paired again and start over.
+    """
 
     url = "/api/wristwand/sync"
     name = "api:wristwand:sync"
@@ -189,14 +201,38 @@ class SyncView(_WatchView):
             return auth
         hass, watches, watch = auth
         synced = watches.synced(watch["id"])
-        body: dict[str, Any] = {"room": current_room(hass, synced["settings"]), **synced}
-        # ?only=paints,rooms skips the target list (large over Bluetooth) after a small change
+        have = dict(item.split(":", 1) for item in request.query.get("have", "").split(",") if ":" in item)
         only = [x for x in request.query.get("only", "").split(",") if x]
-        if only:
-            body = {k: v for k, v in body.items() if k.removesuffix("_rev") in only}
-        else:
-            body.update(targets=list_targets(hass), areas=areas(hass))
+
+        body: dict[str, Any] = {"watch_id": watch["id"], "room": current_room(hass, synced["settings"])}
+        for section in SECTIONS:
+            if only and section not in only:
+                continue
+            rev = synced[f"{section}_rev"]
+            body[f"{section}_rev"] = rev
+            if have.get(section) != str(rev):
+                body[section] = synced[section]
+        if not only:
+            targets, area_list = sync_targets(list_targets(hass)), areas(hass)
+            digest = hashlib.sha1(json.dumps([targets, area_list], sort_keys=True).encode()).hexdigest()[:12]
+            body["targets_hash"] = digest
+            if have.get("targets") != digest:
+                body.update(targets=targets, areas=area_list)
         return web.json_response(body)
+
+
+def sync_targets(targets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Targets as the watch keeps them: id, name, area_id, and flags only when set."""
+    out = []
+    for t in targets:
+        c: dict[str, Any] = {"id": t["id"], "name": t["name"]}
+        if t.get("area_id"):
+            c["area_id"] = t["area_id"]
+        for flag in ("dimmable", "confirm"):
+            if t.get(flag):
+                c[flag] = True
+        out.append(c)
+    return out
 
 
 class _SectionView(_WatchView):

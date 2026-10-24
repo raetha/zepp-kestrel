@@ -68,7 +68,7 @@ AppSideService(
             this.ha.unpair()
             return { ok: true }
           case METHOD.SYNC:
-            return this.ha.sync(p.only || null)
+            return this.ha.sync(p.only || null, p.have || null)
           case METHOD.FIRE:
             // the watch may retry over Bluetooth; never run a command twice
             if (p.seq !== undefined && !dedupe.accept(p.seq)) return { ok: true, duplicate: true }

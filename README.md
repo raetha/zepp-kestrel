@@ -25,7 +25,7 @@ Test builds are for development and change often.
 **2. Install the watch app.**
 1. In the Zepp app, turn on Developer Mode: Profile → Settings → About, tap the Zepp logo 7 times.
 2. Open the [test-build page](https://raetha.github.io/zepp-wristwand/dev/) on another screen.
-3. In the Zepp app: Profile → your watch → Developer Mode → scan icon (top right). Scan the top code and confirm.
+3. In the Zepp app: Profile → your watch → Developer Mode → scan icon (top right). Scan the QR code and confirm. It never changes and always installs the newest build; the home screen shows the build number at the bottom.
 
 **3. Pair.** With your phone on the home Wi-Fi, open WristWand DEV on the watch → Pair with HA. Pick your Home Assistant, then type the 6-digit code from the notification Home Assistant shows. The watch then fetches your devices. (If the Zepp app asks for Local Network access, allow it: that's how the phone finds `homeassistant.local`.)
 

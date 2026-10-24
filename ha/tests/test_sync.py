@@ -29,7 +29,7 @@ async def test_sync_returns_everything_with_revisions(hass, setup_entry, hass_cl
     res = await client.get("/api/wristwand/sync", headers={TOKEN_HEADER: token})
     body = await res.json()
     assert [a["name"] for a in body["areas"]] == ["Kitchen", "Office"]
-    assert body["targets"][0]["id"] == "light.desk"
+    assert body["targets"] == [{"id": "light.desk", "name": "Desk"}]  # compact: no empty fields
     assert body["paints"] == {} and body["rooms"] == {} and body["room"] is None
     assert body["paints_rev"] == 0 and body["settings_rev"] == 0 and body["rooms_rev"] == 0
     assert body["settings"]["gesture"] == {"enabled": True, "kind": "flick", "gyro": 600, "jolt": None, "calibrated": False}
@@ -137,7 +137,35 @@ async def test_away_mode_blocks_all_but_allowed(hass, setup_entry, hass_client_n
 
 
 async def test_sync_can_skip_the_target_list(hass, setup_entry, hass_client_no_auth):
-    _, token = await _token(setup_entry)
+    watch, token = await _token(setup_entry)
     client = await hass_client_no_auth()
     body = await (await client.get("/api/wristwand/sync?only=paints", headers={TOKEN_HEADER: token})).json()
-    assert body == {"paints": {}, "paints_rev": 0}
+    assert body == {"watch_id": watch["id"], "room": None, "paints": {}, "paints_rev": 0}
+
+
+async def test_sync_sends_only_what_changed(hass, setup_entry, hass_client_no_auth):
+    ar.async_get(hass).async_create("Office")
+    hass.states.async_set("light.desk", "off", {"friendly_name": "Desk", "supported_color_modes": ["brightness"]})
+    watch, token = await _token(setup_entry)
+    watches = setup_entry.runtime_data
+    client = await hass_client_no_auth()
+    h = {TOKEN_HEADER: token}
+    full = await (await client.get("/api/wristwand/sync", headers=h)).json()
+    assert full["targets"] == [{"id": "light.desk", "name": "Desk", "dimmable": True}]
+    have = f"targets:{full['targets_hash']},paints:0,rooms:0,settings:0"
+
+    # nothing changed: only revisions and the hash come back
+    body = await (await client.get(f"/api/wristwand/sync?have={have}", headers=h)).json()
+    assert body == {
+        "watch_id": watch["id"], "room": None, "targets_hash": full["targets_hash"],
+        "settings_rev": 0, "paints_rev": 0, "rooms_rev": 0,
+    }
+
+    # a paint changed in Home Assistant and a new light appeared: those come back
+    await watches.async_save_paints(watch["id"], {"light.desk": [SPOT]})
+    hass.states.async_set("light.porch", "off", {"friendly_name": "Porch"})
+    body = await (await client.get(f"/api/wristwand/sync?have={have}", headers=h)).json()
+    assert body["paints"] == {"light.desk": [SPOT]} and body["paints_rev"] == 1
+    assert "rooms" not in body and "settings" not in body
+    assert [t["id"] for t in body["targets"]] == ["light.desk", "light.porch"]
+    assert body["targets_hash"] != full["targets_hash"]
