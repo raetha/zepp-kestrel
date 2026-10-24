@@ -5,7 +5,8 @@
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
-import { text, setText, button, clear, fit, ask, listenKeys, COLOR, SIZE } from './ui.js'
+import { text, setText, button, clear, fit, ask, listenKeys, rect, setColor, tickRing, COLOR, SIZE } from './ui.js'
+import { Circling } from '../lib/circling.js'
 import { startAim } from './aim.js'
 import { targets, paints, setPaint, areas, rooms } from './store.js'
 import { targetsInArea, areaChoices, ALL } from '../lib/areas.js'
@@ -18,6 +19,9 @@ import * as haptics from './haptics.js'
 const PER_PAGE = 4
 const PAINT_MS = 15000
 const CALIBRATE_MS = 30000 // how long Paint waits for the compass to calibrate
+// background colours, the same as Point's: amber while recording, green saved, red failed
+const BG = { idle: 0x000000, recording: 0x4a3000, saved: 0x0d5a32, failed: 0x7a1c1c }
+const TICK = { off: 0x333333, on: COLOR.accent, done: 0x3ddc84 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 Page(
@@ -34,6 +38,7 @@ Page(
       },
 
       build() {
+        this.bg = rect({ color: BG.idle }) // first, so it stays behind everything
         this.titleW = text({ y: 32, h: 44, size: SIZE.title, value: 'Paint' })
         this.msgW = text({ x: 56, y: 80, w: 368, h: 240, value: '' })
         this.unkeys = listenKeys(() => this.onSelect && this.onSelect())
@@ -108,6 +113,7 @@ Page(
       // ------------------------------------------------------------ pick a device
       list() {
         clear(this.widgets)
+        setColor(this.bg, BG.idle)
         this.onSelect = null
         const all = targetsInArea(targets(), this.area)
         if (!targets().length) {
@@ -151,6 +157,7 @@ Page(
       // ------------------------------------------------------------ paint it
       ready(t) {
         clear(this.widgets)
+        setColor(this.bg, BG.idle)
         this.target = t
         const spots = (paints()[t.id] || []).length
         setText(this.titleW, fit(t.name, 16))
@@ -172,6 +179,15 @@ Page(
         let calibrated = true
         this.aim = startAim((a) => {
           calibrated = a.calibrated
+          if (this.circling && !calibrated) {
+            const i = this.circling.add(a.pitch, a.roll)
+            if (i >= 0) this.ring.set(i, TICK.on)
+            if (this.circling.count === this.circling.ticks) {
+              // a full circle and still not done: start the ring again so it keeps showing movement
+              this.circling.reset()
+              this.ring.all(TICK.off)
+            }
+          }
           if (this.recording && a.calibrated && a.heading !== null && Math.abs(a.pitch) <= 75 && Math.abs(a.roll) <= 45) {
             samples.push({ heading: a.heading, pitch: a.pitch })
           }
@@ -193,29 +209,47 @@ Page(
         await sleep(500)
         if (!this.alive) return
         if (!calibrated) {
+          // The dots round the edge light as the watch leans each way: they show the
+          // circling motion, since Zepp OS tells apps nothing about calibration until it's done.
+          this.ring = tickRing()
+          for (const d of this.ring.dots) this.add(d)
+          this.circling = new Circling({ ticks: this.ring.dots.length })
+          setText(this.msgW, 'The compass needs calibrating.\n\nTurn the watch slowly in a circle, as the Compass app asks, until the dots go green.')
           const until = Date.now() + CALIBRATE_MS
           while (!calibrated && Date.now() < until) {
-            setText(this.msgW, 'The compass needs calibrating.\n\nTurn the watch slowly in a circle a few times, as the Compass app asks.')
             await sleep(250)
             if (!this.alive) return
           }
-          if (calibrated) haptics.done()
+          this.circling = null
+          if (calibrated) {
+            this.ring.all(TICK.done)
+            setText(this.msgW, 'Compass calibrated.')
+            haptics.done()
+            await sleep(900)
+            if (!this.alive) return
+          }
+          clear(this.widgets)
         }
+        this.bigW = this.add(text({ y: 170, h: 150, size: 120, value: '' })) // the countdown, readable at arm's length
         for (let s = 3; s > 0; s--) {
-          setText(this.msgW, `Point at it…\n\n${s}`)
+          setText(this.msgW, 'Point at it…')
+          setText(this.bigW, String(s))
           await sleep(800)
           if (!this.alive) return
         }
         haptics.sent()
+        setColor(this.bg, BG.recording)
         this.recording = true
         const end = Date.now() + PAINT_MS
         while (Date.now() < end) {
           const left = Math.ceil((end - Date.now()) / 1000)
-          setText(this.msgW, `Sweep slowly across it…\n\n${left} s${calibrated ? '' : '\n(compass not calibrated)'}`)
+          setText(this.msgW, calibrated ? 'Sweep slowly across it…' : 'Sweep slowly across it…\n(compass not calibrated)')
+          setText(this.bigW, `${left}`)
           await sleep(250)
           if (!this.alive) return
         }
         this.recording = false
+        setColor(this.bg, BG.idle)
         resetDropWristScreenOff()
         this.awake = false
         this.aim.stop()
@@ -224,6 +258,7 @@ Page(
         haptics.done()
         const spot = makeSpot(samples)
         if (spot && this.room) spot.room = this.room.id
+        clear([this.bigW])
         this.saved(spot)
       },
 
@@ -232,6 +267,7 @@ Page(
         const problem = spotProblem(spot)
         if (problem) {
           haptics.failed()
+          setColor(this.bg, BG.failed)
           setText(
             this.msgW,
             problem === 'few'
@@ -243,6 +279,7 @@ Page(
           setPaint(t.id, spots)
           syncSoon((m, p, tm) => ask(this, m, p, tm), 'paints')
           const n = spots.filter((x) => x.kind !== 'correction').length
+          setColor(this.bg, BG.saved)
           setText(
             this.msgW,
             `Saved${this.room ? ` in ${this.room.name}` : ''}: ${Math.round(spot.heading)}° ±${Math.round(spot.headingSpread)}, pitch ${Math.round(spot.pitch)}°.\n\nSpot ${n} of ${MAX_SPOTS}. Painting from another place you use it improves aim.`,

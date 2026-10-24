@@ -8,6 +8,7 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 
 ### Changed
 
+- The integration is required: the watch app no longer has a mode that uses Home Assistant's general API with a long-lived token.
 - Kestrel only works on the home network (or a VPN into it): every request through Home Assistant Cloud or from a public address is refused, and the phone keeps only home addresses. Away mode is gone with it.
 - Which devices watches can use is chosen in Configure → Devices for watches (devices or single entities, with search), instead of the `kestrel` label.
 - Licence: MIT for the whole project.

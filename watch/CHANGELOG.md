@@ -9,10 +9,10 @@ All notable changes to the Kestrel watch app. The format is based on
 ### Added
 
 - M0 measurement build: probes for sensor rates, snap/tap/flick recordings, compass tilt, Bluetooth scans per room, and watch → phone → Home Assistant latency.
-- Settings page in the Zepp app for the Home Assistant URL and token, with a connection test, a list of probe results, and an option to send results to Home Assistant as `kestrel_probe` events.
+- Settings page in the Zepp app (store installs): the watch's settings and a list of probe results.
 - Pairing with Home Assistant (needs the Kestrel integration): the phone finds Home Assistant on the home Wi-Fi (`homeassistant.local` on port 80 or 8123; other addresses can be typed on the watch), Home Assistant shows a 6-digit code, and you type it on the watch. Kestrel works on your home network (or a VPN into it), never through Home Assistant Cloud.
 - Paint a device: pick it from the synced list, then sweep your arm across it for 15 seconds. Painting again from other places you use it improves aim. Unsteady compass readings are rejected with a hint.
-- Point: hold your arm out at a painted device; the circle turns amber while aiming, green when the watch has a device in mind, and bright green when it's sure. Press the select button or tap the circle to toggle it. Locks ask for a confirming tap. Short buzzes confirm sent, done and failed.
+- Point: hold your arm out at a painted device; the whole screen turns amber while aiming, dark green when the watch has a device in mind, and bright green when it's locked on. Press the select button or tap the screen to toggle it. Locks ask for a confirming tap (dark red). The screen flashes bright green when the action is done, red when it failed.
 - Home screen with Point, Paint, Sync, Probes and Unpair. The M0 probes moved under Probes.
 - Probes report on screen whether each result reached Home Assistant.
 - Gesture trigger: on Point, aim, then flick your wrist, snap or tap your fingers. More → Gesture picks the gesture and calibrates it to yours (five gestures and a few seconds of aiming), or turns it off.
@@ -32,7 +32,7 @@ All notable changes to the Kestrel watch app. The format is based on
 - A snap or tap no longer triggers twice: gestures are ignored for 3 seconds after a trigger and while the watch itself buzzes (its vibration looked like another snap).
 - Each gesture (flick, snap, tap) keeps its own calibration, so switching between them, on the watch or from Home Assistant, needs no recalibrating. Point says when the chosen gesture still needs calibrating.
 - Point keeps the screen on while you're pointing: every time your arm is held out, or something is triggered, the screen gets another 30 seconds. Lowering your wrist lets it go off as usual.
-- When the compass needs calibrating, Paint asks you to turn the watch in a circle (as the Compass app does) and waits, instead of recording a sweep that fails; Point says the same.
+- When the compass needs calibrating, Paint asks you to turn the watch in a circle (as the Compass app does) and waits, instead of recording a sweep that fails; Point says the same. Dots round the edge light up as you turn the watch through each direction, and all go green, with one buzz, when the compass is calibrated. (Zepp OS tells apps only when calibration is done, not how far along it is, so the dots show your circling, not a percentage.)
 - Tells Home Assistant its version, the room it placed itself in, and how each trigger happened, for the watch's sensors there.
 - When Home Assistant has more devices than it sends, Sync says so ("1000 of 1240 devices"); choosing devices for watches in Home Assistant narrows the list.
 - Pairing again keeps the watch's paints and room calibrations and sends them to Home Assistant.
@@ -44,6 +44,9 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Changed
 
+- Bigger text on Point (the device name is about twice the size) and big countdown numbers in Paint, for reading at arm's length. Paint's screen turns amber while recording, green when the paint is saved and red when it wasn't.
+- Fewer vibrations. Point buzzes once when it locks onto a device (not again while you stay on it) and once when the action is done or failed; no buzz when a command is sent, when dimming starts or at each 10% of dimming. Room calibration buzzes when it starts and when it's done, not at every scan, and gesture calibration dropped a buzz between steps.
+- Direct mode is gone: Kestrel needs its Home Assistant integration. The phone no longer stores a Home Assistant URL or long-lived token, and the settings page no longer asks for them.
 - Works on the home network only (or a VPN into it): the phone no longer keeps Home Assistant's cloud address, and says so when Home Assistant isn't reachable.
 - Renamed from WristWand to Kestrel, with a new icon. Test builds install as "Kestrel DEV" and need pairing again with the renamed Home Assistant integration. Uninstall WristWand DEV first: nothing it stored carries over.
 - Aim uses where your forearm points (the watch's compass heading turned by 90°). Keep the palm roughly down: with the wrist turned more than about 45° the compass drifts, so aim waits until it has settled. Devices painted with earlier test builds need painting again.
@@ -59,6 +62,7 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Fixed
 
+- Instant toggle could trigger the same device again if you kept aiming at it while a slow request was out. Point now says "Aim away to repeat" once it has fired.
 - The record of screens, buttons and swipes kept only launches and exits: the app itself overwrote what the screens wrote when it closed. Launches are now noted by the home screen, and the record also says which watch model it is.
 - The Compass tilt probe says when the compass needs calibrating instead of recording without headings.
 - Probe results stopped reaching Home Assistant ("Not sent: undefined is not an object"): the phone now sends each result to Home Assistant before keeping a small summary for itself, clears an oversized summary list, and says which step failed if one does.

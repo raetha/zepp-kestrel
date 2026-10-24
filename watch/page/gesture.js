@@ -122,7 +122,6 @@ Page(
             await sleep(800)
           }
           if (!this.alive) return
-          haptics.done()
           setText(this.bodyW, `Now point around slowly at a few things for ${MOVEMENT_MS / 1000} s, the way you aim. No ${LABEL[kind].toLowerCase()}s.`)
           await sleep(3000)
           if (!this.alive) return

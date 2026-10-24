@@ -91,6 +91,37 @@ export function setColor(w, color) {
   w.setProperty(prop.MORE, { color })
 }
 
+/**
+ * A ring of dots round the screen's edge (compass calibration progress,
+ * lib/circling.js): tick 0 at 12 o'clock, going clockwise.
+ */
+export function tickRing({ n = 12, r = 218, dot = 10, color = 0x333333 } = {}) {
+  const dots = []
+  const at = []
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 2 * Math.PI
+    at.push({ x: Math.round(240 + r * Math.sin(a)), y: Math.round(240 - r * Math.cos(a)) })
+    dots.push(circle({ ...at[i], r: dot, color }))
+  }
+  // a circle's colour only changes when its geometry is given again with it
+  const paint = (i, c) => dots[i].setProperty(prop.MORE, { center_x: px(at[i].x), center_y: px(at[i].y), radius: px(dot), color: c })
+  return {
+    dots,
+    set(i, c) { if (dots[i]) paint(i, c) },
+    all(c) { for (let i = 0; i < n; i++) paint(i, c) },
+  }
+}
+
+/** A filled rectangle (the whole screen by default): a background that can change colour. */
+export function rect({ x = 0, y = 0, w = 480, h = 480, color = COLOR.bg } = {}) {
+  return createWidget(widget.FILL_RECT, { x: px(x), y: px(y), w: px(w), h: px(h), color })
+}
+
+/** Change a text widget's colour. */
+export function setTextColor(w, color) {
+  w.setProperty(prop.COLOR, color)
+}
+
 /** Shorten a label to fit a button. */
 export function fit(s, n = 18) {
   s = String(s || '')

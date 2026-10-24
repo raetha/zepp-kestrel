@@ -113,7 +113,7 @@ Page(
           const scans = []
           for (let i = 0; i < SCANS; i++) {
             if (!this.alive) return
-            haptics.sent()
+            if (i === 0) haptics.sent() // one to start, one when done: not one per scan
             const scan = await scanOnce(SCAN_MS, (n) => this.alive && setText(this.msgW, `Scan ${i + 1} of ${SCANS}: keep walking…\n${n} heard`))
             if (!this.alive) return
             if (!scan) {

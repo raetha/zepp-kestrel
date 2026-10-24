@@ -60,7 +60,7 @@ web session (no library, no client).
 | Info | Every watch request is checked (paints, rooms and settings are cleaned field by field and capped). | Fine. |
 | Info | `/api/kestrel/info` is unauthenticated (the phone needs it to find Home Assistant) and returns the location name and integration version. | Accepted. |
 | Info | Behind a reverse proxy without `trusted_proxies`, every request looks local, so the home-network check can't tell. | Documented here; set up `trusted_proxies` for your proxy. |
-| Info | On the phone, the watch token (and in direct mode the long-lived token) sits in the Zepp app's settings storage, like any Zepp app's settings. The settings page never shows a saved token. | Accepted (the platform offers nothing safer). |
+| Info | On the phone, the watch token sits in the Zepp app's settings storage, like any Zepp app's settings. The settings page never shows a saved token. | Accepted (the platform offers nothing safer). |
 | Info | Typed local addresses use plain HTTP on the home network, so the token crosses the LAN unencrypted. | Accepted for local use. |
 | Info | Diagnostics contain Bluetooth MAC addresses of nearby devices (room calibration), the watch's address and person entity ids, but no tokens. | Accepted: needed to debug; diagnostics are only downloaded by the owner. |
 | Info | The watch holds no secrets: the token lives on the phone. | Fine. |
@@ -71,5 +71,5 @@ web session (no library, no client).
 | Severity | Finding | Outcome |
 | --- | --- | --- |
 | High | A watch token worked from anywhere through Home Assistant Cloud: a lost phone or a copied token could switch things (locks included, with a confirm) from outside. | Fixed: every Kestrel endpoint (not just pairing) refuses requests through Home Assistant Cloud or from a public address. Pairing hands out only the home-network URL; the phone skips addresses Home Assistant refuses. Away mode, which existed for this, is gone. Use a VPN (WireGuard, Tailscale) to use Kestrel from outside. |
-| Info | Direct mode (store installs without the integration: a URL and a long-lived token in the Zepp app) talks to Home Assistant's own API, so Kestrel can't hold it to the home network. | Open: consider dropping direct mode before the first release. |
+| Info | Direct mode (store installs without the integration: a URL and a long-lived token in the Zepp app) talked to Home Assistant's own API, so Kestrel couldn't hold it to the home network. | Fixed: direct mode removed; the integration is required, and the phone never holds a long-lived token. |
 | Info | Which devices watches can use is now an explicit choice in Configure (devices and entities) rather than a label anyone with the label registry could change; `is_offered()` and `list_targets()` share one rule (`Offered`), tested against each other. | Fine. |

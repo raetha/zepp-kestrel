@@ -1,7 +1,7 @@
 // Sync with Home Assistant: targets, areas, settings, paints and rooms.
 // Home Assistant holds the master copy (editable in the integration's
 // options); the watch sends its own changes. lib/sync.js decides how a
-// section merges. In direct mode (no integration) only targets are synced.
+// section merges.
 
 import { METHOD } from '../lib/protocol.js'
 import { note, appVersion } from './trail.js'
@@ -97,7 +97,7 @@ async function syncNow(ask, only = null, { full = false } = {}) {
   const out = { ok: true, targets: targets().length, total: syncMeta().targetsTotal, areas: areas().length }
   for (const name of Object.keys(SECTIONS)) {
     const revKey = `${name}_rev`
-    if (r[revKey] === undefined) continue // direct mode, or not asked for
+    if (r[revKey] === undefined) continue // not asked for
     const s = SECTIONS[name]
     const meta = syncMeta()
     // left out = unchanged in Home Assistant since the watch's copy

@@ -1,10 +1,12 @@
 // Point: aim at a painted device, then press the select button, tap the
-// circle, or do your gesture (flick, snap or tap) to trigger it. The circle
-// shows how sure the watch is: grey = arm not ready, amber = aiming, green =
-// a device in mind, full colour = locked.
+// screen, or do your gesture (flick, snap or tap) to trigger it.
+// The whole screen shows how sure the watch is, readable at arm's length:
+// black = arm not ready, dark amber = aiming, dark green = a device in mind,
+// bright green = locked (trigger now). After a trigger it flashes green (done)
+// or red (failed).
 //
 // Dimming: on a dimmable light, hold the select button (or a finger on the
-// circle) and twist the wrist: thumb up brightens, thumb down dims. Letting go
+// screen) and twist the wrist: thumb up brightens, thumb down dims. Letting go
 // sends the change.
 //
 // Rooms: when the watch knows which room it's in (Bluetooth calibration or a
@@ -29,7 +31,8 @@ import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
 import { setWakeUpRelaunch, setPageBrightTime, resetPageBrightTime } from '@zos/display'
 import { event as uiEvent } from '@zos/ui'
-import { text, setText, button, clear, circle, setColor, fit, ask, listenKeys, COLOR, SIZE } from './ui.js'
+import { text, setText, button, clear, rect, setColor, setTextColor, fit, ask, listenKeys, tickRing, COLOR, SIZE } from './ui.js'
+import { Circling } from '../lib/circling.js'
 import { startAim } from './aim.js'
 import { paintedDevices, paints, setPaint, gesture, settings } from './store.js'
 import { Dwell } from '../lib/dwell.js'
@@ -44,16 +47,21 @@ import { dimStep } from '../lib/dim.js'
 import { METHOD, nextSeq } from '../lib/protocol.js'
 import * as haptics from './haptics.js'
 
-const STATE_COLOR = {
-  [STATE.RESTING]: 0x333333,
-  [STATE.AIMING]: COLOR.aiming,
-  [STATE.CANDIDATE]: 0x1f6b45,
-  [STATE.LOCKED]: COLOR.candidate,
+// [background, text] per state: dark text only on the bright backgrounds
+const LOOK = {
+  [STATE.RESTING]: [0x000000, 0xffffff],
+  [STATE.AIMING]: [0x4a3000, 0xffffff],
+  [STATE.CANDIDATE]: [0x0d5a32, 0xffffff],
+  [STATE.LOCKED]: [0x3ddc84, 0x000000],
+  dim: [0x4b2fb8, 0xffffff],
+  done: [0x3ddc84, 0x000000],
+  failed: [0xc62828, 0xffffff],
+  confirm: [0x7a2a2a, 0xffffff],
 }
-const DIM_COLOR = 0x5a3fd6
+const FLASH_MS = 1200 // how long the done / failed colour stays
 const HISTORY_MS = 4000 // aim kept for gestures, corrections and traces
 const CORRECT_MS = 5000 // how long "Not it?" stays up
-const HOLD_MS = 450 // holding the button or the circle this long starts dimming
+const HOLD_MS = 450 // holding the button or the screen this long starts dimming
 const ROOM_EVERY_MS = 60000 // check the room again this often while pointing (a 3 s Bluetooth scan)
 const GESTURE_COOLDOWN_MS = 3000 // after a trigger, gestures are ignored this long (one gesture, one toggle)
 const AWAKE_MS = 30000 // screen time from the last aim or trigger
@@ -142,7 +150,10 @@ Page(
       },
 
       hint(state) {
-        if (this.dwell && state === STATE.LOCKED) return 'Hold to trigger'
+        if (this.dwell && state === STATE.LOCKED) {
+          const spent = this.last.best && this.dwell.spent === this.last.best.id
+          return spent ? 'Aim away to repeat' : 'Hold to trigger'
+        }
         if (this.needsCalibration && !this.dwell && state === STATE.RESTING) return `Calibrate your ${this.gestureKind}: More → Gesture`
         if (state === STATE.RESTING) return 'Hold your arm out, still'
         if (state === STATE.AIMING) return 'Aiming…'
@@ -156,14 +167,15 @@ Page(
           text({ x: 60, y: 120, w: 360, h: 200, value: 'Nothing painted yet. Go back and choose Paint a device.' })
           return
         }
-        this.ring = circle({ x: 240, y: 240, r: 150, color: STATE_COLOR[STATE.RESTING] })
-        this.nameW = text({ x: 95, y: 186, w: 290, h: 84, size: 32, value: '' })
-        this.hintW = text({ x: 100, y: 272, w: 280, h: 64, size: SIZE.small, color: 0xe6e6e6, value: this.hint(STATE.RESTING) })
-        this.topW = text({ x: 110, y: 34, w: 260, h: 34, size: SIZE.small, color: COLOR.quiet, value: '' })
-        this.resultW = text({ x: 90, y: 400, w: 300, h: 40, size: SIZE.small, value: '' })
+        // the whole screen: its colour is the state; tap triggers, hold dims
+        this.bg = rect({ color: LOOK[STATE.RESTING][0] })
+        this.topW = text({ x: 90, y: 36, w: 300, h: 36, size: 26, value: '' })
+        this.nameW = text({ x: 40, y: 96, w: 400, h: 144, size: 46, value: '' })
+        this.hintW = text({ x: 50, y: 262, w: 380, h: 84, size: 30, value: this.hint(STATE.RESTING) })
+        this.resultW = text({ x: 60, y: 370, w: 360, h: 84, size: 30, value: '' })
+        this.texts = [this.topW, this.nameW, this.hintW, this.resultW]
         this.applyRoom()
-        // the circle: tap triggers, hold dims
-        for (const w of [this.ring, this.nameW, this.hintW]) {
+        for (const w of [this.bg, ...this.texts]) {
           w.addEventListener(uiEvent.CLICK_DOWN, () => this.holdStart())
           w.addEventListener(uiEvent.CLICK_UP, () => this.holdEnd() || this.trigger('tap'))
         }
@@ -196,26 +208,85 @@ Page(
         })
         while (this.history.length && a.t - this.history[0].t > HISTORY_MS) this.history.shift()
         if (this.confirming) return
+        this.calibration(a)
         if (this.dwell && this.onDwell(a, r)) return
         const bestId = r.best ? r.best.id : null
-        if (r.state === this.last.state && bestId === (this.last.best && this.last.best.id)) {
+        const calibrationChanged = a.calibrated !== this.wasCalibrated
+        this.wasCalibrated = a.calibrated
+        if (!calibrationChanged && r.state === this.last.state && bestId === (this.last.best && this.last.best.id)) {
           this.last = r
           return
         }
         this.last = r
-        setColor(this.ring, STATE_COLOR[r.state])
-        setText(this.nameW, r.best ? fit(this.byId[r.best.id].name, 16) : '')
+        if (!this.flashing) this.look(r.state)
+        setText(this.nameW, r.best ? fit(this.byId[r.best.id].name, 24) : '')
         const hint = this.dwellShown !== null && this.dwellShown !== undefined ? `Hold… ${this.dwellShown}` : this.hint(r.state)
         setText(this.hintW, a.calibrated ? hint : 'Compass: turn the watch in a circle')
-        if (r.state === STATE.LOCKED) haptics.sent()
+        // one buzz per device found: not again when the lock flickers off and back on the same device
+        if (r.state === STATE.LOCKED && r.best && r.best.id !== this.buzzedFor) {
+          this.buzzedFor = r.best.id
+          haptics.sent()
+        }
+        if (r.state === STATE.RESTING) this.buzzedFor = null // arm lowered: the next find buzzes again
+      },
+
+      /**
+       * While the compass isn't calibrated: dots round the edge light as the watch
+       * leans each way (lib/circling.js), then all go green, with one buzz, once it is.
+       */
+      calibration(a) {
+        if (!a.calibrated) {
+          if (!this.ring) {
+            this.ring = tickRing()
+            this.circling = new Circling({ ticks: this.ring.dots.length })
+          }
+          if (!this.circling) return
+          const i = this.circling.add(a.pitch, a.roll)
+          if (i >= 0) this.ring.set(i, COLOR.accent)
+          if (this.circling.count === this.circling.ticks) {
+            this.circling.reset()
+            this.ring.all(0x333333)
+          }
+        } else if (this.ring && this.circling) {
+          this.circling = null
+          this.ring.all(0x3ddc84)
+          haptics.done()
+          this.ringTimer = setTimeout(() => {
+            if (!this.alive || !this.ring) return
+            clear(this.ring.dots)
+            this.ring = null
+          }, FLASH_MS)
+        }
+      },
+
+      /** Colour the screen (and its text) for a state, or 'dim', 'done', 'failed', 'confirm'. */
+      look(name) {
+        const [bg, fg] = LOOK[name] || LOOK[STATE.RESTING]
+        setColor(this.bg, bg)
+        for (const w of this.texts) setTextColor(w, fg)
+      },
+
+      /** Show done or failed for a moment, then the current state again. */
+      flash(name) {
+        this.flashing = true
+        this.look(name)
+        clearTimeout(this.flashTimer)
+        this.flashTimer = setTimeout(() => {
+          this.flashing = false
+          if (this.alive && !this.dim && !this.confirming) this.look(this.last.state || STATE.RESTING)
+        }, FLASH_MS)
       },
 
       /** Instant toggle: count down while locked; returns true when it fired. */
       onDwell(a, r) {
         const lockedId = r.state === STATE.LOCKED && r.best ? r.best.id : null
-        const d = this.dwell.update(a.t, this.busy ? null : lockedId)
+        // keep feeding the aim while a request is out: treating busy as "not aimed"
+        // re-armed the device after 1 s, so a slow reply let a still arm fire it again
+        const d = this.dwell.update(a.t, lockedId)
+        if (d.fire && this.busy) return false
         if (d.fire) {
           this.dwellShown = null
+          setText(this.hintW, '')
           if (domainOf(d.fire) === 'lock') {
             setText(this.hintW, 'Locks need a press')
             return false
@@ -267,17 +338,15 @@ Page(
         const d = this.byId[best.id]
         if (!d || !(d.dimmable || domainOf(d.id) === 'light')) return
         const at = this.history[this.history.length - 1] || null
-        this.dim = { id: d.id, roll0: this.roll, step: 0, at }
-        haptics.sent()
-        setColor(this.ring, DIM_COLOR)
-        setText(this.nameW, fit(d.name, 16))
+        this.dim = { id: d.id, roll0: this.roll, step: 0, at } // the purple screen says it: no buzz
+        this.look('dim')
+        setText(this.nameW, fit(d.name, 24))
         setText(this.hintW, 'Twist: thumb up brighter')
       },
 
       onDim(a) {
         const step = dimStep(this.dim.roll0, a.roll)
         if (step === this.dim.step) return
-        if (Math.floor(Math.abs(step) / 10) !== Math.floor(Math.abs(this.dim.step) / 10)) haptics.sent()
         this.dim.step = step
         setText(this.hintW, step ? `${step > 0 ? '+' : ''}${step}%` : 'Twist: thumb up brighter')
       },
@@ -302,6 +371,7 @@ Page(
           const { state, best } = this.last
           if (!best || (state !== STATE.CANDIDATE && state !== STATE.LOCKED)) {
             haptics.failed()
+            this.flash('failed')
             setText(this.resultW, 'Point at a painted device first')
             return
           }
@@ -320,9 +390,9 @@ Page(
         this.keepAwake()
         // one gesture, one toggle: the arm settling and the buzzes that follow must not trigger again
         if (this.detector) this.detector.quiet(Date.now() + GESTURE_COOLDOWN_MS)
-        this.busy = true
-        haptics.sent()
-        setText(this.resultW, `${fit(d.name, 14)}${action === 'dim' ? ` ${ctx.value > 0 ? '+' : ''}${ctx.value}%` : ''}…`)
+        this.busy = true // no buzz here: one when it's done (or failed) is enough
+        setText(this.nameW, fit(d.name, 24))
+        setText(this.resultW, action === 'dim' ? `${ctx.value > 0 ? '+' : ''}${ctx.value}%: sending…` : 'Sending…')
         const t0 = Date.now()
         const room = this.room ? this.room.id : null
         ask(this, METHOD.FIRE, { seq: nextSeq(), target: id, action, value: ctx.value, confirmed, via: ctx.via, room }, 10000)
@@ -332,12 +402,14 @@ Page(
             if (r && r.needsConfirm) return this.askConfirm(id, ctx)
             if (r && r.ok) {
               haptics.done()
+              this.flash('done')
               const shown = r.brightness !== undefined && r.state === 'on' ? `${r.brightness}%` : r.state || 'done'
-              setText(this.resultW, `${fit(d.name, 14)}: ${shown}`)
+              setText(this.resultW, `${fit(d.name, 18)}: ${shown}`)
               if (ctx.runnerUp && ctx.runnerUp !== id && !ctx.correcting && action === 'toggle') this.offerCorrection(id, ctx)
             } else {
               haptics.failed()
-              setText(this.resultW, fit((r && r.error) || 'Failed', 34))
+              this.flash('failed')
+              setText(this.resultW, fit((r && r.error) || 'Failed', 40))
             }
             this.record(id, ctx, r, Date.now() - t0)
           })
@@ -345,6 +417,7 @@ Page(
             this.busy = false
             if (!this.alive) return
             haptics.failed()
+            this.flash('failed')
             setText(this.resultW, 'Phone not reachable')
           })
       },
@@ -394,8 +467,8 @@ Page(
       askConfirm(id, ctx) {
         const d = this.byId[id] || { name: id }
         this.confirming = true
-        setColor(this.ring, 0x7a2a2a)
-        setText(this.nameW, fit(d.name, 16))
+        this.look('confirm')
+        setText(this.nameW, fit(d.name, 24))
         setText(this.hintW, 'Confirm?')
         setText(this.resultW, '')
         const done = () => {
@@ -456,6 +529,8 @@ Page(
         this.alive = false
         this.clearCorrection()
         clearTimeout(this.holdTimer)
+        clearTimeout(this.flashTimer)
+        clearTimeout(this.ringTimer)
         clearInterval(this.roomTimer)
         stopScan()
         if (this.aim) this.aim.stop()

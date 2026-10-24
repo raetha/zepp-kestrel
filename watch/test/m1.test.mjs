@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import { makeSpot, addSpot, MAX_SPOTS } from '../lib/paint.js'
 import { scoreSpot, rank, Aimer, STATE } from '../lib/classifier.js'
-import { HaClient, directServiceCall, normalizeUrl, expandAddress, DISCOVERY_CANDIDATES } from '../lib/ha-client.js'
+import { HaClient, normalizeUrl, expandAddress, DISCOVERY_CANDIDATES } from '../lib/ha-client.js'
 
 // ------------------------------------------------------------------ painting
 function sweep(center, pitch, n = 40, width = 10) {
@@ -131,7 +131,7 @@ test('pairing stores the token and the home addresses, never a cloud one', async
   assert.deepEqual(await ha.pairConfirm(start.url, 'p1', 111111), { ok: false, error: 'Wrong code' })
   assert.equal(ha.status().paired, false)
   assert.deepEqual(await ha.pairConfirm(start.url, 'p1', 123456), { ok: true, haName: 'Home' })
-  assert.deepEqual(ha.status(), { paired: true, mode: 'component', haName: 'Home', url: 'http://homeassistant.local:8123' }) // the address that answered
+  assert.deepEqual(ha.status(), { paired: true, haName: 'Home', url: 'http://homeassistant.local:8123' }) // the address that answered
   assert.deepEqual(ha.pairing().urls, ['http://homeassistant.local:8123', 'http://192.168.1.5:8123'])
 })
 
@@ -166,36 +166,11 @@ test('a 401 from the component unpairs the watch', async () => {
   assert.equal(ha.status().paired, false)
 })
 
-test('direct mode lists supported entities and maps actions to services', async () => {
-  const store = memStore({ haUrl: 'https://ha.example/', haToken: 'llt' })
-  const fetch = fakeFetch({
-    'GET https://ha.example/api/states': async () => ({
-      status: 200,
-      body: [
-        { entity_id: 'light.lamp', attributes: { friendly_name: 'Lamp', supported_color_modes: ['brightness'] } },
-        { entity_id: 'sensor.temp', attributes: {} },
-        { entity_id: 'lock.door', attributes: { friendly_name: 'Door' } },
-      ],
-    }),
-    'POST https://ha.example/api/services/homeassistant/toggle': async (r) => {
-      assert.equal(r.headers.Authorization, 'Bearer llt')
-      return { status: 200, body: [] }
-    },
-  })
-  const ha = new HaClient({ fetch, store })
-  const t = await ha.targets()
-  assert.deepEqual(t.map((x) => [x.id, x.dimmable, x.confirm]), [['light.lamp', true, false], ['lock.door', false, true]])
-  assert.deepEqual(await ha.fire({ target: 'light.lamp' }), { ok: true })
-  assert.deepEqual(await ha.fire({ target: 'lock.door' }), { ok: false, needsConfirm: true })
-})
-
-test('directServiceCall covers each domain', () => {
-  assert.equal(directServiceCall('scene.movie').service, 'turn_on')
-  assert.equal(directServiceCall('button.bell').service, 'press')
-  assert.equal(directServiceCall('media_player.tv').service, 'media_play_pause')
-  assert.deepEqual(directServiceCall('light.lamp', 'dim', -10).data, { entity_id: 'light.lamp', brightness_step_pct: -10 })
-  assert.equal(directServiceCall('lock.door', 'toggle', null, true, 'locked').service, 'unlock')
-  assert.equal(directServiceCall('lock.door', 'toggle', null, true, 'unlocked').service, 'lock')
+test('without pairing nothing reaches Home Assistant', async () => {
+  const ha = new HaClient({ fetch: async () => assert.fail('no request expected'), store: memStore() })
+  assert.deepEqual(ha.status(), { paired: false })
+  await assert.rejects(ha.targets(), /Not paired/)
+  await assert.rejects(ha.fire({ target: 'light.lamp' }), /Not paired/)
 })
 
 test('spotProblem flags too few samples and unsteady compass readings', async () => {
@@ -262,14 +237,4 @@ test('sync, section saves, settings and room go to the component', async () => {
   assert.equal((await ha.saveSettings({ dwell: { enabled: true } })).settings.dwell.seconds, 3)
   assert.deepEqual(await ha.room(), { id: 'office', name: 'Office' })
   assert.equal(await ha.room('kitchen'), null) // reports where the watch is
-
-  // direct mode: targets only, nothing kept in Home Assistant
-  const direct = new HaClient({
-    fetch: fakeFetch({ 'GET https://ha.example/api/states': async () => ({ status: 200, body: [] }) }),
-    store: memStore({ haUrl: 'https://ha.example/', haToken: 'llt' }),
-  })
-  assert.deepEqual(await direct.sync(), { targets: [] })
-  assert.equal((await direct.saveSection('paints', {})).ok, false)
-  assert.equal((await direct.saveSettings({})).ok, false)
-  assert.equal(await direct.room(), null)
 })

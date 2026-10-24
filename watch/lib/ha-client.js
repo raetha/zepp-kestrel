@@ -2,11 +2,9 @@
 // network call (`fetch`) and persistent storage (`store`) are injected, so
 // Node tests can drive it with fakes.
 //
-// Two backends:
-//  - component: the Kestrel HA component's /api/kestrel/* endpoints, with a
-//    per-watch token from pairing (preferred; no long-lived HA token needed).
-//  - direct: HA core REST API with a long-lived token from the settings page
-//    (store installs that don't use the component).
+// It talks only to the Kestrel integration's /api/kestrel/* endpoints, with
+// the per-watch token from pairing: never Home Assistant's own API, never a
+// long-lived token, and only on the home network.
 //
 //   fetch({ url, method, headers, body, timeout }) -> Promise<{ status, body }>
 //   store.getItem(key) -> string | null ; store.setItem(key, string)
@@ -34,16 +32,9 @@ export function expandAddress(text) {
   return [`http://${t}`, `http://${t}:8123`]
 }
 
-export const SUPPORTED_DOMAINS = [
-  'light', 'switch', 'fan', 'media_player', 'lock', 'cover', 'climate',
-  'scene', 'script', 'button', 'input_boolean',
-]
-
 const KEY = {
   pairing: 'kestrel.pairing', // JSON { token, watchId, haName, urls: [..], lastGood }
   lastGood: 'kestrel.lastGoodUrl',
-  haUrl: 'haUrl', // settings page (direct mode)
-  haToken: 'haToken',
 }
 
 const TOKEN_HEADER = 'X-Kestrel-Token'
@@ -95,17 +86,10 @@ export class HaClient {
     this.store.setItem(KEY.pairing, 'null')
   }
 
-  directConfig() {
-    const url = normalizeUrl(this.store.getItem(KEY.haUrl))
-    const token = (this.store.getItem(KEY.haToken) || '').trim()
-    return url && token ? { url, token } : null
-  }
-
   status() {
     const p = this.pairing()
-    if (p && p.token) return { paired: true, mode: 'component', haName: p.haName || 'Home Assistant', url: this.candidateUrls()[0] || null }
-    if (this.directConfig()) return { paired: true, mode: 'direct', haName: 'Home Assistant' }
-    return { paired: false, mode: null }
+    if (p && p.token) return { paired: true, haName: p.haName || 'Home Assistant', url: this.candidateUrls()[0] || null }
+    return { paired: false }
   }
 
   // ---------------------------------------------------------------- discovery and pairing
@@ -113,8 +97,7 @@ export class HaClient {
   async discover(extra = []) {
     extra = extra.flatMap((a) => expandAddress(a))
     const p = this.pairing()
-    const direct = this.directConfig()
-    const urls = [...new Set([...extra, ...(p ? p.urls : []), direct && direct.url, ...DISCOVERY_CANDIDATES]
+    const urls = [...new Set([...extra, ...(p ? p.urls : []), ...DISCOVERY_CANDIDATES]
       .filter(Boolean).map(normalizeUrl))]
     const results = await Promise.all(
       urls.map(async (url) => {
@@ -227,124 +210,61 @@ export class HaClient {
     throw new Error(`Home Assistant not reachable (Kestrel works on your home network or a VPN)${lastErr ? `: ${lastErr.message || lastErr}` : ''}`)
   }
 
-  async direct(path, { method = 'GET', body } = {}) {
-    const cfg = this.directConfig()
-    if (!cfg) throw new Error('Not set up')
-    const res = await this.fetch({
-      url: `${cfg.url}${path}`,
-      method,
-      headers: { Authorization: `Bearer ${cfg.token}`, 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      timeout: REMOTE_TIMEOUT,
-    })
-    const b = parseBody(res)
-    if (res.status !== 200) throw new Error((b && b.message) || `HA answered ${res.status}`)
-    return b
-  }
-
   /** Targets the watch can paint: [{ id, name, domain, area, dimmable, confirm }] */
   async targets() {
-    if (this.status().mode === 'component') {
-      const b = await this.component('/api/kestrel/targets')
-      return (b && b.targets) || []
-    }
-    // direct mode: every supported entity, no areas (the component adds labels and areas)
-    const states = (await this.direct('/api/states')) || []
-    return states
-      .filter((s) => SUPPORTED_DOMAINS.includes(s.entity_id.split('.')[0]))
-      .map((s) => {
-        const domain = s.entity_id.split('.')[0]
-        const modes = (s.attributes && s.attributes.supported_color_modes) || []
-        return {
-          id: s.entity_id,
-          name: (s.attributes && s.attributes.friendly_name) || s.entity_id,
-          domain,
-          area: null,
-          dimmable: domain === 'light' && modes.some((m) => m !== 'onoff'),
-          confirm: domain === 'lock',
-        }
-      })
+    const b = await this.component('/api/kestrel/targets')
+    return (b && b.targets) || []
   }
 
   /**
-   * Everything the watch keeps in sync (component), or just the targets (direct
-   * mode: nothing else is kept in Home Assistant). `only` limits it to some
+   * Everything the watch keeps in sync. `only` limits it to some
    * sections, e.g. ['paints']; `have` ({ targets: hash, paints: rev, ... })
    * says what the watch already has, so unchanged parts are left out.
    * -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room }
    */
   async sync(only = null, have = null, version = null) {
-    if (this.status().mode === 'component') {
-      const q = []
-      if (only) q.push(`only=${only.join(',')}`)
-      if (have) q.push(`have=${Object.keys(have).map((k) => `${k}:${have[k]}`).join(',')}`)
-      if (version) q.push(`v=${encodeURIComponent(version)}`)
-      return (await this.component(`/api/kestrel/sync${q.length ? `?${q.join('&')}` : ''}`)) || {}
-    }
-    return { targets: only ? undefined : await this.targets() }
+    const q = []
+    if (only) q.push(`only=${only.join(',')}`)
+    if (have) q.push(`have=${Object.keys(have).map((k) => `${k}:${have[k]}`).join(',')}`)
+    if (version) q.push(`v=${encodeURIComponent(version)}`)
+    return (await this.component(`/api/kestrel/sync${q.length ? `?${q.join('&')}` : ''}`)) || {}
   }
 
-  /** Send one section after a change on the watch: paints, rooms (component only). -> { ok, rev } */
+  /** Send one section after a change on the watch: paints, rooms. -> { ok, rev } */
   async saveSection(section, value) {
-    if (this.status().mode !== 'component') return { ok: false, error: 'Needs the Kestrel integration' }
     const b = await this.component(`/api/kestrel/${section}`, { method: 'POST', body: { [section]: value } })
     return { ok: true, rev: b && b.rev }
   }
 
-  /** Send the gesture calibration. -> { ok, rev, settings } */
   /** Changed settings ({ group: {...} }) from the watch or the settings page. -> { ok, rev, settings } */
   async saveSettings(settings) {
-    if (this.status().mode !== 'component') return { ok: false, error: 'Needs the Kestrel integration' }
     const b = await this.component('/api/kestrel/settings', { method: 'POST', body: { settings } })
     return { ok: true, rev: b && b.rev, settings: b && b.settings }
   }
 
   /** The room from a Home Assistant sensor; `here` reports the room the watch placed itself in. */
   async room(here = null) {
-    if (this.status().mode !== 'component') return null
     const b = await this.component(`/api/kestrel/room${here ? `?here=${encodeURIComponent(here)}` : ''}`)
     return (b && b.room) || null
   }
 
   /** Run an action on a target. Returns { ok, state, needsConfirm, error } */
   async fire({ target, action = 'toggle', value, seq, confirmed = false, via, room }) {
-    if (this.status().mode === 'component') {
-      return this.component('/api/kestrel/fire', {
-        method: 'POST',
-        body: { target, action, value, seq, confirmed, via, room },
-      })
-    }
-    let current = null
-    if (target.startsWith('lock.') && confirmed) {
-      const st = await this.direct(`/api/states/${target}`)
-      current = st && st.state
-    }
-    const call = directServiceCall(target, action, value, confirmed, current)
-    if (call.needsConfirm) return { ok: false, needsConfirm: true }
-    await this.direct(`/api/services/${call.domain}/${call.service}`, { method: 'POST', body: call.data })
-    return { ok: true }
+    return this.component('/api/kestrel/fire', {
+      method: 'POST',
+      body: { target, action, value, seq, confirmed, via, room },
+    })
   }
-}
 
-/** Which HA service a watch action maps to (direct mode; the component has its own copy). */
-export function directServiceCall(target, action, value, confirmed, currentState = null) {
-  const domain = target.split('.')[0]
-  const data = { entity_id: target }
-  if (action === 'dim') {
-    return { domain: 'light', service: 'turn_on', data: { ...data, brightness_step_pct: Number(value) || 0 } }
+  /** Probe results and trails, kept in Home Assistant (diagnostics). */
+  async probe(entry) {
+    return this.component('/api/kestrel/probe', { method: 'POST', body: entry })
   }
-  switch (domain) {
-    case 'scene':
-    case 'script':
-      return { domain, service: 'turn_on', data }
-    case 'button':
-      return { domain, service: 'press', data }
-    case 'media_player':
-      return { domain, service: 'media_play_pause', data }
-    case 'lock':
-      if (!confirmed) return { needsConfirm: true }
-      return { domain, service: currentState === 'locked' ? 'unlock' : 'lock', data }
-    default:
-      return { domain: 'homeassistant', service: 'toggle', data }
+
+  /** Round trip to Home Assistant, for the latency probe. -> { ok, haMs } */
+  async ping() {
+    const t0 = Date.now()
+    await this.component('/api/kestrel/targets')
+    return { ok: true, haMs: Date.now() - t0 }
   }
 }

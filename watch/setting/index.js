@@ -1,8 +1,8 @@
 // Settings page shown in the Zepp phone app (store installs only: sideloaded
 // test builds don't get one). Shows and changes the watch's settings, which
 // live in Home Assistant (the side service sends changes there; the watch
-// picks them up when it next syncs), stores HA connection details for direct
-// mode (they never leave the phone), and shows M0 probe results.
+// picks them up when it next syncs), and shows M0 probe results. Kestrel needs
+// its Home Assistant integration: the watch pairs with it from the watch.
 
 const SETTINGS_KEY = 'kestrel.settings'
 const EDIT_KEY = 'kestrel.settingsEdit'
@@ -91,37 +91,6 @@ AppSettingsPage({
 
     return View({ style: { padding: '12px 16px' } }, [
       watchSettings(s),
-
-      Section({ title: 'Home Assistant (direct mode, without the integration)' }, [
-        TextInput({
-          label: 'Home Assistant URL',
-          placeholder: 'http://homeassistant.local:8123',
-          value: s.getItem('haUrl') || '',
-          onChange: (v) => s.setItem('haUrl', v),
-        }),
-        TextInput({
-          label: 'Long-lived access token',
-          // The saved token is never shown; type a new one to replace it.
-          placeholder: s.getItem('haToken') ? 'Saved — enter a new token to replace' : 'Profile > Security > Create token',
-          value: '',
-          onChange: (v) => {
-            if (v && v.trim()) s.setItem('haToken', v.trim())
-          },
-        }),
-        Toggle({
-          label: 'Send probe results to HA as kestrel_probe events',
-          value: s.getItem('forwardToHa') === 'true',
-          onChange: (v) => s.setItem('forwardToHa', v ? 'true' : 'false'),
-        }),
-        row([
-          Button({
-            label: 'Test connection',
-            color: 'primary',
-            onClick: () => s.setItem('haTest', String(Date.now())),
-          }),
-        ]),
-        row([Text({}, [s.getItem('haTestResult') || ''])]),
-      ]),
 
       Section({ title: `Probe results (${log.length})` }, [
         ...log.map((e) =>

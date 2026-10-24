@@ -16,7 +16,7 @@ Point your Amazfit watch at a smart-home device and trigger it. Hold your arm st
 2. **Point** at it. The watch shows what it thinks you mean.
 3. **Trigger**: snap, flick, press a button or tap. A twist dims lights. Locks always ask for a confirming tap.
 
-It works best with the Kestrel Home Assistant component: the watch pairs with a code instead of a copied token, lists your devices by area, only works on your home network (pointing is for the device in front of you), and every action fires a `kestrel_fired` event for automations. Store installs will also be able to use Home Assistant without it (a URL and a long-lived token in the app's settings). See [docs/design.md](docs/design.md).
+It needs the Kestrel Home Assistant integration: the watch pairs with a code instead of a copied token, lists your devices by area, only works on your home network (pointing is for the device in front of you), and every action fires a `kestrel_fired` event for automations. The phone only ever talks to the integration, with the watch's own token: never to Home Assistant's general API. See [docs/design.md](docs/design.md).
 
 ## Try the test build
 
@@ -31,15 +31,15 @@ Test builds are for development and change often.
 
 **3. Pair.** With your phone on the home Wi-Fi, open Kestrel DEV on the watch → Pair with HA. Pick your Home Assistant, then type the 6-digit code from the notification Home Assistant shows. The watch then fetches your devices. (If the Zepp app asks for Local Network access, allow it: that's how the phone finds `homeassistant.local`.)
 
-**4. Paint and point.** Paint a device: pick it, stand where you'd use it, press Start, and sweep your arm slowly across it for 15 s, palm down. Then Point: hold your arm out at it, palm down. The circle turns green when the watch has it in mind; press the select button, tap the circle, or do your gesture to toggle it. Locks ask for a confirming tap. If the watch picked the wrong device, tap **Not it?** within 5 s: it undoes the first (lights, switches, fans and the like), toggles the right one, and remembers where you aimed. Dropping your wrist and raising it again brings Point back.
+**4. Paint and point.** Paint a device: pick it, stand where you'd use it, press Start, and sweep your arm slowly across it for 15 s, palm down. Then Point: hold your arm out at it, palm down. The screen turns amber while you aim, then bright green (with one buzz) when the watch has locked onto a device; press the select button, tap the screen, or do your gesture to toggle it. A second buzz and a green flash say it's done; red means it failed. Locks ask for a confirming tap. If the watch picked the wrong device, tap **Not it?** within 5 s: it undoes the first (lights, switches, fans and the like), toggles the right one, and remembers where you aimed. Dropping your wrist and raising it again brings Point back.
 
 To test without your own devices nearby (at work, say), create a helper in Home Assistant (Settings → Devices & services → Helpers → Toggle), Sync, and paint something in the room, like a door frame, as that helper.
 
-**5. Dim.** On a dimmable light, hold the select button (or a finger on the circle) and twist your wrist: thumb up brightens, thumb down dims, a quarter turn is the whole range. Let go to send it.
+**5. Dim.** On a dimmable light, hold the select button (or a finger on the screen) and twist your wrist: thumb up brightens, thumb down dims, a quarter turn is the whole range. Let go to send it.
 
 **6. Gesture.** More → Gesture: choose wrist flick, finger snap or finger tap, then Calibrate: five gestures after the buzzes, then a few seconds of slowly pointing around. The watch learns thresholds that separate your gesture from aiming, and keeps them per gesture, so you can switch later (on the watch or with the Gesture select in Home Assistant) without calibrating again. It only counts while you're aiming at something, and only once: gestures are ignored for 3 seconds after a trigger.
 
-**7. Instant toggle.** More → Instant: Off, 2 s, 3 s or 5 s (any delay from 1 to 10 s in Home Assistant). With it on, holding the aim locked on a device that long triggers it, no button or gesture needed; the circle counts down. It fires once per hold: look away and back to trigger the same device again. Locks still need a press.
+**7. Instant toggle.** More → Instant: Off, 2 s, 3 s or 5 s (any delay from 1 to 10 s in Home Assistant). With it on, holding the aim locked on a device that long triggers it, no button or gesture needed; the screen counts down. It fires once per hold: look away and back to trigger the same device again. Locks still need a press.
 
 **8. Rooms.** More → Rooms lists your Home Assistant areas. Calibrate each room you point in: walk around it for three short Bluetooth scans. Paint devices afterwards, from inside each room: then the watch only considers devices painted in the room you're in, which keeps things apart that line up through walls. "Where am I?" tests it. If you already track rooms in Home Assistant (for example Bermuda), choose that sensor in the integration's options instead.
 
@@ -163,7 +163,7 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 - **"Phone not reachable"**: the Zepp app must be running on the phone (in the background is fine) and connected to the watch over Bluetooth.
 - **"Kestrel only works on your home network"** or **"Home Assistant not reachable"**: the phone must be on your home Wi-Fi (or a VPN into it). Kestrel never goes through Home Assistant Cloud.
 - **Pairing can't find Home Assistant**: your phone must be on the home Wi-Fi, with the Kestrel integration added. Choose Type address on the watch and enter Home Assistant's IP (and port, if not 80 or 8123). More shows the address in use once paired.
-- **Nothing locks on when pointing**: calibrate the compass (the Compass app, or turn the watch in a circle when asked), then paint again from where you stand.
+- **Nothing locks on when pointing**: calibrate the compass (the Compass app, or turn the watch in a circle when asked, until the dots round the edge go green), then paint again from where you stand.
 - **Wrong device triggers**: use "Not it?" right after to correct it, or paint again from that spot.
 - **Something else**: Settings → Devices & services → Kestrel → your watch → ⋮ → Download diagnostics, and attach it to an issue.
 

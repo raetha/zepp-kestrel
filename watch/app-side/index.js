@@ -4,7 +4,6 @@
 import { BaseSideService } from '@zeppos/zml/base-side'
 import { METHOD, Dedupe } from '../lib/protocol.js'
 import { HaClient } from '../lib/ha-client.js'
-import { haConfig, haPing, detectComponent, fireEvent } from './ha.js'
 
 const LOG_KEY = 'probeLog'
 const LOG_MAX = 40
@@ -101,37 +100,24 @@ AppSideService(
       )
     },
 
-    // M0 latency probe: time a round trip to HA (paired or direct)
+    // M0 latency probe: time a round trip to Home Assistant
     async haPing() {
-      const st = this.ha.status()
-      if (st.mode === 'component') {
-        const t0 = Date.now()
-        await this.ha.component('/api/kestrel/targets')
-        return { ok: true, haMs: Date.now() - t0 }
-      }
-      const cfg = haConfig(this.settings)
-      if (!cfg) return { error: 'Pair with Home Assistant first' }
+      if (!this.ha.status().paired) return { error: 'Pair with Home Assistant first' }
       try {
-        return await haPing(this, cfg)
+        return await this.ha.ping()
       } catch (e) {
-        return { error: `HA unreachable: ${(e && e.message) || e}` }
+        return { error: (e && e.message) || String(e) }
       }
     },
 
     async storeProbe(entry) {
       // Home Assistant first: it keeps the full result (raw traces included).
-      // Paired with the component: always. Direct mode: only if the settings page says so.
       let forwarded = false
       let error = null
       try {
-        if (this.ha.status().mode === 'component') {
-          await this.ha.component('/api/kestrel/probe', { method: 'POST', body: entry })
+        if (this.ha.status().paired) {
+          await this.ha.probe(entry)
           forwarded = true
-        } else {
-          const cfg = haConfig(this.settings)
-          if (cfg && this.settings.getItem('forwardToHa') === 'true') {
-            forwarded = !!(await fireEvent(this, cfg, 'kestrel_probe', entry))
-          }
         }
       } catch (e) {
         error = `Home Assistant: ${(e && e.message) || e}`
@@ -160,7 +146,6 @@ AppSideService(
 
     // The settings page (store installs) talks to us through settings storage keys.
     onSettingsChange({ key }) {
-      if (key === 'haTest') this.testHa()
       if (key === 'clearLog') this.settings.setItem(LOG_KEY, '[]')
       if (key === EDIT_KEY) this.applySettingsEdit()
     },
@@ -199,27 +184,6 @@ AppSideService(
       } catch (e) {
         // nothing more to do
       }
-    },
-
-    async testHa() {
-      const cfg = haConfig(this.settings)
-      let msg
-      if (!cfg) {
-        msg = 'Enter a URL and token first.'
-      } else {
-        try {
-          const p = await haPing(this, cfg)
-          if (!p.ok) {
-            msg = p.error
-          } else {
-            const comp = await detectComponent(this, cfg)
-            msg = `Connected in ${p.haMs} ms. ${comp ? `Kestrel component ${comp.version || ''} found: pair from the watch.` : 'Direct mode (component not installed).'}`
-          }
-        } catch (e) {
-          msg = `Could not reach HA: ${(e && e.message) || e}`
-        }
-      }
-      this.settings.setItem('haTestResult', msg)
     },
   }),
 )
