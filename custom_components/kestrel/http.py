@@ -310,7 +310,7 @@ class _SectionView(_WatchView):
         if self.key in ("paints", "rooms") and isinstance(changes, dict):
             before = int(watch.get(f"{self.key}_rev", 0))
             rev = await watches.async_change_section(watch["id"], self.key, changes)
-            return web.json_response({"ok": True, "rev": rev, "stale": body.get("base") != before})
+            return web.json_response({"ok": True, "rev": rev, "stale": (body or {}).get("base") != before})
         value = body.get(self.key) if body else None
         if not isinstance(value, dict):
             return _error("Bad request", HTTPStatus.BAD_REQUEST)
