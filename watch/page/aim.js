@@ -23,7 +23,8 @@ export function startAim(onAim, { mode = 'NORMAL', gate = {}, onGyro = null, onA
 
   const accelCb = onAccel ? safe('accel', onAccel) : null
   a.start(mode, (s) => {
-    if (lastA && s.t > lastA.t) tiltDps = 0.7 * tiltDps + 0.3 * (tiltBetween(lastA, s) / ((s.t - lastA.t) / 1000))
+    // at least 20 ms apart: readings delivered in a burst would make the rate look huge
+    if (lastA && s.t > lastA.t) tiltDps = 0.7 * tiltDps + 0.3 * (tiltBetween(lastA, s) / (Math.max(20, s.t - lastA.t) / 1000))
     lastA = s
     if (accelCb) accelCb(s.t, s)
   })

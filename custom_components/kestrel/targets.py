@@ -94,6 +94,18 @@ def is_offered(hass: HomeAssistant, entity_id: str, offered: Offered = EVERYTHIN
     return _usable(entry) and offered.includes(entity_id, entry.device_id if entry else None)
 
 
+ACTIONS = {"toggle": None, "dim": "light", "volume": "media_player"}  # action -> the only domain it applies to
+
+
+def action_fits(action: str, entity_id: str) -> bool:
+    """Whether a watch may ask for this action on this entity: toggle anything offered, dim only
+    lights, volume only media players. Anything else is refused rather than read as a toggle."""
+    if action not in ACTIONS:
+        return False
+    domain = ACTIONS[action]
+    return domain is None or entity_id.split(".", 1)[0] == domain
+
+
 def service_call(
     hass: HomeAssistant, entity_id: str, action: str, value: Any, confirmed: bool
 ) -> tuple[str, str, dict[str, Any]] | None:

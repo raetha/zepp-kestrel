@@ -253,7 +253,12 @@ Page(
             this.ring = tickRing()
             this.circling = new Circling({ ticks: this.ring.dots.length })
           }
-          if (!this.circling) return
+          if (!this.circling) {
+            // lost again before the green ring went away: start counting again
+            clearTimeout(this.ringTimer)
+            this.circling = new Circling({ ticks: this.ring.dots.length })
+            this.ring.all(0x333333)
+          }
           const i = this.circling.add(a.pitch, a.roll)
           if (i >= 0) this.ring.set(i, COLOR.accent)
           if (this.circling.count === this.circling.ticks) {
@@ -455,9 +460,12 @@ Page(
       learnLater(id, ctx) {
         const at = ctx.at
         if (!settings().learn.enabled || !at || at.best !== id || at.state !== STATE.LOCKED || !(at.lead >= LEARN.minLead)) return
-        clearTimeout(this.learnTimer)
+        // one pending vote per device: a quick trigger of another device doesn't cancel this one
+        this.learnTimers = this.learnTimers || {}
+        clearTimeout(this.learnTimers[id])
         const room = this.room ? this.room.id : null
-        this.learnTimer = setTimeout(() => {
+        this.learnTimers[id] = setTimeout(() => {
+          delete this.learnTimers[id]
           if (!this.alive) return
           const next = learnSpot(paints(), id, at, room)
           if (!next) return
@@ -506,7 +514,7 @@ Page(
       correct(wrongId, ctx) {
         const rightId = ctx.runnerUp
         this.clearCorrection()
-        clearTimeout(this.learnTimer) // the wrong device mustn't learn from this
+        if (this.learnTimers) clearTimeout(this.learnTimers[wrongId]) // the wrong device mustn't learn from this
         // undo the wrong one where a second toggle puts it back
         if (REVERSIBLE.includes(domainOf(wrongId))) {
           ask(this, METHOD.FIRE, { seq: nextSeq(), target: wrongId, action: 'toggle', confirmed: false }, 10000).catch(() => null)
@@ -590,7 +598,7 @@ Page(
         clearTimeout(this.holdTimer)
         clearTimeout(this.flashTimer)
         clearTimeout(this.ringTimer)
-        clearTimeout(this.learnTimer)
+        for (const t of Object.values(this.learnTimers || {})) clearTimeout(t)
         if (this.aim) note('battery', { page: 'point', at: 'close', level: batteryLevel() })
         clearInterval(this.roomTimer)
         stopScan()

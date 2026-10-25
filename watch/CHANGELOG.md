@@ -73,6 +73,9 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Fixed
 
+- Learning from use no longer drops a vote when another device is triggered within a few seconds.
+- On watches without a gyroscope, readings arriving in a burst no longer stop the arm from ever counting as still.
+- If the compass loses calibration again right after regaining it, the dots start counting again instead of staying green.
 - Instant toggle could trigger the same device again if you kept aiming at it while a slow request was out. Point now says "Aim away to repeat" once it has fired.
 - The record of screens, buttons and swipes kept only launches and exits: the app itself overwrote what the screens wrote when it closed. Launches are now noted by the home screen, and the record also says which watch model it is.
 - The Compass tilt probe says when the compass needs calibrating instead of recording without headings.

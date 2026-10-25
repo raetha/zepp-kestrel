@@ -16,6 +16,7 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 
 ### Added
 
+- A watch can only ask for actions that fit the device: toggle anything it's offered, dim lights, change media players' volume. Anything else is refused instead of being treated as a toggle.
 - Twist volume for media players, with safety limits enforced here: at most one twist a second per watch, at most the per-twist change (20% by default), and never above the volume limit by twisting (80% by default). Volume limit and Volume change per twist are entities and Configure settings per watch.
 - Open on Point and Learn from use switches per watch (also in Configure).
 - Paint map: an image entity per watch drawing every paint as compass dials per room (painted, learned and correction spots), to see which devices crowd each other.

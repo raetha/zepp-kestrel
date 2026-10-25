@@ -47,7 +47,7 @@ from homeassistant.util.network import is_local
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, PROBE_MAX_BYTES, SUPPORTED_DOMAINS, TOKEN_HEADER
-from .targets import MAX_TARGETS, is_offered, list_targets, service_call, volume_call
+from .targets import MAX_TARGETS, action_fits, is_offered, list_targets, service_call, volume_call
 from .watchdata import SECTIONS, areas, current_room
 from .watches import Watches
 
@@ -379,8 +379,10 @@ class FireView(_WatchView):
             state = hass.states.get(target)
             return web.json_response({"ok": True, "duplicate": True, "state": state.state if state else None})
 
+        if not action_fits(action, target):
+            return _error(f"Can't {action} {target}", HTTPStatus.BAD_REQUEST)
         volume: tuple[int, bool] | None = None
-        if action == "volume" and target.startswith("media_player."):
+        if action == "volume":
             # twisting at a media player: limited per twist, capped, and at most one twist a second
             if not watches.volume_allowed(watch["id"]):
                 return web.json_response({"ok": False, "error": "Too fast: one twist a second"})

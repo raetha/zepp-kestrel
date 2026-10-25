@@ -166,3 +166,17 @@ async def test_paint_map_draws_each_room(hass, setup_entry, hass_client):
 
 def test_empty_paint_map():
     assert "Nothing painted yet" in render({}, {}, str)
+
+
+async def test_actions_must_fit_the_target(hass, setup_entry, hass_client_no_auth):
+    hass.states.async_set("switch.kettle", "off")
+    hass.states.async_set("light.lamp", "off")
+    toggles = async_mock_service(hass, "homeassistant", "toggle")
+    _, token = await _token(hass, setup_entry)
+    client = await hass_client_no_auth()
+    for target, action in (("switch.kettle", "dim"), ("light.lamp", "volume"), ("light.lamp", "explode")):
+        res = await client.post(
+            "/api/kestrel/fire", json={"target": target, "action": action, "value": 50}, headers={TOKEN_HEADER: token}
+        )
+        assert res.status == 400
+    assert not toggles  # nothing was read as a toggle

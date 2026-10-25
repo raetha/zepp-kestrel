@@ -73,3 +73,31 @@ web session (no library, no client).
 | High | A watch token worked from anywhere through Home Assistant Cloud: a lost phone or a copied token could switch things (locks included, with a confirm) from outside. | Fixed: every Kestrel endpoint (not just pairing) refuses requests through Home Assistant Cloud or from a public address. Pairing hands out only the home-network URL; the phone skips addresses Home Assistant refuses. Away mode, which existed for this, is gone. Use a VPN (WireGuard, Tailscale) to use Kestrel from outside. |
 | Info | Direct mode (store installs without the integration: a URL and a long-lived token in the Zepp app) talked to Home Assistant's own API, so Kestrel couldn't hold it to the home network. | Fixed: direct mode removed; the integration is required, and the phone never holds a long-lived token. |
 | Info | Which devices watches can use is now an explicit choice in Configure (devices and entities) rather than a label anyone with the label registry could change; `is_offered()` and `list_targets()` share one rule (`Offered`), tested against each other. | Fine. |
+
+## 2026-10-24, full review before a week of testing
+
+Everything changed since the audits above: colour screens, calibration dots, fewer buzzes, direct mode removed, close-device scoring, crowding and room hints, Open on Point, twist volume, virtual spots, the paint map, learning from use, square watches, per-watch packages and the emulator sweep.
+
+### Quality scale
+
+Still all 54 rules done or exempt. New entities (Open on Point, Learn from use, Volume limit, Volume change per twist, Paint map) have translations, icons and entity categories (configuration; the paint map is diagnostic); 70 component tests, 99% coverage, `mypy --strict` clean.
+
+### Security
+
+| Severity | Finding | Outcome |
+| --- | --- | --- |
+| Medium | A watch could send any action name; anything other than `dim` on a light was carried out as a toggle (a `dim` on a switch toggled it, and so would a made-up action). | Fixed: toggle anything offered, dim only lights, volume only media players; anything else is refused (400). Tested. |
+| Info | Twist volume: Home Assistant, not the watch, enforces the limits (per twist, the ceiling, one twist a second per watch), so a modified watch app can't get round them. | Fine. |
+| Info | The paint map is an SVG built from entity, area and room names: every name is escaped, and it holds no scripts or links. | Fine. |
+| Info | Paints sent by a watch keep only known spot fields (numbers, room, kind); learned spots count towards the 12-spot cap per device. | Fine. |
+| Info | Per-watch packages and the test page's watch list are static files built by CI from this repo; no secrets involved. | Fine. |
+
+### Performance
+
+| Where | Finding | Outcome |
+| --- | --- | --- |
+| Watch, Point | Learning: one vote per trigger after 5.5 s, a few dozen operations; room learning at most every 10 minutes per room. Scoring adds a division per device per tick. | Fine as is. |
+| Watch, Point | A pending vote was cancelled when another device was triggered within 5.5 s. | Fixed: one pending vote per device. |
+| Watch, aim without a gyroscope | Readings arriving in a burst made the tilt rate look huge, so the arm never counted as still. | Fixed: readings are treated as at least 20 ms apart. |
+| Watch, Point | Compass calibration lost again within a second of being regained left the dots green and stopped counting. | Fixed: they start counting again. |
+| HA, paint map | The picture's hash is recomputed on each update from the watch (a JSON dump of its paints, under 100 kB); the SVG is drawn only when asked for. | Fine as is. |
