@@ -37,6 +37,10 @@ async def test_sync_returns_everything_with_revisions(hass, setup_entry, hass_cl
     assert res.status == HTTPStatus.UNAUTHORIZED
 
 
+def _watch_id(entry, token):
+    return entry.runtime_data.by_token(token)["id"]
+
+
 async def test_paints_rooms_and_gesture_are_saved_per_watch(hass, setup_entry, hass_client_no_auth):
     _, one = await _token(setup_entry)
     _, two = await _token(setup_entry, "Other")
@@ -46,7 +50,8 @@ async def test_paints_rooms_and_gesture_are_saved_per_watch(hass, setup_entry, h
         "/api/kestrel/paints",
         headers=h1,
         json={
-            "paints": {
+            "base": 0,
+            "changes": {
                 "light.desk": [SPOT] * 20,  # trimmed to the newest 12
                 "switch.fan": [{"heading": "x", "pitch": 1}],  # no usable spots: dropped
                 "nodot": [SPOT],  # not an entity id: dropped
@@ -55,11 +60,16 @@ async def test_paints_rooms_and_gesture_are_saved_per_watch(hass, setup_entry, h
         },
     )
     body = await res.json()
-    assert body["ok"] and body["rev"] == 1 and list(body["paints"]) == ["light.desk"]
-    assert len(body["paints"]["light.desk"]) == 12
+    assert body == {"ok": True, "rev": 1, "stale": False}
+    paints = setup_entry.runtime_data.paints(_watch_id(setup_entry, one))
+    assert list(paints) == ["light.desk"] and len(paints["light.desk"]) == 12
 
-    res = await client.post("/api/kestrel/rooms", headers=h1, json={"rooms": {"office": ROOM, "bad": {"fingerprint": 1}}})
-    assert list((await res.json())["rooms"]) == ["office"]
+    res = await client.post("/api/kestrel/rooms", headers=h1, json={"changes": {"office": ROOM, "bad": {"fingerprint": 1}}})
+    assert (await res.json())["rev"] == 1
+    assert list(setup_entry.runtime_data.synced(_watch_id(setup_entry, one))["rooms"]) == ["office"]
+    # the whole-section form is gone
+    res = await client.post("/api/kestrel/paints", headers=h1, json={"paints": {"light.desk": [SPOT]}})
+    assert res.status == HTTPStatus.BAD_REQUEST
 
     gesture = {"kind": "snap", "calibrations": {"snap": {"gyro": 180, "jolt": 95.5}, "wave": {"gyro": 1}}, "enabled": "x"}
     changes = {"gesture": gesture, "dwell": {"enabled": True, "seconds": 2.3}, "nonsense": {}}

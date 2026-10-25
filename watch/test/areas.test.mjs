@@ -7,7 +7,7 @@ const targets = [
   { id: 'light.a', area_id: 'kitchen', area: 'Kitchen' },
   { id: 'light.b', area_id: 'kitchen', area: 'Kitchen' },
   { id: 'light.c', area_id: 'office', area: 'Office' },
-  { id: 'switch.d', area: 'Office' }, // from an older sync: name only
+  { id: 'switch.d', area_id: 'office' },
   { id: 'fan.e' },
 ]
 const areas = [

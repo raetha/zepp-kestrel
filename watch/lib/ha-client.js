@@ -240,12 +240,6 @@ export class HaClient {
     return { ok: true, rev: b && b.rev, stale: !!(b && b.stale) }
   }
 
-  /** Send a whole section (older watch builds). -> { ok, rev } */
-  async saveSection(section, value) {
-    const b = await this.component(`/api/kestrel/${section}`, { method: 'POST', body: { [section]: value } })
-    return { ok: true, rev: b && b.rev }
-  }
-
   /** Changed settings ({ group: {...} }) from the watch or the settings page. -> { ok, rev, settings } */
   async saveSettings(settings) {
     const b = await this.component('/api/kestrel/settings', { method: 'POST', body: { settings } })

@@ -243,13 +243,8 @@ test('sync, section saves, settings and room go to the component', async () => {
     [`GET ${url}/api/kestrel/sync?only=paints`]: async () => ({ status: 200, body: { paints: {}, paints_rev: 2 } }),
     [`GET ${url}/api/kestrel/sync?have=targets:abc,paints:2`]: async () => ({ status: 200, body: { paints_rev: 2 } }),
     [`POST ${url}/api/kestrel/paints`]: async (r) => {
-      const b = JSON.parse(r.body)
-      if (b.changes) {
-        assert.deepEqual(b, { changes: { 'light.b': null }, base: 3 })
-        return { status: 200, body: { ok: true, rev: 5, stale: true } }
-      }
-      assert.deepEqual(b, { paints: { 'light.a': [] } })
-      return { status: 200, body: { ok: true, rev: 3 } }
+      assert.deepEqual(JSON.parse(r.body), { changes: { 'light.b': null }, base: 3 })
+      return { status: 200, body: { ok: true, rev: 5, stale: true } }
     },
     [`POST ${url}/api/kestrel/settings`]: async (r) => {
       assert.deepEqual(JSON.parse(r.body), { settings: { dwell: { enabled: true } } })
@@ -262,7 +257,6 @@ test('sync, section saves, settings and room go to the component', async () => {
   assert.equal((await ha.sync()).paints_rev, 2)
   assert.deepEqual(await ha.sync(['paints']), { paints: {}, paints_rev: 2 })
   assert.deepEqual(await ha.sync(null, { targets: 'abc', paints: 2 }), { paints_rev: 2 })
-  assert.deepEqual(await ha.saveSection('paints', { 'light.a': [] }), { ok: true, rev: 3 })
   // only what changed (a removal here), and whether Home Assistant changed something else meanwhile
   assert.deepEqual(await ha.saveChanges('paints', { 'light.b': null }, 3), { ok: true, rev: 5, stale: true })
   assert.equal((await ha.saveSettings({ dwell: { enabled: true } })).settings.dwell.seconds, 3)

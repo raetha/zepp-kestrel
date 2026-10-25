@@ -44,13 +44,6 @@ AppSideService(
   BaseSideService({
     onInit() {
       this.ha = new HaClient({ fetch: (req) => this.fetch(req), store: this.settings })
-      // Earlier builds could fill phone storage with large probe summaries.
-      try {
-        const text = this.settings.getItem(LOG_KEY)
-        if (text && text.length > LOG_MAX_CHARS) this.settings.setItem(LOG_KEY, '[]')
-      } catch (e) {
-        // leave it
-      }
     },
 
     onRequest(req, res) {
@@ -80,8 +73,7 @@ AppSideService(
 
           case METHOD.SAVE:
             if (p.section !== 'paints' && p.section !== 'rooms') throw new Error('unknown section')
-            if (p.changes) return this.ha.saveChanges(p.section, p.changes, p.base)
-            return this.ha.saveSection(p.section, p.value || {})
+            return this.ha.saveChanges(p.section, p.changes || {}, p.base)
           case METHOD.SAVE_SETTINGS:
             return this.mirror(await this.ha.saveSettings(p.settings || {}))
           case METHOD.ROOM:
@@ -126,7 +118,7 @@ AppSideService(
 
       // Then a small summary on the phone, for the settings page's list (probes run on
       // purpose only: not the aim traces and trails recorded as the app is used). Phone
-      // storage is small: an oversized log (from earlier builds) is reset.
+      // storage is small: if the log can't be written, it's reset.
       let stored = false
       if (entry && (entry.test === 'point' || entry.test === 'trail')) return { stored, forwarded, error }
       try {

@@ -16,8 +16,8 @@ token, sent as X-Kestrel-Token, which only works on these endpoints.
   POST /api/kestrel/pair/confirm    no auth, limited attempts: code -> watch token
   GET  /api/kestrel/targets         watch token: what can be painted
   GET  /api/kestrel/sync            watch token: targets, areas, settings, paints, rooms (with revisions); ?v=<app version>
-  POST /api/kestrel/paints          watch token: the watch's paints after a change
-  POST /api/kestrel/rooms           watch token: the watch's room fingerprints after calibrating
+  POST /api/kestrel/paints          watch token: paints the watch changed (only those)
+  POST /api/kestrel/rooms           watch token: room fingerprints the watch changed (only those)
   POST /api/kestrel/settings        watch token: changed settings ({group: {field: value}}), from the watch or the
                                       Zepp app's settings page
   GET  /api/kestrel/room            watch token: the current room from a sensor, if configured; ?here=<area id> reports
@@ -289,16 +289,51 @@ def sync_targets(targets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-class _SectionView(_WatchView):
-    """POST {<key>: {...}}: the watch's new copy of one synced section. Paints and rooms also take
-    {"changes": {key: value or null}, "base": rev}: only what changed on the watch, merged here,
-    and the reply is just the new revision and whether something else had changed since `base`
-    ("stale": the watch fetches Home Assistant's copy on its next sync)."""
+class _ChangesView(_WatchView):
+    """POST {"changes": {key: value or null}, "base": rev}: the entries of paints or rooms the watch
+    changed (only those: Bluetooth is the costly hop), merged into Home Assistant's copy. The reply
+    is the new revision and whether something else had changed since `base` ("stale": the watch
+    then fetches Home Assistant's copy on its next sync)."""
 
     key = ""
 
-    async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
-        raise NotImplementedError
+    async def post(self, request: web.Request) -> web.Response:
+        auth = self._authorize(request)
+        if isinstance(auth, web.Response):
+            return auth
+        _, watches, watch = auth
+        body = await _json_object(request) or {}
+        changes = body.get("changes")
+        if not isinstance(changes, dict):
+            return _error("Bad request", HTTPStatus.BAD_REQUEST)
+        before = int(watch.get(f"{self.key}_rev", 0))
+        rev = await watches.async_change_section(watch["id"], self.key, changes)
+        return web.json_response({"ok": True, "rev": rev, "stale": body.get("base") != before})
+
+
+class PaintsView(_ChangesView):
+    """Painted spots the watch changed: a paint, a correction, a learned spot."""
+
+    url = "/api/kestrel/paints"
+    name = "api:kestrel:paints"
+    key = "paints"
+
+
+class RoomsView(_ChangesView):
+    """Room fingerprints the watch changed: a calibration, or one learned from use."""
+
+    url = "/api/kestrel/rooms"
+    name = "api:kestrel:rooms"
+    key = "rooms"
+
+
+class SettingsView(_WatchView):
+    """POST {"settings": {group: {field: value}}}: changed settings, from the watch (gesture
+    calibration and choice, instant toggle, opening on Point) or the Zepp app's settings page.
+    Each field is checked; the reply has all settings."""
+
+    url = "/api/kestrel/settings"
+    name = "api:kestrel:settings"
 
     async def post(self, request: web.Request) -> web.Response:
         auth = self._authorize(request)
@@ -306,56 +341,11 @@ class _SectionView(_WatchView):
             return auth
         _, watches, watch = auth
         body = await _json_object(request)
-        changes = body.get("changes") if body else None
-        if self.key in ("paints", "rooms") and isinstance(changes, dict):
-            before = int(watch.get(f"{self.key}_rev", 0))
-            rev = await watches.async_change_section(watch["id"], self.key, changes)
-            return web.json_response({"ok": True, "rev": rev, "stale": (body or {}).get("base") != before})
-        value = body.get(self.key) if body else None
+        value = body.get("settings") if body else None
         if not isinstance(value, dict):
             return _error("Bad request", HTTPStatus.BAD_REQUEST)
-        rev = await self.save(watches, watch["id"], value)
-        return web.json_response({"ok": True, "rev": rev, **self.result(watches.synced(watch["id"]))})
-
-    def result(self, synced: dict[str, Any]) -> dict[str, Any]:
-        return {self.key: synced[self.key]}
-
-
-class PaintsView(_SectionView):
-    """The watch's painted spots, after painting or a correction."""
-
-    url = "/api/kestrel/paints"
-    name = "api:kestrel:paints"
-    key = "paints"
-
-    async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
-        return await watches.async_save_paints(watch_id, value)
-
-
-class RoomsView(_SectionView):
-    """The watch's room fingerprints, after calibrating a room."""
-
-    url = "/api/kestrel/rooms"
-    name = "api:kestrel:rooms"
-    key = "rooms"
-
-    async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
-        return await watches.async_save_rooms(watch_id, value)
-
-
-class SettingsView(_SectionView):
-    """Changed settings, from the watch (gesture calibration and choice, instant toggle) or the
-    Zepp app's settings page. Each field is checked; the reply has all settings."""
-
-    url = "/api/kestrel/settings"
-    name = "api:kestrel:settings"
-    key = "settings"
-
-    async def save(self, watches: Watches, watch_id: str, value: dict[str, Any]) -> int:
-        return await watches.async_update_settings(watch_id, value)
-
-    def result(self, synced: dict[str, Any]) -> dict[str, Any]:
-        return {"settings": synced["settings"]}
+        rev = await watches.async_update_settings(watch["id"], value)
+        return web.json_response({"ok": True, "rev": rev, "settings": watches.synced(watch["id"])["settings"]})
 
 
 class RoomView(_WatchView):
