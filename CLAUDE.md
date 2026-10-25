@@ -1,6 +1,6 @@
 # Notes for Claude sessions
 
-Kestrel: point an Amazfit / Zepp OS watch at a smart-home device and trigger it, with Home Assistant. Developed on the Amazfit Balance 3 (480×480 round, API level 4.4). The canonical guide is `docs/development.md`, the design is `docs/design.md`, and work left for later is in `docs/backlog.md`. Read both before changing anything. This file is the short version of what a new session needs.
+Kestrel: point an Amazfit / Zepp OS watch at a smart-home device and trigger it, with Home Assistant. Developed on the Amazfit Balance 3 (480×480 round, API level 4.4). The canonical guide is `docs/development.md`, the design is `docs/design.md`, and work left for later is in `docs/backlog.md`. Read the guide and the design before changing anything. This file is the short version of what a new session needs.
 
 ## How we work
 
