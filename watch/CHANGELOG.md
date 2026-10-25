@@ -54,6 +54,7 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Changed
 
+- Sends aim traces, its full screen and button trail, battery levels and raw room scans to Home Assistant only while Detailed diagnostics is on there; otherwise only a trail with an error.
 - Better at telling close devices apart. A device painted with a wide sweep no longer wins the space next to a tightly painted one (the watch now weighs how precisely each was painted), so both lock where you'd expect. Devices painted in another room still count, at half weight, instead of disappearing when the watch thinks it's in a different room (open-plan rooms often sound alike to Bluetooth).
 - Bigger text on Point (the device name is about twice the size) and big countdown numbers in Paint, for reading at arm's length. Paint's screen turns amber while recording, green when the paint is saved and red when it wasn't.
 - Fewer vibrations. Point buzzes once when it locks onto a device (not again while you stay on it) and once when the action is done or failed; no buzz when a command is sent, when dimming starts or at each 10% of dimming. Room calibration buzzes when it starts and when it's done, not at every scan, and gesture calibration dropped a buzz between steps.

@@ -15,6 +15,7 @@ every change, so the watch can tell whether Home Assistant changed something
 from __future__ import annotations
 
 import copy
+import time
 from typing import Any, cast
 
 from homeassistant.core import HomeAssistant
@@ -47,6 +48,9 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "volume": {"max": 80, "step": 20},
     # Learn from use: confirmed triggers refine paints, confident room checks refine rooms.
     "learn": {"enabled": True},
+    # Detailed diagnostics: the watch also sends aim traces, its screen and button trail and room
+    # scans (for tuning and bug reports). Set only in Home Assistant; off again at `until` (epoch s).
+    "diagnostics": {"detailed": False, "until": 0.0},
 }
 DWELL_SECONDS = (1.0, 10.0)  # allowed range, in half seconds
 VOLUME_MAX = (10, 100)  # allowed range for the volume ceiling, percent, steps of 5
@@ -66,6 +70,9 @@ def settings_of(watch: dict[str, Any]) -> dict[str, Any]:
     for group, values in stored.items():
         if group in out and isinstance(values, dict):
             out[group].update({k: v for k, v in values.items() if k in out[group]})
+    diag = out["diagnostics"]
+    if diag["detailed"] and not (is_number(diag["until"]) and diag["until"] > time.time()):
+        out["diagnostics"] = {"detailed": False, "until": 0.0}
     return out
 
 

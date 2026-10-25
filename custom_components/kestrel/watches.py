@@ -19,6 +19,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    DETAILED_DIAGNOSTICS_FOR,
     DOMAIN,
     PAIR_STARTS_PER_WINDOW,
     PAIR_WINDOW,
@@ -26,6 +27,7 @@ from .const import (
     PAIRING_TTL,
     PAIRINGS_PENDING_MAX,
     PROBES_KEPT,
+    PROBES_MAX_AGE,
     PROBES_SAVE_DELAY,
     PROBES_MAX_CHARS,
     PROBES_STORAGE_KEY,
@@ -205,6 +207,13 @@ class Watches:
             settings[group].update(changed)
         return await self._async_set(watch_id, "settings", settings)
 
+    async def async_set_detailed_diagnostics(self, watch_id: str, on: bool) -> int:
+        """Turn detailed diagnostics on (for DETAILED_DIAGNOSTICS_FOR) or off. Home Assistant only:
+        a watch can't turn it on itself."""
+        settings = settings_of(self.watches[watch_id])
+        settings["diagnostics"] = {"detailed": on, "until": time.time() + DETAILED_DIAGNOSTICS_FOR if on else 0.0}
+        return await self._async_set(watch_id, "settings", settings)
+
     async def async_save_settings(self, watch_id: str, settings: dict[str, Any]) -> int:
         """All settings, from the integration's options."""
         return await self._async_set(watch_id, "settings", settings)
@@ -268,12 +277,26 @@ class Watches:
         return record
 
     def _keep_probe(self, record: dict[str, Any]) -> None:
-        """Keep the newest PROBES_KEPT results, and no more than PROBES_MAX_CHARS together."""
+        """Keep the newest PROBES_KEPT results, no more than PROBES_MAX_CHARS together, none older
+        than PROBES_MAX_AGE."""
+        received = dt_util.parse_datetime(str(record.get("received") or ""))
+        oldest = dt_util.utcnow().timestamp() - PROBES_MAX_AGE
+        if received is not None and received.timestamp() < oldest:
+            return
         self.probes.append(record)
         self.probe_sizes.append(len(json.dumps(record, default=str)))
-        while len(self.probes) > 1 and (len(self.probes) > PROBES_KEPT or sum(self.probe_sizes) > PROBES_MAX_CHARS):
+        while self.probes and (
+            len(self.probes) > PROBES_KEPT
+            or (len(self.probes) > 1 and sum(self.probe_sizes) > PROBES_MAX_CHARS)
+            or self._age(self.probes[0]) > PROBES_MAX_AGE
+        ):
             self.probes.popleft()
             self.probe_sizes.popleft()
+
+    @staticmethod
+    def _age(record: dict[str, Any]) -> float:
+        received = dt_util.parse_datetime(str(record.get("received") or ""))
+        return 0.0 if received is None else dt_util.utcnow().timestamp() - received.timestamp()
 
     def probes_for(self, watch_id: str | None = None) -> list[dict[str, Any]]:
         return [p for p in self.probes if watch_id is None or p.get("watch_id") == watch_id]

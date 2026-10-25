@@ -46,9 +46,19 @@ from homeassistant.helpers.network import NoURLAvailableError, get_url, is_cloud
 from homeassistant.util.network import is_local
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, EVENT_FIRED, EVENT_PROBE, NAME, PAIRING_TTL, PROBE_MAX_BYTES, SUPPORTED_DOMAINS, TOKEN_HEADER
+from .const import (
+    AUTO_PROBES,
+    DOMAIN,
+    EVENT_FIRED,
+    EVENT_PROBE,
+    NAME,
+    PAIRING_TTL,
+    PROBE_MAX_BYTES,
+    SUPPORTED_DOMAINS,
+    TOKEN_HEADER,
+)
 from .targets import MAX_TARGETS, action_fits, is_offered, list_targets, service_call, volume_call
-from .watchdata import SECTIONS, areas, current_room
+from .watchdata import SECTIONS, areas, current_room, settings_of
 from .watches import Watches
 
 _LOGGER = logging.getLogger(__name__)
@@ -436,8 +446,14 @@ class FireView(_WatchView):
         return web.json_response(reply)
 
 
+def _has_error(trail: Any) -> bool:
+    return isinstance(trail, list) and any(isinstance(e, list) and len(e) > 1 and e[1] == "error" for e in trail)
+
+
 class ProbeView(_WatchView):
-    """Measurement results from the watch's Probes: kept for diagnostics and fired as kestrel_probe events."""
+    """Results from the watch, kept for diagnostics. Probes run on purpose (More → Probes) are
+    always kept and fired as kestrel_probe events; what the watch records as it's used (AUTO_PROBES:
+    aim traces, its trail, room scans) only with detailed diagnostics on, and never as events."""
 
     url = "/api/kestrel/probe"
     name = "api:kestrel:probe"
@@ -458,8 +474,15 @@ class ProbeView(_WatchView):
             return _error("Bad request", HTTPStatus.BAD_REQUEST)
         if not isinstance(body, dict):
             return _error("Bad request", HTTPStatus.BAD_REQUEST)
+        test = body.get("test")
+        if test in AUTO_PROBES:
+            detailed = settings_of(watch)["diagnostics"]["detailed"]
+            if detailed or (test == "trail" and _has_error(body.get("trail"))):
+                watches.add_probe(watch, body)
+                return web.json_response({"ok": True, "kept": True})
+            return web.json_response({"ok": True, "kept": False})
         hass.bus.async_fire(EVENT_PROBE, watches.add_probe(watch, body))
-        return web.json_response({"ok": True})
+        return web.json_response({"ok": True, "kept": True})
 
 
 VIEWS = (

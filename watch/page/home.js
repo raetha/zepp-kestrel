@@ -81,6 +81,11 @@ Page(
       sendTrail() {
         const trail = previousRuns()
         if (!trail.length) return
+        // without detailed diagnostics, only a trail that holds an error is worth sending
+        if (!settings().diagnostics.detailed && !trail.some((e) => e[1] === 'error')) {
+          forgetPreviousRuns()
+          return
+        }
         ask(this, METHOD.PROBE_LOG, { test: 'trail', at: Date.now(), trail }, 15000)
           .then((r) => r && r.forwarded && forgetPreviousRuns())
           .catch(() => null)

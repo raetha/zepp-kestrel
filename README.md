@@ -84,7 +84,7 @@ If your phone can't find Home Assistant (another port, or a name other than `hom
 
 ### Running the M0 probes
 
-Under **More → Probes** on the watch. Results show on the watch, and once the watch is paired each one (raw sensor traces included) also goes to Home Assistant; the probe screen says whether it got there. To hand results over, download them in one file: Settings → Devices & services → Kestrel → your watch's device → ⋮ → **Download diagnostics**. Home Assistant keeps the newest 500 results. Each also fires a `kestrel_probe` event, for watching live in Developer tools → Events. The select button presses the main button on every probe screen; back returns to the list.
+Under **More → Probes** on the watch. Results show on the watch, and once the watch is paired each one (raw sensor traces included) also goes to Home Assistant; the probe screen says whether it got there. To hand results over, download them in one file: Settings → Devices & services → Kestrel → your watch's device → ⋮ → **Download diagnostics**. Home Assistant keeps the newest 500 results for up to 14 days. Each also fires a `kestrel_probe` event, for watching live in Developer tools → Events. The select button presses the main button on every probe screen; back returns to the list.
 
 | Probe | What to do | What it answers |
 | --- | --- | --- |
@@ -221,7 +221,20 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 - **Nothing locks on when pointing**: calibrate the compass (the Compass app, or turn the watch in a circle when asked, until the dots round the edge go green), then paint again from where you stand.
 - **Two devices get mixed up**: paint each of them from where you stand when you use them, sweeping only across the device itself (a narrow sweep is a precise paint). If Paint says they're too close from there, paint them from another spot as well. Use **Not it?** when it picks the wrong one: it teaches the watch where you aimed.
 - **Wrong device triggers**: use "Not it?" right after to correct it, or paint again from that spot.
-- **Something else**: Settings → Devices & services → Kestrel → your watch → ⋮ → Download diagnostics, and attach it to an issue.
+- **Something else**: turn on **Detailed diagnostics** on your watch's device page, use Kestrel until the problem shows, then Settings → Devices & services → Kestrel → your watch → ⋮ → Download diagnostics, and attach it to an issue.
+
+### Diagnostics and privacy
+
+By default Kestrel keeps little: probes you run on purpose (More → Probes) and, when something goes wrong on the watch, the record of screens, buttons and errors leading up to it. Nothing about where you point, your rooms' Bluetooth surroundings or your battery is kept.
+
+**Detailed diagnostics** (a switch on each watch's device page, also under Configure) has the watch also send, for one week before it turns itself off:
+- the aim of the few seconds before each trigger, to tune pointing;
+- the record of screens, buttons and swipes of every run, and battery levels while pointing;
+- the raw Bluetooth scans of room calibrations.
+
+Home Assistant keeps at most 500 results, 2 million characters in all, for up to 14 days; recorded aim traces and trails never go into Home Assistant's event history. Nothing is written to Home Assistant's log beyond a line when a watch pairs.
+
+A diagnostics download is made to be attached to a public issue. It never holds a token (Home Assistant only stores a hash of each watch's token, and leaves even that out) or a network address, and every Bluetooth address (the watch hears neighbours' devices too) is replaced by a code that's the same throughout one download, so room matching can still be checked, but can't be turned back into the address. It does hold your device and room names, entity ids and where you painted things; look it over before posting it.
 
 ### Removing Kestrel
 

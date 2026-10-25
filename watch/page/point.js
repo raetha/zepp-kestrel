@@ -191,7 +191,8 @@ Page(
           onGyro: (t, dps) => this.detector && this.detector.gyroUpdate(t, dps) && this.onGesture(t),
           onAccel: (t, a) => this.detector && this.detector.accelUpdate(t, a) && this.onGesture(t),
         })
-        note('battery', { page: 'point', at: 'open', level: batteryLevel() }) // drain per minute of pointing (tools/replay.mjs)
+        this.detailed = settings().diagnostics.detailed
+        if (this.detailed) note('battery', { page: 'point', at: 'open', level: batteryLevel() }) // drain per minute of pointing (tools/replay.mjs)
         // opened straight from launch (Open on Point): the quiet sync Home would have done
         if (firstSyncOfRun()) {
           sync((m, p, t) => ask(this, m, p, t), null, { full: false })
@@ -563,7 +564,9 @@ Page(
 
       // ------------------------------------------------------------ aim traces
       // Sent after the action, so it never delays it.
+      /** The aim of the seconds before a trigger, for tuning (detailed diagnostics only). */
       record(id, ctx, r, ms) {
+        if (!this.detailed) return
         const t0 = ctx.at ? ctx.at.t : Date.now()
         const r1 = (v) => (v === null || v === undefined ? null : Math.round(v * 10) / 10)
         const trace = this.history
@@ -599,7 +602,7 @@ Page(
         clearTimeout(this.flashTimer)
         clearTimeout(this.ringTimer)
         for (const t of Object.values(this.learnTimers || {})) clearTimeout(t)
-        if (this.aim) note('battery', { page: 'point', at: 'close', level: batteryLevel() })
+        if (this.aim && this.detailed) note('battery', { page: 'point', at: 'close', level: batteryLevel() })
         clearInterval(this.roomTimer)
         stopScan()
         if (this.aim) this.aim.stop()

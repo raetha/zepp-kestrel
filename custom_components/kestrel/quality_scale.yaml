@@ -98,7 +98,7 @@ rules:
     comment: One device per paired watch.
   diagnostics:
     status: done
-    comment: Per entry and per watch device; tokens redacted; includes recent probe results.
+    comment: Per entry and per watch device, with recent probe results; token hashes and addresses redacted, Bluetooth addresses pseudonymised. Detailed records only with the Detailed diagnostics switch (off after a week).
   discovery:
     status: exempt
     comment: Nothing to discover from Home Assistant's side; watches find Home Assistant.

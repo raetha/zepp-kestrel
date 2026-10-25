@@ -29,6 +29,9 @@
       },
       "learn": {
         "default": "mdi:school-outline"
+      },
+      "detailed_diagnostics": {
+        "default": "mdi:bug-outline"
       }
     },
     "select": {

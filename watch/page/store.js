@@ -76,6 +76,9 @@ export const DEFAULT_SETTINGS = {
   volume: { max: 80, step: 20 },
   // learn from use: confirmed triggers refine paints, clear room checks refine rooms (lib/learn.js)
   learn: { enabled: true },
+  // detailed diagnostics (turned on in Home Assistant, off again after a week): also send aim
+  // traces, the screen and button trail, and room scans
+  diagnostics: { detailed: false },
 }
 
 /** Settings from Home Assistant (with defaults filled in). */

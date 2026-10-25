@@ -123,9 +123,11 @@ AppSideService(
         error = `Home Assistant: ${(e && e.message) || e}`
       }
 
-      // Then a small summary on the phone, for the settings page's list. Phone
+      // Then a small summary on the phone, for the settings page's list (probes run on
+      // purpose only: not the aim traces and trails recorded as the app is used). Phone
       // storage is small: an oversized log (from earlier builds) is reset.
       let stored = false
+      if (entry && (entry.test === 'point' || entry.test === 'trail')) return { stored, forwarded, error }
       try {
         const log = readLog(this.settings)
         log.unshift(summarize(entry))

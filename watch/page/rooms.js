@@ -139,7 +139,10 @@ Page(
                 : `${area.name} calibrated: ${n} steady devices.\n\nNow paint devices from here, so the watch knows they're in this room.`,
             )
           }
-          ask(this, METHOD.PROBE_LOG, { test: 'room', at: Date.now(), area: area.id, name: area.name, devices: n, scans }, 15000).catch(() => null)
+          // the raw scans only with detailed diagnostics (they hold neighbours' Bluetooth addresses)
+          if (settings().diagnostics.detailed) {
+            ask(this, METHOD.PROBE_LOG, { test: 'room', at: Date.now(), area: area.id, name: area.name, devices: n, scans }, 15000).catch(() => null)
+          }
           this.add(button({ x: 140, w: 200, y: 394, h: 52, size: SIZE.body, label: 'Done', primary: true, onClick: () => this.list() }))
         } finally {
           this.busy = false
@@ -165,7 +168,7 @@ Page(
                 ? 'No rooms calibrated yet.'
                 : `Not sure which room.${others ? `\n\n${others}` : ''}`,
           )
-          ask(this, METHOD.PROBE_LOG, { test: 'where', at: Date.now(), ...r }, 15000).catch(() => null)
+          ask(this, METHOD.PROBE_LOG, { test: 'where', at: Date.now(), room: r.room, source: r.source, ranked: r.ranked }, 15000).catch(() => null)
         } finally {
           this.busy = false
           this.add(button({ x: 140, w: 200, y: 394, h: 52, size: SIZE.body, label: 'Back', onClick: () => this.list() }))

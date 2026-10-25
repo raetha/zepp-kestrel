@@ -82,7 +82,8 @@
           "open_on_point": "Open on Point",
           "learn": "Learn from use",
           "volume_max": "Volume limit (%)",
-          "volume_step": "Volume change per twist (%)"
+          "volume_step": "Volume change per twist (%)",
+          "detailed_diagnostics": "Detailed diagnostics (one week)"
         },
         "data_description": {
           "gesture_gyro": "How fast the wrist must turn. Leave empty to not use the gyro.",
@@ -95,7 +96,8 @@
           "open_on_point": "Start the app on Point instead of the home screen, for launching it from the watch's shortcut key. Back goes to the home screen.",
           "learn": "Each trigger that wasn't corrected sharpens that device's paint a little, and confident room checks keep room calibrations up to date.",
           "volume_max": "Twisting at a media player never raises its volume above this. Turning it down always works.",
-          "volume_step": "The most one twist can change the volume by, however far the wrist turns. Twists are also at least a second apart."
+          "volume_step": "The most one twist can change the volume by, however far the wrist turns. Twists are also at least a second apart.",
+          "detailed_diagnostics": "The watch also sends its aim traces, screen and button trail and room scans, for the diagnostics download. Turns itself off after a week. Errors are always kept."
         }
       },
       "pick_watch": {
@@ -190,6 +192,14 @@
       },
       "learn": {
         "name": "Learn from use"
+      },
+      "detailed_diagnostics": {
+        "name": "Detailed diagnostics",
+        "state_attributes": {
+          "until": {
+            "name": "Turns off at"
+          }
+        }
       }
     },
     "select": {

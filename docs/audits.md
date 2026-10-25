@@ -101,3 +101,12 @@ Still all 54 rules done or exempt. New entities (Open on Point, Learn from use, 
 | Watch, aim without a gyroscope | Readings arriving in a burst made the tilt rate look huge, so the arm never counted as still. | Fixed: readings are treated as at least 20 ms apart. |
 | Watch, Point | Compass calibration lost again within a second of being regained left the dots green and stopped counting. | Fixed: they start counting again. |
 | HA, paint map | The picture's hash is recomputed on each update from the watch (a JSON dump of its paints, under 100 kB); the SVG is drawn only when asked for. | Fine as is. |
+
+## 2026-10-25: diagnostics and privacy
+
+| Severity | Finding | Outcome |
+| --- | --- | --- |
+| Medium | Diagnostics downloads (meant for public issues) held the Bluetooth addresses of every device the watch heard when calibrating rooms, neighbours' included, and the watch's and Home Assistant's network addresses. | Fixed: addresses redacted; Bluetooth addresses replaced by salted pseudonyms, consistent within one download and different in the next. Token hashes were already redacted; the token itself is never stored in Home Assistant. Tested. |
+| Low | The watch sent debug-level records all the time: an aim trace with every trigger, every run's screen and button trail, raw room scans. Each also became a `kestrel_probe` event, so Home Assistant's event history grew with every trigger. | Fixed: only with Detailed diagnostics on (per watch, off after a week); without it only probes run on purpose and trails with an error are kept. Automatic records never become events. Results older than 14 days are dropped. |
+| Info | The phone's settings storage kept a summary of every aim trace and trail. | Fixed: only of probes run on purpose. |
+| Info | Logging: one info line when a watch pairs (its name and id); nothing else. | Fine. |

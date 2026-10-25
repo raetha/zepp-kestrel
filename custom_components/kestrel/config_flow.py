@@ -239,8 +239,11 @@ class KestrelOptionsFlow(OptionsFlow):
                     "start": {"point": user_input["open_on_point"]},
                     "learn": {"enabled": user_input["learn"]},
                     "volume": {"max": int(user_input["volume_max"]), "step": int(user_input["volume_step"])},
+                    "diagnostics": current["diagnostics"],
                 }
                 await self._watches.async_save_settings(self.watch_id, settings)
+                if user_input["detailed_diagnostics"] != current["diagnostics"]["detailed"]:
+                    await self._watches.async_set_detailed_diagnostics(self.watch_id, user_input["detailed_diagnostics"])
                 return self._done()
 
         g, room, dwell, volume = current["gesture"], current["room"], current["dwell"], current["volume"]
@@ -259,6 +262,7 @@ class KestrelOptionsFlow(OptionsFlow):
             ),
             vol.Required("open_on_point", default=current["start"]["point"]): BooleanSelector(),
             vol.Required("learn", default=current["learn"]["enabled"]): BooleanSelector(),
+            vol.Required("detailed_diagnostics", default=current["diagnostics"]["detailed"]): BooleanSelector(),
             vol.Required("volume_max", default=volume["max"]): _percent(VOLUME_MAX),
             vol.Required("volume_step", default=volume["step"]): _percent(VOLUME_STEP),
             vol.Required("room_source", default=room["source"]): _select([(s, s) for s in ROOM_SOURCES], "room_source"),

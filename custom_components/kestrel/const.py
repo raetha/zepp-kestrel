@@ -20,6 +20,12 @@ STORAGE_KEY = "kestrel.watches"
 STORAGE_VERSION = 1
 PROBES_STORAGE_KEY = "kestrel.probes"  # recent probe results, for diagnostics downloads
 PROBES_KEPT = 500
+PROBES_MAX_AGE = 14 * 86400  # seconds: older probe results are dropped
+DETAILED_DIAGNOSTICS_FOR = 7 * 86400  # seconds: detailed diagnostics turn themselves off after this
+# Recorded by the watch as it's used (not run on purpose from Probes): kept only with detailed
+# diagnostics on (a trail also when it holds an error), and never fired as kestrel_probe events,
+# so Home Assistant's event history doesn't fill with aim traces.
+AUTO_PROBES = ("point", "trail", "room")
 PROBES_SAVE_DELAY = 10  # seconds; probe results arrive in bursts
 STATUS_SAVE_DELAY = 30  # seconds; what watches report (last seen, room...) is saved lazily
 SEEN_EVERY = 60  # seconds; "last seen" moves on at most this often
