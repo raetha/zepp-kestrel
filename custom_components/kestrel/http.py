@@ -290,7 +290,10 @@ def sync_targets(targets: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 class _SectionView(_WatchView):
-    """POST {<key>: {...}}: the watch's new copy of one synced section."""
+    """POST {<key>: {...}}: the watch's new copy of one synced section. Paints and rooms also take
+    {"changes": {key: value or null}, "base": rev}: only what changed on the watch, merged here,
+    and the reply is just the new revision and whether something else had changed since `base`
+    ("stale": the watch fetches Home Assistant's copy on its next sync)."""
 
     key = ""
 
@@ -303,6 +306,11 @@ class _SectionView(_WatchView):
             return auth
         _, watches, watch = auth
         body = await _json_object(request)
+        changes = body.get("changes") if body else None
+        if self.key in ("paints", "rooms") and isinstance(changes, dict):
+            before = int(watch.get(f"{self.key}_rev", 0))
+            rev = await watches.async_change_section(watch["id"], self.key, changes)
+            return web.json_response({"ok": True, "rev": rev, "stale": body.get("base") != before})
         value = body.get(self.key) if body else None
         if not isinstance(value, dict):
             return _error("Bad request", HTTPStatus.BAD_REQUEST)

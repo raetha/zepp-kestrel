@@ -80,6 +80,7 @@ AppSideService(
 
           case METHOD.SAVE:
             if (p.section !== 'paints' && p.section !== 'rooms') throw new Error('unknown section')
+            if (p.changes) return this.ha.saveChanges(p.section, p.changes, p.base)
             return this.ha.saveSection(p.section, p.value || {})
           case METHOD.SAVE_SETTINGS:
             return this.mirror(await this.ha.saveSettings(p.settings || {}))

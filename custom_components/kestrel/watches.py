@@ -41,7 +41,16 @@ from .const import (
     signal_watch_updated,
 )
 from .targets import Offered
-from .watchdata import PAINTS_MAX_SPOTS, SECTIONS, clean_paints, clean_rooms, clean_settings, settings_of
+from .watchdata import (
+    PAINTS_MAX_DEVICES,
+    PAINTS_MAX_SPOTS,
+    ROOMS_MAX,
+    SECTIONS,
+    clean_paints,
+    clean_rooms,
+    clean_settings,
+    settings_of,
+)
 
 
 def _hash(token: str) -> str:
@@ -198,6 +207,18 @@ class Watches:
 
     async def async_save_rooms(self, watch_id: str, rooms: dict[str, Any]) -> int:
         return await self._async_set(watch_id, "rooms", clean_rooms(rooms))
+
+    async def async_change_section(self, watch_id: str, section: str, changes: dict[str, Any]) -> int:
+        """Some entries of paints or rooms changed on the watch ({key: new value, or None to remove}):
+        merged into Home Assistant's copy, so the watch sends only what it changed."""
+        merged = dict(self.watches[watch_id].get(section) or {})
+        for key, value in list(changes.items())[:ROOMS_MAX if section == "rooms" else PAINTS_MAX_DEVICES]:
+            if value is None:
+                merged.pop(key, None)
+            else:
+                merged[key] = value
+        clean = clean_rooms(merged) if section == "rooms" else clean_paints(merged)
+        return await self._async_set(watch_id, section, clean)
 
     async def async_update_settings(self, watch_id: str, values: dict[str, Any]) -> int:
         """Some settings changed ({group: {field: value}}, checked here): from the watch,

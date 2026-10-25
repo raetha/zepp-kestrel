@@ -230,7 +230,17 @@ export class HaClient {
     return (await this.component(`/api/kestrel/sync${q.length ? `?${q.join('&')}` : ''}`)) || {}
   }
 
-  /** Send one section after a change on the watch: paints, rooms. -> { ok, rev } */
+  /**
+   * Only what changed in one section (paints, rooms): { key: new value, or null if removed }.
+   * `base` is the revision the watch last had; stale = Home Assistant changed something else since.
+   * -> { ok, rev, stale }
+   */
+  async saveChanges(section, changes, base) {
+    const b = await this.component(`/api/kestrel/${section}`, { method: 'POST', body: { changes, base } })
+    return { ok: true, rev: b && b.rev, stale: !!(b && b.stale) }
+  }
+
+  /** Send a whole section (older watch builds). -> { ok, rev } */
   async saveSection(section, value) {
     const b = await this.component(`/api/kestrel/${section}`, { method: 'POST', body: { [section]: value } })
     return { ok: true, rev: b && b.rev }

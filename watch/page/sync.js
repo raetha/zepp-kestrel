@@ -105,10 +105,7 @@ async function syncNow(ask, only = null, { full = false } = {}) {
     const m = mergeSection(s.read(), meta[s.rev], meta[s.dirty], remote, r[revKey])
     s.write(m.value)
     saveSyncMeta({ [s.rev]: r[revKey], ...(m.push ? {} : { [s.dirty]: [] }) })
-    if (m.push) {
-      const saved = await ask(METHOD.SAVE, { section: name, value: m.value }, 15000).catch(() => null)
-      if (saved && saved.ok) saveSyncMeta({ [s.rev]: saved.rev, [s.dirty]: [] })
-    }
+    if (m.push) await pushChanges(ask, name, r[revKey])
     out[name] = Object.keys(m.value).length
   }
   return out
@@ -122,9 +119,42 @@ function have() {
   return h
 }
 
-/** After a change on the watch: sync just that section, quietly. */
+/**
+ * Send only the entries the watch changed in a section (not the whole section: with
+ * dozens of painted devices that was tens of kB over Bluetooth for one new spot).
+ * Home Assistant merges them. If it had changed something else meanwhile ("stale"), the
+ * watch keeps its older revision, so its next sync fetches Home Assistant's copy.
+ */
+async function pushChanges(ask, name, base) {
+  const s = SECTIONS[name]
+  const dirty = syncMeta()[s.dirty]
+  if (!dirty.length) return true
+  const value = s.read()
+  const changes = {}
+  for (const key of dirty) changes[key] = value[key] === undefined ? null : value[key]
+  const saved = await ask(METHOD.SAVE, { section: name, changes, base }, 15000).catch(() => null)
+  if (!saved || !saved.ok) return false
+  // anything changed again while this was on its way stays dirty
+  const still = syncMeta()[s.dirty].filter((k) => !dirty.includes(k))
+  saveSyncMeta({ [s.dirty]: still, ...(saved.stale ? {} : { [s.rev]: saved.rev }) })
+  return true
+}
+
+/**
+ * After a change on the watch: send it, quietly. Paints and rooms go straight up as
+ * changes (one message, no sync round trip first); settings sync as before.
+ */
 export function syncSoon(ask, section) {
-  sync(ask, [section]).catch(() => null)
+  if (!SECTIONS[section]) {
+    sync(ask, [section]).catch(() => null)
+    return
+  }
+  const run = () => pushChanges(ask, section, syncMeta()[SECTIONS[section].rev])
+  const next = running ? running.then(run, run) : run()
+  const mine = next.catch(() => false).finally(() => {
+    if (running === mine) running = null
+  })
+  running = mine
 }
 
 /**

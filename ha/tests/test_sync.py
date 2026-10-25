@@ -201,3 +201,26 @@ def test_thresholds_follow_the_chosen_gesture():
     assert thresholds({"kind": "flick", "calibrations": cals}) == {"gyro": 600.0, "jolt": None}
     assert thresholds({"kind": "tap", "calibrations": cals}) is None
     assert clean_gesture({"calibrations": {"snap": "nonsense"}}) == {"calibrations": {}}
+
+
+async def test_sections_take_only_the_changes(hass, setup_entry, hass_client_no_auth):
+    watches = setup_entry.runtime_data
+    pairing = watches.start_pairing("W")
+    _, watch, token = await watches.async_confirm(pairing.pairing_id, pairing.code)
+    client = await hass_client_no_auth()
+    h = {TOKEN_HEADER: token}
+    spot = {"heading": 10, "pitch": 1}
+    await watches.async_save_paints(watch["id"], {"light.a": [spot], "light.b": [spot]})  # rev 1
+    res = await client.post("/api/kestrel/paints", headers=h, json={"changes": {"light.c": [spot], "light.b": None}, "base": 1})
+    body = await res.json()
+    assert body == {"ok": True, "rev": 2, "stale": False}
+    assert set(watches.paints(watch["id"])) == {"light.a", "light.c"}
+    # Home Assistant changed something the watch hadn't seen: still merged, and the watch hears it's stale
+    res = await client.post("/api/kestrel/paints", headers=h, json={"changes": {"light.d": [spot]}, "base": 1})
+    assert (await res.json())["stale"] is True
+    assert set(watches.paints(watch["id"])) == {"light.a", "light.c", "light.d"}
+    # rooms the same way; bad entries are cleaned out
+    room = {"name": "Office", "fingerprint": {"AA:BB:CC:DD:EE:FF": [-60, 1]}}
+    res = await client.post("/api/kestrel/rooms", headers=h, json={"changes": {"office": room, "bad": {"x": 1}}, "base": 0})
+    assert (await res.json())["rev"] == 1
+    assert set(watches.synced(watch["id"])["rooms"]) == {"office"}
