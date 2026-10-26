@@ -92,7 +92,13 @@ test('a widely swept spot does not claim the space next to a tight one', () => {
   assert.equal(a.update(400, true, [island, chandelier], 278, 24).state, STATE.LOCKED)
 })
 
-test('a spot from another room counts less but is not hidden', () => {
+test('sure of the room, a device painted only in another room is never picked', () => {
+  const inDining = [island, chandelier].map((d) => ({ ...d, spots: spotsForRoom(d.spots, 'dining', 0) })).filter((d) => d.spots.length)
+  assert.deepEqual(inDining.map((d) => d.id), ['light.chandelier'])
+  assert.equal(rank(inDining, 277, 24)[0].id, 'light.chandelier')
+})
+
+test('only just sure of the room, a spot from another room counts less but is not hidden', () => {
   const inDining = [island, chandelier].map((d) => ({ ...d, spots: spotsForRoom(d.spots, 'dining') }))
   // the room was wrong (or you point into the next room): the island still wins where it was painted
   assert.equal(rank(inDining, 276, 24)[0].id, 'light.island')

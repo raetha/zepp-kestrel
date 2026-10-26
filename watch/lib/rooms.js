@@ -78,21 +78,29 @@ export function pickRoom(ranked, o = PICK) {
   return { id: best.id, name: best.name, score: Math.round(best.score * 100) / 100 }
 }
 
-// How much a spot painted in another room still counts, when the watch knows
-// which room it's in. Not zero: rooms that share a space (an open-plan kitchen
-// and dining room) sound alike to Bluetooth, so the room is sometimes wrong, and
-// from a doorway you may point into the next room. Halving is enough to settle
-// a tie between rooms (the lock needs a 2x lead), without hiding the other room.
+// How much a spot painted in another room still counts:
+//  - the room matched clearly (or comes from a Home Assistant sensor): not at all.
+//    A device painted only in another room is never picked here. To use one from
+//    here (a light seen through a doorway), paint it from here too.
+//  - the room matched, but only just (rooms sharing an open-plan space sound alike
+//    to Bluetooth): half, enough to settle a tie (a lock needs a 2x lead) without
+//    hiding a device the watch may have placed in the wrong room.
+//  - no room: everything counts.
 export const OTHER_ROOM_PRIOR = 0.5
 
 /**
- * The spots as they apply in a room: those painted there and those painted
- * before rooms were known count fully; others count less (OTHER_ROOM_PRIOR).
- * Without a room, all count fully.
+ * The spots as they apply in a room: those painted there, and those painted
+ * before rooms were known (no room), count fully; spots from other rooms count
+ * `otherPrior` (0 leaves them out). Without a room, all count fully.
  */
 export function spotsForRoom(spots, roomId, otherPrior = OTHER_ROOM_PRIOR) {
   if (!roomId) return spots
-  return spots.map((s) => (!s.room || s.room === roomId ? s : { ...s, prior: otherPrior }))
+  const out = []
+  for (const s of spots) {
+    if (!s.room || s.room === roomId) out.push(s)
+    else if (otherPrior > 0) out.push({ ...s, prior: otherPrior })
+  }
+  return out
 }
 
 /** A fingerprint read as if it were one scan. */

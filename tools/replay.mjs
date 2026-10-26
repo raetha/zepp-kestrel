@@ -24,7 +24,7 @@ if (!file) {
 }
 const diag = JSON.parse(fs.readFileSync(file, 'utf8'))
 const data = diag.data || diag
-const watch = data.watch || {}
+const watch = data.watch || (data.watches || [])[0] || {}
 const probes = data.probes || []
 const rooms = watch.rooms || {}
 const paints = watch.paints || {}
@@ -59,9 +59,10 @@ for (const id of Object.keys(paints)) {
 
 // ------------------------------------------------------------------ aim traces
 console.log('\nTriggers (fired → corrected to; what today\'s code would show at the trigger)')
-const devicesIn = (room) =>
+// as Point does: sure of the room, other rooms' spots are left out; only just, they count half
+const devicesIn = (room, sure) =>
   Object.keys(paints)
-    .map((id) => ({ id, spots: spotsForRoom(paints[id], room) }))
+    .map((id) => ({ id, spots: spotsForRoom(paints[id], room, sure ? 0 : undefined) }))
     .filter((d) => d.spots.length)
 let agree = 0
 let total = 0
@@ -69,7 +70,7 @@ for (const p of probes.filter((x) => x.test === 'point' && Array.isArray(x.trace
   const cols = (p.columns || 'ms,heading,pitch,roll,ready,state,best').split(',')
   const at = (row, k) => row[cols.indexOf(k)]
   const aimer = new Aimer()
-  const devices = devicesIn(p.room)
+  const devices = devicesIn(p.room, p.roomSure)
   let last = null
   for (const row of p.trace) {
     if (at(row, 'ms') > 0) break
@@ -84,7 +85,7 @@ for (const p of probes.filter((x) => x.test === 'point' && Array.isArray(x.trace
   const then = p.correctedFrom ? `${short(p.correctedFrom)} → ${short(p.target)}` : short(p.target)
   const state = last ? last.state : STATE.RESTING
   const ratio = last && last.best && last.runnerUp ? ` lead ${Math.min(99, last.best.weight / last.runnerUp.weight).toFixed(1)}x` : ''
-  console.log(`  ${new Date(p.at).toISOString().slice(5, 16)} ${p.via.padEnd(6)} ${then.padEnd(40)} now: ${state} ${short(now)}${ratio} (room ${p.room || '-'})`)
+  console.log(`  ${new Date(p.at).toISOString().slice(5, 16)} ${p.via.padEnd(6)} ${then.padEnd(40)} now: ${state} ${short(now)}${ratio} (room ${p.room || '-'}${p.roomSure === false ? '?' : ''})`)
 }
 if (total) console.log(`  ${agree} of ${total} would pick the same device today`)
 

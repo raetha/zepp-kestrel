@@ -63,3 +63,8 @@ test('rooms sharing a space sound alike; separate ones do not', () => {
   assert.equal(soundsLike(rooms, 'office'), null)
   assert.equal(soundsLike(rooms, 'garage'), null)
 })
+
+test('sure of the room: spots from other rooms are left out', () => {
+  const spots = [{ heading: 1, room: 'office' }, { heading: 2, room: 'kitchen' }, { heading: 3 }]
+  assert.deepEqual(spotsForRoom(spots, 'office', 0).map((s) => s.heading), [1, 3])
+})

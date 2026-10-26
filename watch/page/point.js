@@ -43,8 +43,9 @@ import { stopScan } from './scan.js'
 import { Aimer, STATE } from '../lib/classifier.js'
 import { GestureDetector, candidateAt, gestureThresholds } from '../lib/gesture.js'
 import { correctionSpot, addCorrection } from '../lib/paint.js'
-import { spotsForRoom } from '../lib/rooms.js'
+import { spotsForRoom, OTHER_ROOM_PRIOR } from '../lib/rooms.js'
 import { dimStep, volumeStep } from '../lib/dim.js'
+import { angleDiff } from '../lib/circular.js'
 import { learnSpot, clearMatch, adaptFingerprint, LEARN } from '../lib/learn.js'
 import { METHOD, nextSeq } from '../lib/protocol.js'
 import * as haptics from './haptics.js'
@@ -64,6 +65,14 @@ const FLASH_MS = 1200 // how long the done / failed colour stays
 const HISTORY_MS = 4000 // aim kept for gestures, corrections and traces
 const CORRECT_MS = 5000 // how long "Not it?" stays up
 const HOLD_MS = 450 // holding the button or the screen this long starts dimming
+// Twist to dim with no hold: locked on a dimmable light (or a media player's volume), turn the
+// wrist slowly. The twist starts once the wrist has turned TWIST_START degrees from where it was
+// when the lock began, with the arm still at the same height and the turn slow (a flick is fast);
+// it's sent once the wrist has been still for TWIST_SETTLE_MS, or when the arm drops.
+const TWIST_START = 20
+const TWIST_MAX_DPS = 150
+const TWIST_SETTLE_MS = 1000
+const TWIST_LOCK_MEMORY_MS = 1500 // the lock may drop as the wrist turns (the compass shifts): remember it this long
 const ROOM_LEARN_MS = 10 * 60000 // a room's fingerprint learns from at most one check this often
 const ROOM_EVERY_MS = 60000 // check the room again this often while pointing (a 3 s Bluetooth scan)
 const GESTURE_COOLDOWN_MS = 3000 // after a trigger, gestures are ignored this long (one gesture, one toggle)
@@ -135,9 +144,12 @@ Page(
       // Only spots that apply in the current room take part.
       applyRoom() {
         const roomId = this.room ? this.room.id : null
-        this.devices = this.allDevices.map((d) => ({ ...d, spots: spotsForRoom(d.spots, roomId) })).filter((d) => d.spots.length)
+        // sure of the room: other rooms' devices are left out; only just: they count half (lib/rooms.js)
+        const prior = this.room && this.room.sure ? 0 : OTHER_ROOM_PRIOR
+        this.devices = this.allDevices.map((d) => ({ ...d, spots: spotsForRoom(d.spots, roomId, prior) })).filter((d) => d.spots.length)
         if (this.topW) {
-          const where = this.room ? `${fit(this.room.name, 14)} · ` : ''
+          // a "?" when the room matched only just (other rooms' devices still count, at half)
+          const where = this.room ? `${fit(this.room.name, 14)}${this.room.sure ? '' : '?'} · ` : ''
           setText(this.topW, `${where}${this.devices.length} painted`)
         }
       },
@@ -145,8 +157,9 @@ Page(
       async checkRoom() {
         const r = await detectRoom((m, p, t) => ask(this, m, p, t)).catch(() => null)
         if (!this.alive || !r) return
-        const changed = (r.room && r.room.id) !== (this.room && this.room.id)
-        this.room = r.room
+        const sure = !!r.room && (r.source === 'sensor' || clearMatch(r.ranked))
+        const changed = (r.room && r.room.id) !== (this.room && this.room.id) || sure !== !!(this.room && this.room.sure)
+        this.room = r.room ? { ...r.room, sure } : null
         if (changed) this.applyRoom()
         this.learnRoom(r)
         // tell Home Assistant (its Room sensor) when the watch placed itself somewhere new
@@ -162,7 +175,9 @@ Page(
         if (state === STATE.RESTING) return 'Hold your arm out, still'
         if (state === STATE.AIMING) return 'Aiming…'
         const how = this.detector ? `Press or ${VERB[this.gestureKind] || 'gesture'}` : 'Press'
-        return state === STATE.LOCKED ? `Locked: ${how.toLowerCase()}` : `${how} to trigger`
+        const best = this.last.best && this.byId[this.last.best.id]
+        const twist = this.dimKind(best) === 'volume' ? ' · twist: volume' : this.dimKind(best) ? ' · twist to dim' : ''
+        return state === STATE.LOCKED ? `Locked: ${how.toLowerCase()}${twist}` : `${how} to trigger`
       },
 
       build() {
@@ -188,7 +203,10 @@ Page(
           onSelectRelease: () => this.holdEnd(),
         })
         this.aim = startAim((a) => this.onAim(a), {
-          onGyro: (t, dps) => this.detector && this.detector.gyroUpdate(t, dps) && this.onGesture(t),
+          onGyro: (t, dps) => {
+            if (dps > 2 * TWIST_MAX_DPS) this.fastAt = t // a flick under way isn't a twist
+            return this.detector && this.detector.gyroUpdate(t, dps) && this.onGesture(t)
+          },
           onAccel: (t, a) => this.detector && this.detector.accelUpdate(t, a) && this.onGesture(t),
         })
         this.detailed = settings().diagnostics.detailed
@@ -206,7 +224,13 @@ Page(
       onAim(a) {
         this.roll = a.roll
         if (this.dim) return this.onDim(a)
+        if (this.twistToDim(a)) return
         const r = this.aimer.update(a.t, a.ready, this.devices, a.heading, a.pitch)
+        // where the wrist was when a lock on a twistable device began
+        if (r.state === STATE.LOCKED && r.best && this.dimKind(this.byId[r.best.id])) {
+          if (!this.twistLock || this.twistLock.id !== r.best.id) this.twistLock = { id: r.best.id, roll: a.roll, pitch: a.pitch }
+          this.twistLock.t = a.t
+        }
         if (r.state !== STATE.RESTING) this.keepAwake()
         this.history.push({
           t: a.t,
@@ -351,16 +375,37 @@ Page(
         return true
       },
 
-      startDim() {
-        const { state, best } = this.last
-        if (!best || (state !== STATE.CANDIDATE && state !== STATE.LOCKED)) return
-        const d = this.byId[best.id]
-        if (!d) return
-        // twist: brightness for lights, volume for media players that take it
-        const kind = d.volume ? 'volume' : d.dimmable || domainOf(d.id) === 'light' ? 'light' : null
+      /** 'light' (brightness), 'volume' (media players that take it), or null: what a twist changes. */
+      dimKind(d) {
+        if (!d) return null
+        return d.volume ? 'volume' : d.dimmable || domainOf(d.id) === 'light' ? 'light' : null
+      },
+
+      /** Twist without holding: see TWIST_START. Returns true when it started dimming. */
+      twistToDim(a) {
+        const lock = this.twistLock
+        if (!lock || this.busy || this.confirming || a.t - lock.t > TWIST_LOCK_MEMORY_MS) return false
+        if (Date.now() - (this.firedAt || 0) < GESTURE_COOLDOWN_MS) return false // the arm settling after a trigger
+        if (Math.abs(a.pitch - lock.pitch) > 12 || a.gyroDps > TWIST_MAX_DPS) return false
+        if (a.t - (this.fastAt || 0) < 1500) return false // a flick and the wrist coming back
+        if (Math.abs(angleDiff(a.roll, lock.roll)) < TWIST_START) return false
+        this.twistLock = null
+        this.startDim(lock.id, { roll0: lock.roll, pitch0: lock.pitch, auto: true })
+        return !!this.dim
+      },
+
+      startDim(id = null, opts = {}) {
+        if (!id) {
+          const { state, best } = this.last
+          if (!best || (state !== STATE.CANDIDATE && state !== STATE.LOCKED)) return
+          id = best.id
+        }
+        const d = this.byId[id]
+        const kind = this.dimKind(d)
         if (!kind) return
         const at = this.history[this.history.length - 1] || null
-        this.dim = { id: d.id, kind, roll0: this.roll, step: 0, at } // the purple screen says it: no buzz
+        // auto: started by twisting (no hold), so it ends when the wrist settles or the arm drops
+        this.dim = { id: d.id, kind, roll0: opts.roll0 === undefined ? this.roll : opts.roll0, pitch0: opts.pitch0, auto: !!opts.auto, step: 0, at, movedAt: Date.now(), startedAt: Date.now() } // the purple screen says it: no buzz
         this.look('dim')
         setText(this.nameW, fit(d.name, 24))
         setText(this.hintW, this.dimHint(0))
@@ -375,14 +420,25 @@ Page(
       onDim(a) {
         // volume: a full twist is the per-twist limit set in Home Assistant, which also enforces it
         const step = this.dim.kind === 'volume' ? volumeStep(this.dim.roll0, a.roll, settings().volume.step) : dimStep(this.dim.roll0, a.roll)
-        if (step === this.dim.step) return
-        this.dim.step = step
-        setText(this.hintW, this.dimHint(step))
+        const now = Date.now()
+        if (step !== this.dim.step) {
+          this.dim.step = step
+          this.dim.movedAt = now
+          setText(this.hintW, this.dimHint(step))
+          this.keepAwake()
+        }
+        if (!this.dim.auto) return // held: sent on release
+        // twisted without a hold: sent once the wrist is still, or when the arm drops;
+        // turned back to where it started and left there: nothing is sent
+        const dropped = this.dim.pitch0 !== undefined && Math.abs(a.pitch - this.dim.pitch0) > 30
+        const settled = now - this.dim.movedAt > TWIST_SETTLE_MS
+        if (dropped || (settled && (this.dim.step || now - this.dim.startedAt > 3 * TWIST_SETTLE_MS))) this.finishDim()
       },
 
       finishDim() {
         const { id, step, at, kind } = this.dim
         this.dim = null
+        this.twistLock = null
         this.justDimmed = true
         setTimeout(() => {
           this.justDimmed = false
@@ -420,6 +476,8 @@ Page(
         // one gesture, one toggle: the arm settling and the buzzes that follow must not trigger again
         if (this.detector) this.detector.quiet(Date.now() + GESTURE_COOLDOWN_MS)
         this.busy = true // no buzz here: one when it's done (or failed) is enough
+        this.firedAt = Date.now()
+        this.twistLock = null
         setText(this.nameW, fit(d.name, 24))
         setText(this.resultW, action === 'dim' || action === 'volume' ? `${ctx.value > 0 ? '+' : ''}${ctx.value}%: sending…` : 'Sending…')
         const t0 = Date.now()
@@ -585,6 +643,7 @@ Page(
             runnerUp: ctx.runnerUp || null,
             correctedFrom: ctx.correctedFrom || null,
             room: this.room ? this.room.id : null,
+            roomSure: this.room ? this.room.sure : null,
             ok: !!(r && r.ok),
             error: (r && r.error) || null,
             ms,

@@ -8,6 +8,8 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Added
 
+- Dim without holding: once a dimmable light (or a media player's volume) is locked, slowly roll your wrist and Point switches to the dimmer; hold still for a second and it's sent. Holding the button or screen while twisting still works.
+- When the watch is sure which room you're in, devices painted only in other rooms can't be picked any more, so a light in the next room never wins through a wall or doorway. When it only just placed you, the room name shows a "?" and other rooms' devices count half as before.
 - Install pages (test builds and releases) list the watch models and show the QR code for the package built for the one you pick; releases also attach every package and the store bundle (`.zab`).
 - The README lists which watches Kestrel works on, from running it on each model's emulator image. Watches still on Zepp OS 3.x (Falcon, Cheetah, Cheetah Pro, T-Rex Ultra, Active) aren't supported: their firmware crashes running the app.
 - Open on Point: start the app straight on Point (More → Open on), so assigning Kestrel to the watch's shortcut button goes straight to pointing. Back goes to the home screen. Also in Home Assistant and the Zepp app's settings page.
