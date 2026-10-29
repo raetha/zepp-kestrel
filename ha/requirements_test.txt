@@ -1,4 +1,4 @@
 # Home Assistant test harness for the Kestrel component (Python 3.14).
-pytest-homeassistant-custom-component==0.13.373
+pytest-homeassistant-custom-component==0.13.375
 pytest-cov==7.1.0
 mypy==2.4.0
