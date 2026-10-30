@@ -12,6 +12,16 @@ With Detailed diagnostics on, Point notes the battery level as it opens and clos
 
 Already done: sensors and the aim loop run only while Point or Paint is open; the screen goes off as usual when the wrist drops; buzzes cut to two per action; diagnostics data isn't even sent unless asked for; syncs and saves send only what changed.
 
+## Pointing and rooms: waiting on detailed diagnostics
+
+Detailed diagnostics now record what's needed to decide these (`docs/design.md` → aim traces):
+
+- **Steadier heading: gyro + compass.** The compass updates about 4 times a second and was 7–12° out between visits. The gyro (25 Hz) is smooth and quick but drifts; a complementary filter (gyro for short-term turns, compass for the long-term direction) would smooth and speed up the heading, but can't fix an offset the compass has for minutes. Zepp OS gives apps only the fused compass angle and whether it's calibrated, no raw magnetometer. Traces now carry `yaw` (the integrated gyro turn) next to the compass heading: check how they differ while the arm is still and while it moves.
+- **Compass or standing place?** The same device read 12° apart from "the same spot". A metre to the side changes the bearing to a light 3 m away by about 18°, so some of that may be where you stood. Missed-aim traces with steps since opening tell the two apart.
+- **Keep the room while you haven't walked.** Step count since the last clear room match: no steps, same room, no scan needed (faster, and saves the 3 s scan every minute). Traces now carry steps per room check.
+- **Room probabilities instead of a pick.** Weight other rooms' spots by how well each room matched instead of all-or-half. A probability model was right more often in one home's held-out scans (12 of 18 against a few) but also confidently wrong more often; retest after recalibrating with Bermuda's proxies in place.
+- **Floors from the barometer.** Relative air pressure tells floors apart within minutes, but weather moves it by several metres' worth over hours: it would need a reference (a pressure sensor in Home Assistant).
+
 ## Before the first release: more watches
 
 The emulator sweep (docs/development.md → "Checking other watch models"; results in `watch/models.json` and the README table) found every model on Zepp OS 4 or later working. Worth doing before the first release:

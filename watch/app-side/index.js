@@ -120,7 +120,7 @@ AppSideService(
       // purpose only: not the aim traces and trails recorded as the app is used). Phone
       // storage is small: if the log can't be written, it's reset.
       let stored = false
-      if (entry && (entry.test === 'point' || entry.test === 'trail')) return { stored, forwarded, error }
+      if (entry && ['point', 'trail', 'paint'].includes(entry.test)) return { stored, forwarded, error }
       try {
         const log = readLog(this.settings)
         log.unshift(summarize(entry))

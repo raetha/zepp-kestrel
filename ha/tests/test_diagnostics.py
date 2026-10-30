@@ -41,6 +41,7 @@ async def test_what_the_watch_records_is_kept_only_with_detailed_diagnostics(
     # off (the default): aim traces, room scans and plain trails are dropped; a trail with an error is kept
     assert (await _probe(client, token, {"test": "point", "trace": [[0, 1]]}))["kept"] is False
     assert (await _probe(client, token, {"test": "room", "scans": []}))["kept"] is False
+    assert (await _probe(client, token, {"test": "paint", "trace": [[0, 1]]}))["kept"] is False
     assert (await _probe(client, token, {"test": "trail", "trail": [[1, "open", "home"]]}))["kept"] is False
     assert (await _probe(client, token, {"test": "trail", "trail": [[1, "error", {"where": "x"}]]}))["kept"] is True
     # probes run on purpose are always kept, and only they become events

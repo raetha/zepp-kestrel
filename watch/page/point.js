@@ -29,7 +29,7 @@
 
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked, note } from './trail.js'
-import { batteryLevel } from './sensors.js'
+import { batteryLevel, stepCount } from './sensors.js'
 import { setWakeUpRelaunch, setPageBrightTime, resetPageBrightTime } from '@zos/display'
 import { event as uiEvent } from '@zos/ui'
 import { text, setText, button, clear, rect, setColor, setTextColor, fit, ask, listenKeys, tickRing, COLOR, SIZE } from './ui.js'
@@ -63,6 +63,13 @@ const LOOK = {
 }
 const FLASH_MS = 1200 // how long the done / failed colour stays
 const HISTORY_MS = 4000 // aim kept for gestures, corrections and traces
+// Detailed diagnostics only (tools/replay.mjs reads these):
+const HISTORY_DETAILED_MS = 12000 // longer traces
+const TRACE_COLUMNS = 'ms,heading,pitch,roll,ready,state,best,score,lead,gyro,cal,yaw'
+const MISS_MIN_MS = 1500 // an aim held this long that ends without a trigger is sent as a miss
+const MISS_GAP_MS = 5000 // ...at most one per this long
+const MISS_MAX = 15 // ...and this many per visit to Point
+const ROOM_LOG = 3 // room checks kept for each trace
 const CORRECT_MS = 5000 // how long "Not it?" stays up
 const HOLD_MS = 450 // holding the button or the screen this long starts dimming
 // Twist to dim with no hold: locked on a dimmable light (or a media player's volume), turn the
@@ -160,6 +167,10 @@ Page(
         const sure = !!r.room && (r.source === 'sensor' || clearMatch(r.ranked))
         const changed = (r.room && r.room.id) !== (this.room && this.room.id) || sure !== !!(this.room && this.room.sure)
         this.room = r.room ? { ...r.room, sure } : null
+        if (this.detailed) {
+          this.roomLog.push({ t: Date.now(), source: r.source, room: r.room ? r.room.id : null, sure, ranked: r.ranked, scan: r.scan || null, steps: this.stepsSince() })
+          while (this.roomLog.length > ROOM_LOG) this.roomLog.shift()
+        }
         if (changed) this.applyRoom()
         this.learnRoom(r)
         // tell Home Assistant (its Room sensor) when the watch placed itself somewhere new
@@ -202,14 +213,21 @@ Page(
           onSelectPress: () => this.holdStart(),
           onSelectRelease: () => this.holdEnd(),
         })
+        this.detailed = settings().diagnostics.detailed
+        this.openedAt = Date.now()
+        if (this.detailed) {
+          this.steps0 = stepCount() // steps taken since Point opened: did the arm's owner move between aims?
+          this.roomLog = []
+          this.missSent = 0
+        }
         this.aim = startAim((a) => this.onAim(a), {
+          yaw: !!this.detailed,
           onGyro: (t, dps) => {
             if (dps > 2 * TWIST_MAX_DPS) this.fastAt = t // a flick under way isn't a twist
             return this.detector && this.detector.gyroUpdate(t, dps) && this.onGesture(t)
           },
           onAccel: (t, a) => this.detector && this.detector.accelUpdate(t, a) && this.onGesture(t),
         })
-        this.detailed = settings().diagnostics.detailed
         if (this.detailed) note('battery', { page: 'point', at: 'open', level: batteryLevel() }) // drain per minute of pointing (tools/replay.mjs)
         // opened straight from launch (Open on Point): the quiet sync Home would have done
         if (firstSyncOfRun()) {
@@ -242,8 +260,14 @@ Page(
           best: r.best ? r.best.id : null,
           runnerUp: r.runnerUp ? r.runnerUp.id : null,
           lead: r.best ? (r.runnerUp && r.runnerUp.weight ? Math.min(99, r.best.weight / r.runnerUp.weight) : 99) : 0,
+          score: r.best ? r.best.score : null,
+          gyro: a.gyroDps,
+          cal: a.calibrated,
+          yaw: a.yaw,
         })
-        while (this.history.length && a.t - this.history[0].t > HISTORY_MS) this.history.shift()
+        const keep = this.detailed ? HISTORY_DETAILED_MS : HISTORY_MS
+        while (this.history.length && a.t - this.history[0].t > keep) this.history.shift()
+        if (this.detailed) this.watchForMiss(a)
         if (this.confirming) return
         this.calibration(a)
         if (this.dwell && this.onDwell(a, r)) return
@@ -396,6 +420,7 @@ Page(
       },
 
       startDim(id = null, opts = {}) {
+        if (this.span) this.span.fired = true
         if (!id) {
           const { state, best } = this.last
           if (!best || (state !== STATE.CANDIDATE && state !== STATE.LOCKED)) return
@@ -470,6 +495,7 @@ Page(
       },
 
       fire(id, confirmed, ctx = {}) {
+        if (this.span) this.span.fired = true
         const d = this.byId[id] || { name: id }
         const action = ctx.action || 'toggle'
         this.awakeAt = 0
@@ -627,28 +653,67 @@ Page(
       record(id, ctx, r, ms) {
         if (!this.detailed) return
         const t0 = ctx.at ? ctx.at.t : Date.now()
+        this.sendTrace({
+          via: ctx.via || null,
+          action: ctx.action || 'toggle',
+          value: ctx.value === undefined ? null : ctx.value,
+          target: id,
+          runnerUp: ctx.runnerUp || null,
+          correctedFrom: ctx.correctedFrom || null,
+          ok: !!(r && r.ok),
+          error: (r && r.error) || null,
+          ms,
+        }, t0, t0 - 8000, t0 + 500)
+      },
+
+      /**
+       * An aim held out (ready) for a while that ended without a trigger: the
+       * misses tuning needs most ("it didn't lock until I moved"). Detailed only.
+       */
+      watchForMiss(a) {
+        if (a.ready && !this.dim && !this.confirming) {
+          if (!this.span) this.span = { t0: a.t, fired: false }
+          return
+        }
+        const span = this.span
+        this.span = null
+        if (!span || span.fired || a.t - span.t0 < MISS_MIN_MS) return
+        if (this.missSent >= MISS_MAX || a.t - (this.missAt || 0) < MISS_GAP_MS) return
+        this.missSent++
+        this.missAt = a.t
+        // the device it had most in mind, if any
+        const counts = {}
+        for (const h of this.history) if (h.t >= span.t0 && h.best) counts[h.best] = (counts[h.best] || 0) + 1
+        const target = Object.keys(counts).sort((x, y) => counts[y] - counts[x])[0] || null
+        this.sendTrace({ via: 'none', action: null, value: null, target, ok: null, heldMs: a.t - span.t0 }, a.t, span.t0 - 500, a.t)
+      },
+
+      stepsSince() {
+        const now = this.steps0 === null || this.steps0 === undefined ? null : stepCount()
+        return now === null ? null : Math.max(0, now - this.steps0)
+      },
+
+      sendTrace(fields, t0, from, to) {
         const r1 = (v) => (v === null || v === undefined ? null : Math.round(v * 10) / 10)
+        const r2 = (v) => (v === null || v === undefined ? null : Math.round(v * 100) / 100)
         const trace = this.history
-          .filter((h) => h.t <= t0 + 500)
-          .map((h) => [h.t - t0, r1(h.heading), r1(h.pitch), r1(h.roll), h.ready ? 1 : 0, h.state, h.best])
+          .filter((h) => h.t >= from && h.t <= to)
+          .map((h) => [h.t - t0, r1(h.heading), r1(h.pitch), r1(h.roll), h.ready ? 1 : 0, h.state, h.best, r2(h.score), r1(h.lead), Math.round(h.gyro || 0), h.cal ? 1 : 0, r1(h.yaw)])
+        const now = Date.now()
         ask(
           this,
           METHOD.PROBE_LOG,
           {
             test: 'point',
-            at: Date.now(),
-            via: ctx.via || null,
-            action: ctx.action || 'toggle',
-            value: ctx.value === undefined ? null : ctx.value,
-            target: id,
-            runnerUp: ctx.runnerUp || null,
-            correctedFrom: ctx.correctedFrom || null,
+            at: now,
+            ...fields,
             room: this.room ? this.room.id : null,
             roomSure: this.room ? this.room.sure : null,
-            ok: !!(r && r.ok),
-            error: (r && r.error) || null,
-            ms,
-            columns: 'ms,heading,pitch,roll,ready,state,best',
+            // room checks so far (raw scans: addresses are pseudonymised in diagnostics), steps since Point opened
+            rooms: (this.roomLog || []).map((x) => ({ ...x, t: undefined, ago: now - x.t })),
+            steps: this.stepsSince(),
+            openFor: now - this.openedAt,
+            columns: TRACE_COLUMNS,
             trace,
           },
           15000,

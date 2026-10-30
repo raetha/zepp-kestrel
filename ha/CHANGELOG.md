@@ -17,7 +17,7 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 ### Added
 
 - Paints and rooms take just the entries a watch changed, merged into Home Assistant's copy, instead of whole sections.
-- Detailed diagnostics: a switch per watch (and in Configure) that has the watch also send its aim traces, screen and button trail and room scans for one week, then turns itself off. Without it, only probes run on purpose and trails that hold an error are kept. Kept results are dropped after 14 days, and the watch's own records no longer fill Home Assistant's event history.
+- Detailed diagnostics: a switch per watch (and in Configure) that has the watch also send its aim traces (including aims that never triggered), Paint sweeps, screen and button trail and room scans for one week, then turns itself off. Without it, only probes run on purpose and trails that hold an error are kept. Kept results are dropped after 14 days, and the watch's own records no longer fill Home Assistant's event history.
 - Diagnostics downloads are safe to attach to a public issue: no token hashes or network addresses, and Bluetooth addresses are replaced by codes that stay consistent within one download.
 - A watch can only ask for actions that fit the device: toggle anything it's offered, dim lights, change media players' volume. Anything else is refused instead of being treated as a toggle.
 - Twist volume for media players, with safety limits enforced here: at most one twist a second per watch, at most the per-twist change (20% by default), and never above the volume limit by twisting (80% by default). Volume limit and Volume change per twist are entities and Configure settings per watch.

@@ -43,6 +43,13 @@ To test without your own devices nearby (at work, say), create a helper in Home 
 
 **8. Rooms.** More → Rooms lists your Home Assistant areas. Calibrate each room you point in, and any room you stand in often even if you don't point there (an uncalibrated room gets taken for whichever room sounds most like it): walk around it for three short Bluetooth scans. Paint devices afterwards, from inside each room. When the watch is sure which room you're in, only devices painted from that room (and paints made without a room) can be picked, so a light in the next room that lines up through a wall or doorway never wins; to use it from here, paint it again from here. When it only just placed you (the room name shows a "?"), devices painted in other rooms count half, so a wrong guess doesn't hide them (open-plan rooms often sound alike to Bluetooth; calibration says so). "Where am I?" tests it. If you already track rooms in Home Assistant (for example Bermuda), choose that sensor in the integration's options instead.
 
+Better room detection. The watch tells rooms apart by which Bluetooth devices it hears and how loudly, so it does best with a few devices that stay put and advertise all the time (smart plugs, bulbs, hubs, Bluetooth proxies, a cheap beacon). It ignores phones, watches and other devices that change their address. Many homes have only a handful; with the same few heard everywhere, neighbouring rooms sound alike. Ways to improve it:
+- Calibrate again whenever the Bluetooth around you changes: new or moved plugs, bulbs or Bluetooth proxies (for example when setting up Bermuda).
+- Add one fixed device per hard room: anything that advertises over Bluetooth helps, ideally where the room's neighbours can barely hear it. An ESPHome board can advertise as a beacon (ESPHome's BLE beacon component; check it works alongside a Bluetooth proxy on the same board).
+- Use a Home Assistant area sensor instead. Bermuda (with a Bluetooth proxy in each room) tracks devices by area; if it can follow your phone (Home Assistant's Private BLE Device integration tracks an iPhone) or your watch, choose that sensor under Room from. It then reflects where that device is, so it fits best when the phone stays on you.
+
+The phone can't help on its own: the Zepp app gives Kestrel no access to the phone's location or Bluetooth, and indoors phone location is metres off, coarser than a room.
+
 **9. Launch from the shortcut key.** More → Open on: Point. Then assign Kestrel to the watch's shortcut button in the watch's own settings (where it lets you choose an app for the button). Pressing it opens Kestrel straight on Point; back goes to the home screen.
 
 **10. Scenes and scripts as virtual spots.** A scene, script or button has no place in the room, so give it one: Paint → Scenes & more, pick it, and paint any spot you like (the sofa for a movie scene, the window for "close all blinds"). Pointing there runs it.
@@ -218,6 +225,7 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 - **"Phone not reachable"**: the Zepp app must be running on the phone (in the background is fine) and connected to the watch over Bluetooth.
 - **"Kestrel only works on your home network"** or **"Home Assistant not reachable"**: the phone must be on your home Wi-Fi (or a VPN into it). Kestrel never goes through Home Assistant Cloud.
 - **Pairing can't find Home Assistant**: your phone must be on the home Wi-Fi, with the Kestrel integration added. Choose Type address on the watch and enter Home Assistant's IP (and port, if not 80 or 8123). More shows the address in use once paired.
+- **Wrong room, or the room shows "?"**: calibrate the room again (and any room nearby you haven't calibrated), especially after adding or moving Bluetooth devices; see Better room detection under Rooms above.
 - **Nothing locks on when pointing**: calibrate the compass (the Compass app, or turn the watch in a circle when asked, until the dots round the edge go green), then paint again from where you stand.
 - **Two devices get mixed up**: paint each of them from where you stand when you use them, sweeping only across the device itself (a narrow sweep is a precise paint). If Paint says they're too close from there, paint them from another spot as well. Use **Not it?** when it picks the wrong one: it teaches the watch where you aimed.
 - **Wrong device triggers**: use "Not it?" right after to correct it, or paint again from that spot.
@@ -228,7 +236,8 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 By default Kestrel keeps little: probes you run on purpose (More → Probes) and, when something goes wrong on the watch, the record of screens, buttons and errors leading up to it. Nothing about where you point, your rooms' Bluetooth surroundings or your battery is kept.
 
 **Detailed diagnostics** (a switch on each watch's device page, also under Configure) has the watch also send, for one week before it turns itself off:
-- the aim of the few seconds before each trigger, to tune pointing;
+- the aim of the few seconds before each trigger, and of aims held out that never triggered, to tune pointing (with the room checks made while pointing, and how many steps you took since opening Point, never your step count itself);
+- the readings of each Paint sweep;
 - the record of screens, buttons and swipes of every run, and battery levels while pointing;
 - the raw Bluetooth scans of room calibrations.
 

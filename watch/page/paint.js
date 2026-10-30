@@ -8,7 +8,8 @@ import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
 import { text, setText, button, clear, fit, ask, listenKeys, rect, setColor, tickRing, COLOR, SIZE } from './ui.js'
 import { Circling } from '../lib/circling.js'
 import { startAim } from './aim.js'
-import { targets, paints, setPaint, areas, rooms } from './store.js'
+import { targets, paints, setPaint, areas, rooms, settings } from './store.js'
+import { METHOD } from '../lib/protocol.js'
 import { targetsInArea, areaChoices, ALL, ACTION_DOMAINS } from '../lib/areas.js'
 import { syncSoon } from './sync.js'
 import { detectRoom } from './room.js'
@@ -179,6 +180,9 @@ Page(
         this.onSelect = null
         clear(this.widgets)
         const samples = []
+        const raw = [] // every reading while recording, kept or not (detailed diagnostics)
+        const detailed = settings().diagnostics.detailed
+        let roomCheck = null
         let calibrated = true
         let noCompass = false
         this.aim = startAim((a) => {
@@ -196,7 +200,8 @@ Page(
           if (this.recording && a.calibrated && a.heading !== null && Math.abs(a.pitch) <= 75 && Math.abs(a.roll) <= 45) {
             samples.push({ heading: a.heading, pitch: a.pitch })
           }
-        })
+          if (this.recording && detailed) raw.push([a.t, a.heading, a.pitch, a.roll, Math.round(a.gyroDps || 0), a.calibrated ? 1 : 0, a.yaw])
+        }, { yaw: detailed })
         pauseDropWristScreenOff({ duration: 0 })
         this.awake = true
         // which room this is painted from: known from the list, or a short scan now
@@ -205,6 +210,7 @@ Page(
           detectRoom((m, p, t) => ask(this, m, p, t))
             .then((r) => {
               this.room = r.room
+              roomCheck = { source: r.source, room: r.room ? r.room.id : null, ranked: r.ranked, scan: r.scan || null }
             })
             .catch(() => null)
         }
@@ -273,8 +279,30 @@ Page(
         haptics.done()
         const spot = makeSpot(samples)
         if (spot && this.room) spot.room = this.room.id
+        if (detailed) this.recordSweep(spot, raw, roomCheck)
         clear([this.bigW])
         this.saved(spot)
+      },
+
+      /** The whole sweep, for tuning (detailed diagnostics only). */
+      recordSweep(spot, raw, roomCheck) {
+        const r1 = (v) => (v === null || v === undefined ? null : Math.round(v * 10) / 10)
+        const t0 = raw.length ? raw[0][0] : 0
+        ask(
+          this,
+          METHOD.PROBE_LOG,
+          {
+            test: 'paint',
+            at: Date.now(),
+            target: this.target ? this.target.id : null,
+            spot: spot || null,
+            room: this.room ? this.room.id : null,
+            roomCheck,
+            columns: 'ms,heading,pitch,roll,gyro,cal,yaw',
+            trace: raw.map((x) => [x[0] - t0, r1(x[1]), r1(x[2]), r1(x[3]), x[4], x[5], r1(x[6])]),
+          },
+          15000,
+        ).catch(() => null)
       },
 
       saved(spot) {

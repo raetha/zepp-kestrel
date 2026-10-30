@@ -6,6 +6,7 @@ import {
   Gyroscope,
   Compass,
   Battery,
+  Step,
   FREQ_MODE_LOW,
   FREQ_MODE_NORMAL,
   FREQ_MODE_HIGH,
@@ -85,6 +86,16 @@ export const SENSORS = { accel, gyro, compass }
 export function batteryLevel() {
   try {
     const v = new Battery().getCurrent()
+    return Number.isFinite(v) ? v : null
+  } catch (e) {
+    return null
+  }
+}
+
+/** Today's step count, or null if it can't be read (needs data:user.hd.step). */
+export function stepCount() {
+  try {
+    const v = new Step().getCurrent()
     return Number.isFinite(v) ? v : null
   } catch (e) {
     return null

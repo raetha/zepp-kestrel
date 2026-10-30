@@ -25,7 +25,7 @@ DETAILED_DIAGNOSTICS_FOR = 7 * 86400  # seconds: detailed diagnostics turn thems
 # Recorded by the watch as it's used (not run on purpose from Probes): kept only with detailed
 # diagnostics on (a trail also when it holds an error), and never fired as kestrel_probe events,
 # so Home Assistant's event history doesn't fill with aim traces.
-AUTO_PROBES = ("point", "trail", "room")
+AUTO_PROBES = ("point", "trail", "room", "paint")
 PROBES_SAVE_DELAY = 10  # seconds; probe results arrive in bursts
 STATUS_SAVE_DELAY = 30  # seconds; what watches report (last seen, room...) is saved lazily
 SEEN_EVERY = 60  # seconds; "last seen" moves on at most this often
