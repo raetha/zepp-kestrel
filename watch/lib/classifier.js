@@ -31,6 +31,14 @@ export const DEFAULTS = {
   lockScore: 0.5, // best score needed to lock
   lockMargin: 2, // best must beat the runner-up by this factor to lock
   lockHoldMs: 250, // ...for this long
+  // A device with nothing else painted anywhere near may lock further off its
+  // paint: the compass is often 7-12 degrees out from one visit to the next (real
+  // Balance 3: a light painted at 181 read 169 from the same spot, and stayed
+  // amber until the arm moved). Score 0.1 is about 2 spreads out (13 degrees at
+  // the narrowest), and only when it leads everything else 8x. A loose lock
+  // shows and triggers like any lock, but doesn't start instant toggle.
+  looseScore: 0.1,
+  looseMargin: 8,
 }
 
 /** Score 0..1 for one spot. */
@@ -82,7 +90,8 @@ export class Aimer {
   /**
    * @param t        ms timestamp
    * @param ready    aim gate passed (arm out, still, compass calibrated)
-   * @returns { state, best: {id, score} | null, runnerUp: {id, score} | null }
+   * @returns { state, best: {id, score} | null, runnerUp: {id, score} | null, loose? }
+ *          loose: locked only because nothing else is near (see looseScore)
    */
   update(t, ready, devices, heading, pitch) {
     if (!ready) {
@@ -93,19 +102,20 @@ export class Aimer {
     const ranked = rank(devices, heading, pitch, this.o)
     const best = ranked[0] || null
     const runnerUp = ranked[1] || null
-    if (!best || best.score < this.o.candidateScore) {
+    const leads = (margin) => !runnerUp || best.weight >= runnerUp.weight * margin
+    const loose = !!best && best.score < this.o.lockScore && best.score >= this.o.looseScore && leads(this.o.looseMargin)
+    if (!best || (best.score < this.o.candidateScore && !loose)) {
       this.lockSince = null
       this.lockId = null
       return { state: STATE.AIMING, best: null, runnerUp: null }
     }
-    const decisive =
-      best.score >= this.o.lockScore && (!runnerUp || best.weight >= runnerUp.weight * this.o.lockMargin)
+    const decisive = loose || (best.score >= this.o.lockScore && leads(this.o.lockMargin))
     if (decisive) {
       if (this.lockId !== best.id) {
         this.lockId = best.id
         this.lockSince = t
       }
-      if (t - this.lockSince >= this.o.lockHoldMs) return { state: STATE.LOCKED, best, runnerUp }
+      if (t - this.lockSince >= this.o.lockHoldMs) return { state: STATE.LOCKED, best, runnerUp, loose }
     } else {
       this.lockSince = null
       this.lockId = null

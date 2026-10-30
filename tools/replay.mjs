@@ -72,12 +72,23 @@ for (const p of probes.filter((x) => x.test === 'point' && Array.isArray(x.trace
   const aimer = new Aimer()
   const devices = devicesIn(p.room, p.roomSure)
   let last = null
+  let readyAt = null
+  let lockedAt = null
   for (const row of p.trace) {
     if (at(row, 'ms') > 0) break
     const h = at(row, 'heading')
     if (h === null || h === undefined) continue
     last = aimer.update(at(row, 'ms'), !!at(row, 'ready'), devices, h, at(row, 'pitch'))
+    if (!at(row, 'ready')) readyAt = lockedAt = null
+    else if (readyAt === null) readyAt = at(row, 'ms')
+    if (last.state === STATE.LOCKED && lockedAt === null) lockedAt = at(row, 'ms')
   }
+  // how long the arm was out and still before it locked (then, and with today's code)
+  const thenRows = p.trace.filter((row) => at(row, 'ms') <= 0)
+  const thenLocked = thenRows.find((row) => at(row, 'state') === STATE.LOCKED)
+  const thenReady = thenRows.find((row) => at(row, 'ready'))
+  const took = (a, b) => (a !== null && a !== undefined && b !== null && b !== undefined ? `${((b - a) / 1000).toFixed(1)}s` : 'never')
+  const lockTimes = ` lock ${took(thenReady && at(thenReady, 'ms'), thenLocked && at(thenLocked, 'ms'))} → ${took(readyAt, lockedAt)}${last && last.loose ? ' loose' : ''}`
   const wanted = p.target // a correction logs the right device as target
   const now = last && last.best ? last.best.id : null
   total++
@@ -85,7 +96,7 @@ for (const p of probes.filter((x) => x.test === 'point' && Array.isArray(x.trace
   const then = p.correctedFrom ? `${short(p.correctedFrom)} → ${short(p.target)}` : short(p.target)
   const state = last ? last.state : STATE.RESTING
   const ratio = last && last.best && last.runnerUp ? ` lead ${Math.min(99, last.best.weight / last.runnerUp.weight).toFixed(1)}x` : ''
-  console.log(`  ${new Date(p.at).toISOString().slice(5, 16)} ${p.via.padEnd(6)} ${then.padEnd(40)} now: ${state} ${short(now)}${ratio} (room ${p.room || '-'}${p.roomSure === false ? '?' : ''})`)
+  console.log(`  ${new Date(p.at).toISOString().slice(5, 16)} ${p.via.padEnd(6)} ${then.padEnd(40)} now: ${state} ${short(now)}${ratio}${lockTimes} (room ${p.room || '-'}${p.roomSure === false ? '?' : ''})`)
 }
 if (total) console.log(`  ${agree} of ${total} would pick the same device today`)
 

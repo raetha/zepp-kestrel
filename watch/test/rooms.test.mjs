@@ -40,6 +40,8 @@ test('no clear winner, no room', () => {
   assert.equal(pickRoom([{ id: 'a', name: 'A', score: 0.2 }]), null)
   assert.equal(pickRoom([{ id: 'a', name: 'A', score: 0.6 }, { id: 'b', name: 'B', score: 0.55 }]), null)
   assert.equal(pickRoom([{ id: 'a', name: 'A', score: 0.6 }, { id: 'b', name: 'B', score: 0.2 }]).id, 'a')
+  // an uncalibrated room scores about 0.5 against the room that sounds most like it: not enough
+  assert.equal(pickRoom([{ id: 'game', name: 'Game', score: 0.52 }, { id: 'entry', name: 'Entry', score: 0.41 }]), null)
 })
 
 test('spots count fully in their own room and untagged ones everywhere; other rooms count less', () => {

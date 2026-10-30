@@ -322,7 +322,8 @@ Page(
 
       /** Instant toggle: count down while locked; returns true when it fired. */
       onDwell(a, r) {
-        const lockedId = r.state === STATE.LOCKED && r.best ? r.best.id : null
+        // a loose lock (nothing else near, but well off the paint) doesn't count down
+        const lockedId = r.state === STATE.LOCKED && r.best && !r.loose ? r.best.id : null
         // keep feeding the aim while a request is out: treating busy as "not aimed"
         // re-armed the device after 1 s, so a slow reply let a still arm fire it again
         const d = this.dwell.update(a.t, lockedId)

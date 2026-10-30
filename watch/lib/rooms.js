@@ -68,7 +68,10 @@ export function rankRooms(rooms, scan) {
   return out
 }
 
-export const PICK = { minScore: 0.25, margin: 1.25 }
+// minScore: a room calibrated where you stand scores 0.66-0.99 on a real home's
+// scans; an uncalibrated room scored up to 0.52 against the room that sounded
+// most like it, and was taken for it.
+export const PICK = { minScore: 0.6, margin: 1.25 }
 
 /** The room to believe, or null when no room matches clearly. */
 export function pickRoom(ranked, o = PICK) {

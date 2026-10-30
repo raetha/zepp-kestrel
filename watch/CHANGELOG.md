@@ -8,6 +8,8 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Added
 
+- Faster, steadier locking on a device that has nothing else painted near it: when the compass reads well off from where you painted (it often drifts 7–12° between visits), Point still locks instead of staying amber until you move. Instant toggle still needs an ordinary lock.
+- Rooms: a Bluetooth scan has to match a room better before the watch believes it, so a room you haven't calibrated is no longer taken for the one that sounds most like it.
 - Dim without holding: once a dimmable light (or a media player's volume) is locked, slowly roll your wrist and Point switches to the dimmer; hold still for a second and it's sent. Holding the button or screen while twisting still works.
 - When the watch is sure which room you're in, devices painted only in other rooms can't be picked any more, so a light in the next room never wins through a wall or doorway. When it only just placed you, the room name shows a "?" and other rooms' devices count half as before.
 - Install pages (test builds and releases) list the watch models and show the QR code for the package built for the one you pick; releases also attach every package and the store bundle (`.zab`).

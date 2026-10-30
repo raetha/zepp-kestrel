@@ -77,6 +77,33 @@ test('Aimer does not lock when two devices are equally likely', () => {
   assert.equal(a.update(1000, true, twins, 90, 0).state, STATE.CANDIDATE)
 })
 
+// A real nursery light painted tightly at 181° read 169° from the same spot on
+// another day: the compass is often 7-12° out between visits.
+const nursery = { id: 'light.nursery', spots: [{ heading: 180.8, headingSpread: 0.5, pitch: 31, pitchSpread: 0.5 }] }
+
+test('a device with nothing else near locks loosely when the compass is well out', () => {
+  const a = new Aimer()
+  a.update(0, true, [nursery], 169, 33.5)
+  const r = a.update(300, true, [nursery], 169, 33.5)
+  assert.equal(r.state, STATE.LOCKED)
+  assert.equal(r.loose, true)
+  // close to the paint it's an ordinary lock
+  const b = new Aimer()
+  b.update(0, true, [nursery], 180, 31)
+  assert.equal(b.update(300, true, [nursery], 180, 31).loose, false)
+  // too far off, still nothing
+  const c = new Aimer()
+  c.update(0, true, [nursery], 160, 31)
+  assert.equal(c.update(300, true, [nursery], 160, 31).state, STATE.AIMING)
+})
+
+test('no loose lock with another device nearby', () => {
+  const near = { id: 'light.lamp2', spots: [{ heading: 160, headingSpread: 3, pitch: 31, pitchSpread: 1 }] }
+  const a = new Aimer()
+  a.update(0, true, [nursery, near], 169, 33.5)
+  assert.notEqual(a.update(300, true, [nursery, near], 169, 33.5).state, STATE.LOCKED)
+})
+
 // Spots painted on a real watch from one corner of a kitchen: an island light,
 // swept tightly, and a dining-room chandelier 18° away, swept widely.
 const island = { id: 'light.island', spots: [{ heading: 277.6, headingSpread: 6.1, pitch: 24.3, pitchSpread: 0.6, room: 'kitchen' }] }
