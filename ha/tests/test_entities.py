@@ -65,6 +65,10 @@ async def test_requests_report_last_seen_address_version_and_room(
     await hass.async_block_till_done()
     phone = hass.states.get(_entity(hass, watch["id"], "phone_version", "sensor"))
     assert phone.state == "0.1.0-dev.37" and phone.attributes["matches_watch"] is True
+    # a relaying phone side says its build in a header, on every request
+    await client.get("/api/kestrel/targets", headers={**h, "X-Kestrel-Side": "0.1.0-dev.39"})
+    await hass.async_block_till_done()
+    assert hass.states.get(_entity(hass, watch["id"], "phone_version", "sensor")).state == "0.1.0-dev.39"
     await client.get("/api/kestrel/sync?v=0.1.0-dev.38&s=0.1.0-dev.37", headers=h)
     await hass.async_block_till_done()
     phone = hass.states.get(_entity(hass, watch["id"], "phone_version", "sensor"))

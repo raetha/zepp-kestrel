@@ -9,7 +9,7 @@ Paint a device once (sweep your arm across it for about 15 seconds), then point 
 ## Architecture
 
 - **Watch** (`watch/`, Zepp OS device app): sensors, aim classification, triggers, room detection, haptics. Everything time-critical runs here, so aiming never waits on Bluetooth.
-- **Phone** (`watch/app-side/`, side service in the Zepp app): the only part that talks to Home Assistant. The watch sends `{seq, target, action}`; the phone de-duplicates by `seq` and calls HA.
+- **Phone** (`watch/app-side/`, side service in the Zepp app): the only part that reaches Home Assistant, and deliberately small. It finds Home Assistant, pairs, keeps the watch's token, and relays the requests the watch builds (`METHOD.RELAY`; `watch/lib/ha-api.js` builds them, `page/ui.js` `ask()` sends them) to `/api/kestrel/*` only, GET or POST, adding the token and an `X-Kestrel-Side` header with its own build. Why: the iPhone Zepp app doesn't reliably replace a side service when a new build is installed (`docs/development.md`), so features live on the watch and in Home Assistant; a phone side from before the relay still answers the requests by name (`ask()` falls back). Home Assistant drops repeated fires by `seq`.
 - **Settings page** (`watch/setting/`, in the Zepp app): the watch's settings (stored in Home Assistant) and probe results. Only store installs get it (sideloaded apps don't).
 - **Home Assistant**: the `kestrel` integration is required. The phone only talks to its `/api/kestrel/*` endpoints with the watch's own token, never to Home Assistant's general API or with a long-lived token.
 

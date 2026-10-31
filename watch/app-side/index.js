@@ -1,8 +1,12 @@
-// Side service: runs inside the Zepp app on the phone. The only part of
-// Kestrel that talks to Home Assistant (lib/ha-client.js does the work).
+// Side service: runs inside the Zepp app on the phone. Deliberately small: it finds
+// Home Assistant, pairs, keeps the watch's token, and relays the requests the watch
+// builds (METHOD.RELAY, lib/ha-api.js) to Kestrel's endpoints. The Zepp app doesn't
+// always replace this part when a new build is installed (docs/development.md), so
+// new features belong on the watch and in Home Assistant, not here.
 
 import { BaseSideService } from '@zeppos/zml/base-side'
-import { METHOD, Dedupe } from '../lib/protocol.js'
+import { METHOD } from '../lib/protocol.js'
+import { HaApi, relayable } from '../lib/ha-api.js'
 import { HaClient } from '../lib/ha-client.js'
 import { BUILD } from '../lib/version.js'
 
@@ -39,8 +43,6 @@ function readLog(settings) {
   }
 }
 
-const dedupe = new Dedupe()
-
 AppSideService(
   BaseSideService({
     onInit() {
@@ -66,30 +68,22 @@ AppSideService(
             return this.ha.pairStart(p.url, p.watchName, p.deviceId || null)
           case METHOD.PAIR_CONFIRM:
             return this.ha.pairConfirm(p.url, p.pairingId, p.code)
-          case METHOD.TAKE_OVER:
-            return this.ha.takeOver(String(p.from || ''))
           case METHOD.UNPAIR:
             this.ha.unpair()
             return { ok: true }
-          case METHOD.SYNC:
-            return this.mirror(await this.ha.sync(p.only || null, p.have || null, p.version || null, p.deviceId || null))
-          case METHOD.FIRE:
-            // the watch may retry over Bluetooth; never run a command twice
-            if (p.seq !== undefined && !dedupe.accept(p.seq)) return { ok: true, duplicate: true }
-            return this.ha.fire(p)
 
-          case METHOD.SAVE:
-            if (p.section !== 'paints' && p.section !== 'rooms') throw new Error('unknown section')
-            return this.ha.saveChanges(p.section, p.changes || {}, p.base)
-          case METHOD.SAVE_SETTINGS:
-            return this.mirror(await this.ha.saveSettings(p.settings || {}))
-          case METHOD.ROOM:
-            return { room: await this.ha.room(p.here || null) }
+          // Everything else for Home Assistant: the watch builds the request (lib/ha-api.js),
+          // this adds the token and tries Home Assistant's known addresses. Kestrel's endpoints only.
+          case METHOD.RELAY: {
+            const method = p.method || 'GET'
+            if (!relayable(p.path, method)) throw new Error('Not a Kestrel request')
+            const body = await this.ha.component(p.path, { method, body: p.body })
+            this.afterRelay(p.path, p.body, body)
+            return { relayed: true, body }
+          }
 
           case METHOD.HA_PING:
             return this.haPing()
-          case METHOD.PROBE_LOG:
-            return this.storeProbe(p)
           default:
             throw new Error(`unknown method ${req.method}`)
         }
@@ -110,40 +104,32 @@ AppSideService(
       }
     },
 
-    async storeProbe(entry) {
-      // Home Assistant first: it keeps the full result (raw traces included).
-      let forwarded = false
-      let error = null
-      try {
-        if (this.ha.status().paired) {
-          await this.ha.probe(entry)
-          forwarded = true
-        }
-      } catch (e) {
-        error = `Home Assistant: ${(e && e.message) || e}`
-      }
+    /** After a relayed request: keep the settings page's copies current. Never fails the request. */
+    afterRelay(path, sent, body) {
+      if (path.startsWith('/api/kestrel/sync') || path === '/api/kestrel/settings') this.mirror(body)
+      if (path === '/api/kestrel/probe') this.logProbe(sent)
+    },
 
-      // Then a small summary on the phone, for the settings page's list (probes run on
-      // purpose only: not the aim traces and trails recorded as the app is used). Phone
-      // storage is small: if the log can't be written, it's reset.
-      let stored = false
-      if (entry && ['point', 'trail', 'paint'].includes(entry.test)) return { stored, forwarded, error }
+    /**
+     * A small summary of a probe result on the phone, for the settings page's list (probes run
+     * on purpose only: not the aim traces, sweeps and trails recorded as the app is used). Home
+     * Assistant keeps the full result. Phone storage is small: if the log can't be written, it's reset.
+     */
+    logProbe(entry) {
+      if (!entry || ['point', 'trail', 'paint'].includes(entry.test)) return
       try {
         const log = readLog(this.settings)
         log.unshift(summarize(entry))
         let text = JSON.stringify(log.slice(0, LOG_MAX))
         if (text.length > LOG_MAX_CHARS) text = JSON.stringify(log.slice(0, 5))
         this.settings.setItem(LOG_KEY, text)
-        stored = true
       } catch (e) {
         try {
           this.settings.setItem(LOG_KEY, '[]')
         } catch (e2) {
           // leave it
         }
-        if (!error && !forwarded) error = `Phone storage: ${(e && e.message) || e}`
       }
-      return { stored, forwarded, error }
     },
 
     // The settings page (store installs) talks to us through settings storage keys.
@@ -176,7 +162,8 @@ AppSideService(
       if (!edit || typeof edit.settings !== 'object') return
       let msg
       try {
-        const r = this.mirror(await this.ha.saveSettings(edit.settings))
+        const api = new HaApi((path, opts) => this.ha.component(path, opts))
+        const r = this.mirror(await api.saveSettings({ settings: edit.settings }))
         msg = r.ok ? 'Saved. The watch picks it up when it next syncs.' : `Not saved: ${r.error}`
       } catch (e) {
         msg = `Not saved: ${(e && e.message) || e}`

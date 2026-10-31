@@ -14,6 +14,8 @@ import { onKey, offKey, onGesture, offGesture, KEY_SELECT, KEY_BACK, KEY_EVENT_C
 import { back } from '@zos/router'
 import { note, noteOnce, noteBuilds, appVersion, safe } from './trail.js'
 import { BUILD } from '../lib/version.js'
+import { METHOD, RELAYED } from '../lib/protocol.js'
+import { HaApi } from '../lib/ha-api.js'
 
 let SCREEN = { w: 480, h: 480 }
 try {
@@ -174,7 +176,44 @@ export function phoneBuildDiffers(st) {
   return phone
 }
 
+/**
+ * Ask the phone. Requests for Home Assistant (RELAYED in lib/protocol.js) are built
+ * here (lib/ha-api.js) and the phone side only relays them, so new features need no
+ * new phone side; a phone side from before the relay gets them by name instead.
+ * Resolves with the reply ({ ok: false, error } when Home Assistant or the phone
+ * refused); rejects only when the phone didn't answer.
+ */
 export function ask(page, method, params, timeout = 6000) {
+  const fn = RELAYED[method]
+  const g = appData()
+  if (!fn || (g && g.noRelay)) return askPhone(page, method, params, timeout)
+  const api = new HaApi(async (path, opts = {}) => {
+    const r = await askPhone(page, METHOD.RELAY, { path, method: opts.method || 'GET', body: opts.body }, timeout)
+    if (r && r.relayed) return r.body
+    throw Object.assign(new Error((r && r.error) || 'No reply'), { replied: true, noRelay: phoneMismatch(r) })
+  })
+  return api[fn](params || {}).catch((e) => {
+    if (e && e.noRelay) {
+      // an older phone side: it still knows the request by name
+      if (g) g.noRelay = true
+      return askPhone(page, method, params, timeout)
+    }
+    if (e && e.replied) return { ok: false, error: e.message }
+    throw e // the phone didn't answer
+  })
+}
+
+function appData() {
+  try {
+    const app = getApp()
+    return (app && app._options && app._options.globalData) || null
+  } catch (e) {
+    return null
+  }
+}
+
+/** One request to the phone side, with a backup timeout (see unstickHandshake). */
+export function askPhone(page, method, params, timeout = 6000) {
   unstickHandshake(page)
   const req = page.request({ method, params }, { timeout })
   return new Promise((resolve, reject) => {

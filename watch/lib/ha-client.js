@@ -1,6 +1,8 @@
-// Home Assistant client used by the side service (phone). Pure logic: the
-// network call (`fetch`) and persistent storage (`store`) are injected, so
-// Node tests can drive it with fakes.
+// Home Assistant transport used by the side service (phone): finding Home Assistant,
+// pairing, and `component()`, which sends one request to Kestrel's endpoints with the
+// watch's token. The requests themselves are built on the watch (lib/ha-api.js) and
+// relayed. Pure logic: the network call (`fetch`) and persistent storage (`store`)
+// are injected, so Node tests can drive it with fakes.
 //
 // It talks only to the Kestrel integration's /api/kestrel/* endpoints, with
 // the per-watch token from pairing: never Home Assistant's own API, never a
@@ -40,6 +42,7 @@ const KEY = {
 }
 
 const TOKEN_HEADER = 'X-Kestrel-Token'
+const SIDE_HEADER = 'X-Kestrel-Side'
 const LOCAL_TIMEOUT = 2500
 const REMOTE_TIMEOUT = 8000
 
@@ -160,14 +163,6 @@ export class HaClient {
     return { ok: true, haName: b.ha_name || 'Home Assistant', setups }
   }
 
-  /** Right after pairing: take over another watch's setup (paints, rooms, settings). */
-  async takeOver(from) {
-    const b = await this.component('/api/kestrel/takeover', { method: 'POST', body: { from } })
-    const p = this.pairing()
-    if (p && b && b.watch_id) this.savePairing({ ...p, watchId: b.watch_id })
-    return { ok: true }
-  }
-
   /** Note the address that answered; storage trouble never fails a request. */
   remember(url) {
     try {
@@ -197,7 +192,8 @@ export class HaClient {
         const res = await this.fetch({
           url: `${url}${path}`,
           method,
-          headers: { [TOKEN_HEADER]: p.token, 'Content-Type': 'application/json' },
+          // SIDE_HEADER: this phone side's build, on every request (Home Assistant's Phone app version sensor)
+          headers: { [TOKEN_HEADER]: p.token, [SIDE_HEADER]: BUILD, 'Content-Type': 'application/json' },
           body: body === undefined ? undefined : JSON.stringify(body),
           timeout: isLocal(url) ? LOCAL_TIMEOUT : REMOTE_TIMEOUT,
         })
@@ -221,63 +217,6 @@ export class HaClient {
       }
     }
     throw new Error(`Home Assistant not reachable (Kestrel works on your home network or a VPN)${lastErr ? `: ${lastErr.message || lastErr}` : ''}`)
-  }
-
-  /** Targets the watch can paint: [{ id, name, domain, area, dimmable, confirm }] */
-  async targets() {
-    const b = await this.component('/api/kestrel/targets')
-    return (b && b.targets) || []
-  }
-
-  /**
-   * Everything the watch keeps in sync. `only` limits it to some
-   * sections, e.g. ['paints']; `have` ({ targets: hash, paints: rev, ... })
-   * says what the watch already has, so unchanged parts are left out.
-   * -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room }
-   */
-  async sync(only = null, have = null, version = null, deviceId = null) {
-    const q = []
-    if (only) q.push(`only=${only.join(',')}`)
-    if (have) q.push(`have=${Object.keys(have).map((k) => `${k}:${have[k]}`).join(',')}`)
-    if (version) q.push(`v=${encodeURIComponent(version)}`)
-    q.push(`s=${encodeURIComponent(BUILD)}`) // the side service's own build: Home Assistant shows both
-    if (deviceId) q.push(`d=${encodeURIComponent(deviceId)}`) // the watch's unique id (Home Assistant keeps a hash)
-    return (await this.component(`/api/kestrel/sync${q.length ? `?${q.join('&')}` : ''}`)) || {}
-  }
-
-  /**
-   * Only what changed in one section (paints, rooms): { key: new value, or null if removed }.
-   * `base` is the revision the watch last had; stale = Home Assistant changed something else since.
-   * -> { ok, rev, stale }
-   */
-  async saveChanges(section, changes, base) {
-    const b = await this.component(`/api/kestrel/${section}`, { method: 'POST', body: { changes, base } })
-    return { ok: true, rev: b && b.rev, stale: !!(b && b.stale) }
-  }
-
-  /** Changed settings ({ group: {...} }) from the watch or the settings page. -> { ok, rev, settings } */
-  async saveSettings(settings) {
-    const b = await this.component('/api/kestrel/settings', { method: 'POST', body: { settings } })
-    return { ok: true, rev: b && b.rev, settings: b && b.settings }
-  }
-
-  /** The room from a Home Assistant sensor; `here` reports the room the watch placed itself in. */
-  async room(here = null) {
-    const b = await this.component(`/api/kestrel/room${here ? `?here=${encodeURIComponent(here)}` : ''}`)
-    return (b && b.room) || null
-  }
-
-  /** Run an action on a target. Returns { ok, state, needsConfirm, error } */
-  async fire({ target, action = 'toggle', value, seq, confirmed = false, via, room }) {
-    return this.component('/api/kestrel/fire', {
-      method: 'POST',
-      body: { target, action, value, seq, confirmed, via, room },
-    })
-  }
-
-  /** Probe results and trails, kept in Home Assistant (diagnostics). */
-  async probe(entry) {
-    return this.component('/api/kestrel/probe', { method: 'POST', body: entry })
   }
 
   /** Round trip to Home Assistant, for the latency probe. -> { ok, haMs } */

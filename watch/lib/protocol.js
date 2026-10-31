@@ -16,6 +16,25 @@ export const METHOD = {
   SAVE: 'kestrel.save', // { section: 'paints' | 'rooms', changes: { key: value | null }, base: rev } -> { ok, rev, stale }
   SAVE_SETTINGS: 'kestrel.saveSettings', // { settings: { group: {...} } } -> { ok, rev, settings } after a change on the watch
   ROOM: 'kestrel.room', // -> { room: { id, name } | null } from a Home Assistant sensor, if configured
+  // { path, method, body } -> { relayed: true, body } | { ok: false, error }: one request to Kestrel's
+  // endpoints (/api/kestrel/*) with this watch's token. The watch builds every request
+  // (lib/ha-api.js), so new features need no new phone side.
+  RELAY: 'kestrel.relay',
+}
+
+/**
+ * Requests the watch sends through RELAY (page/ui.js ask() -> lib/ha-api.js), by the
+ * HaApi method that builds each. A phone side from before RELAY still answers them
+ * by name. HA_PING stays a phone-side request: it times the phone <-> Home Assistant hop.
+ */
+export const RELAYED = {
+  [METHOD.SYNC]: 'sync',
+  [METHOD.SAVE]: 'save',
+  [METHOD.SAVE_SETTINGS]: 'saveSettings',
+  [METHOD.ROOM]: 'room',
+  [METHOD.FIRE]: 'fire',
+  [METHOD.PROBE_LOG]: 'probeLog',
+  [METHOD.TAKE_OVER]: 'takeOver',
 }
 
 /**

@@ -3,6 +3,7 @@
 DOMAIN = "kestrel"
 NAME = "Kestrel"
 
+SIDE_HEADER = "X-Kestrel-Side"  # the phone side's build, sent with every request (Phone app version)
 TOKEN_HEADER = "X-Kestrel-Token"
 EVENT_FIRED = "kestrel_fired"
 EVENT_PROBE = "kestrel_probe"  # M0 measurement results from a watch

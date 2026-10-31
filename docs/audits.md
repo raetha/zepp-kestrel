@@ -6,6 +6,18 @@ watch app (`watch/page`, `watch/lib`), the phone side service (`watch/app-side`,
 Assistant integration (`custom_components/kestrel`) and CI. Repeat before each
 release; record what changed.
 
+## 2026-10-31: the phone side became a relay
+
+The watch now builds its Home Assistant requests (`watch/lib/ha-api.js`) and the
+phone side relays them (`METHOD.RELAY` in `watch/app-side/index.js`). Checked: the
+relay only sends to the paired Home Assistant's home-network addresses (unchanged
+`component()`), only paths under `/api/kestrel/` with GET or POST, and refuses `..`,
+encoded dots, slashes and backslashes, whitespace and `#` (`relayable()`, tested), so
+a watch can't use the phone's token, or the phone, to reach Home Assistant's own API
+or anything else. Every Home Assistant endpoint still checks the token, the home
+network and each value as before; repeated fires are still dropped (by `seq`, in
+Home Assistant). The `X-Kestrel-Side` header is a build string, cut to 40 characters.
+
 ## 2026-10-24
 
 ### Quality scale

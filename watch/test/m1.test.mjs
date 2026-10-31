@@ -7,6 +7,7 @@ import { spotsForRoom } from '../lib/rooms.js'
 import { crowdedBy } from '../lib/paint.js'
 import { HaClient, normalizeUrl, expandAddress, DISCOVERY_CANDIDATES } from '../lib/ha-client.js'
 import { BUILD } from '../lib/version.js'
+import { HaApi, relayable } from '../lib/ha-api.js'
 
 // ------------------------------------------------------------------ painting
 function sweep(center, pitch, n = 40, width = 10) {
@@ -206,29 +207,29 @@ test('requests try the next home address, and skip one Home Assistant refuses as
     },
   })
   const ha = new HaClient({ fetch, store })
-  assert.deepEqual(await ha.targets(), [{ id: 'light.lamp' }])
+  assert.deepEqual(await ha.component('/api/kestrel/targets'), { targets: [{ id: 'light.lamp' }] })
   assert.equal(store.m['kestrel.lastGoodUrl'], 'http://192.168.1.5:8123')
-  await ha.targets()
+  await ha.component('/api/kestrel/targets')
   assert.equal(fetch.calls[fetch.calls.length - 1].url.startsWith('http://192.168.1.5'), true)
 
   // nothing at home answers: say why
   const away = new HaClient({ fetch: fakeFetch({}), store: memStore({ 'kestrel.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123'] }) }) })
-  await assert.rejects(away.targets(), /home network or a VPN/)
+  await assert.rejects(away.component('/api/kestrel/targets'), /home network or a VPN/)
 })
 
 test('a 401 from the component unpairs the watch', async () => {
   const store = memStore({ 'kestrel.pairing': JSON.stringify({ token: 'tok', urls: ['http://homeassistant.local:8123'] }) })
   const fetch = fakeFetch({ 'GET http://homeassistant.local:8123/api/kestrel/targets': async () => ({ status: 401, body: {} }) })
   const ha = new HaClient({ fetch, store })
-  await assert.rejects(ha.targets(), /pair again/)
+  await assert.rejects(ha.component('/api/kestrel/targets'), /pair again/)
   assert.equal(ha.status().paired, false)
 })
 
 test('without pairing nothing reaches Home Assistant', async () => {
   const ha = new HaClient({ fetch: async () => assert.fail('no request expected'), store: memStore() })
   assert.deepEqual(ha.status(), { paired: false })
-  await assert.rejects(ha.targets(), /Not paired/)
-  await assert.rejects(ha.fire({ target: 'light.lamp' }), /Not paired/)
+  await assert.rejects(ha.component('/api/kestrel/targets'), /Not paired/)
+  await assert.rejects(new HaApi((p, o) => ha.component(p, o)).fire({ target: 'light.lamp' }), /Not paired/)
 })
 
 test('spotProblem flags too few samples and unsteady compass readings', async () => {
@@ -273,10 +274,13 @@ test('sync, section saves, settings and room go to the component', async () => {
   const url = 'http://homeassistant.local'
   const store = memStore({ 'kestrel.pairing': JSON.stringify({ token: 'tok', urls: [url] }) })
   const fetch = fakeFetch({
-    // s=: the side service's own build, so Home Assistant can show both halves' versions
-    [`GET ${url}/api/kestrel/sync?s=${BUILD}`]: async () => ({ status: 200, body: { targets: [], paints: {}, paints_rev: 2 } }),
-    [`GET ${url}/api/kestrel/sync?only=paints&s=${BUILD}`]: async () => ({ status: 200, body: { paints: {}, paints_rev: 2 } }),
-    [`GET ${url}/api/kestrel/sync?have=targets:abc,paints:2&v=0.1.0-dev.9&s=${BUILD}`]: async () => ({ status: 200, body: { paints_rev: 2 } }),
+    [`GET ${url}/api/kestrel/sync`]: async (r) => {
+      // every request says which phone side sent it, so Home Assistant can show both halves' builds
+      assert.equal(r.headers['X-Kestrel-Side'], BUILD)
+      return { status: 200, body: { targets: [], paints: {}, paints_rev: 2 } }
+    },
+    [`GET ${url}/api/kestrel/sync?only=paints`]: async () => ({ status: 200, body: { paints: {}, paints_rev: 2 } }),
+    [`GET ${url}/api/kestrel/sync?have=targets:abc,paints:2&v=0.1.0-dev.9`]: async () => ({ status: 200, body: { paints_rev: 2 } }),
     [`POST ${url}/api/kestrel/paints`]: async (r) => {
       assert.deepEqual(JSON.parse(r.body), { changes: { 'light.b': null }, base: 3 })
       return { status: 200, body: { ok: true, rev: 5, stale: true } }
@@ -288,15 +292,18 @@ test('sync, section saves, settings and room go to the component', async () => {
     [`GET ${url}/api/kestrel/room?here=kitchen`]: async () => ({ status: 200, body: { room: null } }),
     [`GET ${url}/api/kestrel/room`]: async () => ({ status: 200, body: { room: { id: 'office', name: 'Office' } } }),
   })
-  const ha = new HaClient({ fetch, store })
+  // the watch builds each request (lib/ha-api.js); the phone side only relays it (component)
+  const client = new HaClient({ fetch, store })
+  const ha = new HaApi((path, opts) => client.component(path, opts))
   assert.equal((await ha.sync()).paints_rev, 2)
-  assert.deepEqual(await ha.sync(['paints']), { paints: {}, paints_rev: 2 })
-  assert.deepEqual(await ha.sync(null, { targets: 'abc', paints: 2 }, '0.1.0-dev.9'), { paints_rev: 2 })
+  assert.deepEqual(await ha.sync({ only: ['paints'] }), { paints: {}, paints_rev: 2 })
+  assert.deepEqual(await ha.sync({ have: { targets: 'abc', paints: 2 }, version: '0.1.0-dev.9' }), { paints_rev: 2 })
   // only what changed (a removal here), and whether Home Assistant changed something else meanwhile
-  assert.deepEqual(await ha.saveChanges('paints', { 'light.b': null }, 3), { ok: true, rev: 5, stale: true })
-  assert.equal((await ha.saveSettings({ dwell: { enabled: true } })).settings.dwell.seconds, 3)
-  assert.deepEqual(await ha.room(), { id: 'office', name: 'Office' })
-  assert.equal(await ha.room('kitchen'), null) // reports where the watch is
+  assert.deepEqual(await ha.save({ section: 'paints', changes: { 'light.b': null }, base: 3 }), { ok: true, rev: 5, stale: true })
+  await assert.rejects(ha.save({ section: 'secrets' }), /unknown section/)
+  assert.equal((await ha.saveSettings({ settings: { dwell: { enabled: true } } })).settings.dwell.seconds, 3)
+  assert.deepEqual(await ha.room(), { room: { id: 'office', name: 'Office' } })
+  assert.deepEqual(await ha.room({ here: 'kitchen' }), { room: null }) // reports where the watch is
 })
 
 test('painting next to another device says which one crowds it', () => {
@@ -319,9 +326,9 @@ test('after pairing, the watch can take over an earlier setup', async () => {
       return { status: 200, body: { ok: true, watch_id: 'old' } }
     },
   })
-  const ha = new HaClient({ fetch, store })
-  assert.deepEqual(await ha.takeOver('old'), { ok: true })
-  assert.equal(ha.pairing().watchId, 'old') // the token now belongs to the old watch's record
+  const client = new HaClient({ fetch, store })
+  const ha = new HaApi((path, opts) => client.component(path, opts))
+  assert.deepEqual(await ha.takeOver({ from: 'old' }), { ok: true, watchId: 'old' }) // the token now belongs to the old watch's record
 })
 
 test('pairing and syncing send the watch id so Home Assistant can recognise the watch', async () => {
@@ -332,9 +339,21 @@ test('pairing and syncing send the watch id so Home Assistant can recognise the 
       assert.deepEqual(JSON.parse(r.body), { watch_name: 'Balance 3', device_id: 'abc123' })
       return { status: 200, body: { pairing_id: 'p1', expires_in: 600 } }
     },
-    [`GET ${url}/api/kestrel/sync?s=${BUILD}&d=abc123`]: async () => ({ status: 200, body: { paints_rev: 1 } }),
+    [`GET ${url}/api/kestrel/sync?d=abc123`]: async () => ({ status: 200, body: { paints_rev: 1 } }),
   })
-  const ha = new HaClient({ fetch, store })
-  assert.equal((await ha.pairStart(url, 'Balance 3', 'abc123')).pairingId, 'p1')
-  assert.equal((await ha.sync(null, null, null, 'abc123')).paints_rev, 1)
+  const client = new HaClient({ fetch, store })
+  assert.equal((await client.pairStart(url, 'Balance 3', 'abc123')).pairingId, 'p1')
+  const ha = new HaApi((path, opts) => client.component(path, opts))
+  assert.equal((await ha.sync({ deviceId: 'abc123' })).paints_rev, 1)
+})
+
+test('the phone side relays only Kestrel requests', () => {
+  assert.equal(relayable('/api/kestrel/sync?only=paints', 'GET'), true)
+  assert.equal(relayable('/api/kestrel/fire', 'POST'), true)
+  assert.equal(relayable('/api/states', 'GET'), false) // Home Assistant's own API: never
+  assert.equal(relayable('/api/kestrel/../states', 'GET'), false)
+  assert.equal(relayable('/api/kestrel/%2E%2E/states', 'GET'), false)
+  assert.equal(relayable('/api/kestrel/fire', 'DELETE'), false)
+  assert.equal(relayable('http://evil/api/kestrel/x', 'GET'), false)
+  assert.equal(relayable(undefined, 'GET'), false)
 })

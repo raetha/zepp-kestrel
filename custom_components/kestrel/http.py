@@ -55,6 +55,7 @@ from .const import (
     PAIRING_TTL,
     PHONE_NOT_REPORTED,
     PROBE_MAX_BYTES,
+    SIDE_HEADER,
     SUPPORTED_DOMAINS,
     TOKEN_HEADER,
 )
@@ -121,7 +122,8 @@ class _WatchView(HomeAssistantView):
         watch = watches.by_token(request.headers.get(TOKEN_HEADER))
         if watch is None:
             return _error("Unknown watch: pair it again", HTTPStatus.UNAUTHORIZED)
-        watches.note_status(watch["id"], address=f"{request.scheme}://{request.host}")
+        side = request.headers.get(SIDE_HEADER, "").strip()[:40] or None
+        watches.note_status(watch["id"], address=f"{request.scheme}://{request.host}", phone_version=side)
         return hass, watches, watch
 
 
@@ -253,7 +255,7 @@ class SyncView(_WatchView):
         hass, watches, watch = auth
         version = request.query.get("v", "").strip()[:40]
         # s: the build of the side service in the Zepp app, which should match the watch's
-        phone = request.query.get("s", "").strip()[:40]
+        phone = request.query.get("s", "").strip()[:40] or request.headers.get(SIDE_HEADER, "").strip()[:40]
         if version and not phone:
             # the watch's build came through the phone, but the phone's own didn't: an older
             # side service (before builds were reported) is still running in the Zepp app
