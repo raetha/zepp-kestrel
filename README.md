@@ -236,7 +236,7 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 By default Kestrel keeps little: probes you run on purpose (More → Probes) and, when something goes wrong on the watch, the record of screens, buttons and errors leading up to it. Nothing about where you point, your rooms' Bluetooth surroundings or your battery is kept.
 
 **Detailed diagnostics** (a switch on each watch's device page, also under Configure) has the watch also send, for one week before it turns itself off:
-- the aim of the few seconds before each trigger, and of aims held out that never triggered, to tune pointing (with the room checks made while pointing, and how many steps you took since opening Point, never your step count itself);
+- the aim of the few seconds before each trigger, and of aims held out that never triggered, to tune pointing (with the room checks made while pointing);
 - the readings of each Paint sweep;
 - the record of screens, buttons and swipes of every run, and battery levels while pointing;
 - the raw Bluetooth scans of room calibrations.
