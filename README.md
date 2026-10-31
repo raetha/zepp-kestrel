@@ -101,7 +101,7 @@ Under **More → Probes** on the watch. Results show on the watch, and once the 
 | --- | --- | --- |
 | Sensor rates | Start, then keep the watch moving gently for 45 s | Real rates of the accelerometer and gyro in each mode, and the compass |
 | Snap recorder | Arm out, pick a gesture, Record, gesture after the buzz. About 10 each of snap, finger tap, wrist flick, arm wave, nothing | Whether a snap leaves a spike that stands apart from other movement |
-| Compass tilt | **Up and down**: point along one vertical line (a door frame or wall edge), following the buzzes: level, higher, lower, level. **Wrist roll**: point at one spot, turn the wrist in, then out. 12 s each. If the compass isn't calibrated, Record first shows the turn-in-a-circle ring; then read the steps again and press Record | Whether the compass heading holds as the arm tilts and the wrist turns |
+| Compass tilt | **Up and down**: point along one vertical line (a door frame or wall edge), following the buzzes: level, higher, lower, level. **Turn**: point ahead, then at spots to the left and right with the whole arm, then ahead again. **Wrist roll**: point at one spot, turn the wrist in, then out. 16 s each. If the compass isn't calibrated, Record first shows the turn-in-a-circle ring; then read the steps again and press Record | Whether the compass heading holds as the arm tilts and the wrist turns, and keeps up with the gyro's turn |
 | BLE scan | In each room, pick a label and Scan | How many steady Bluetooth devices each room has |
 | Latency | Run, with HA set up | Watch ↔ phone and phone ↔ HA round trips (target: under 500 ms) |
 

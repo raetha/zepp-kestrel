@@ -8,6 +8,7 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Added
 
+- Compass tilt probe: a Turn recording (ahead, left, right, ahead again), and the gyro's turn recorded at its full rate, to test steadying the compass with the gyro.
 - Pairing again, or pairing a new watch, offers the setups Home Assistant already has (another watch's, or one removed in the last 30 days): pick one to take over its paints, rooms and settings instead of starting from nothing.
 - Screen time: Kestrel's screens stay on 30 s without a touch, whatever the watch's own timeout (More → Screen: 10, 20, 30 or 60 s; any 5–120 s in Home Assistant and the Zepp app's settings page).
 - The compass tilt probe calibrates the compass itself (turn the watch in a circle until the dots go green), then shows the steps again for you to press Record, instead of sending you to the Compass app.

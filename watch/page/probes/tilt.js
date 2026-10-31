@@ -5,7 +5,11 @@
 // - "Up and down": point along one vertical line (a door frame, a wall
 //   edge) level, higher, lower, level again. Same direction throughout,
 //   so a tilt-compensated heading stays put.
-// - "Wrist roll": point at one spot and turn the wrist in and out.
+// - "Turn": point ahead, then left, right and ahead again with the whole arm:
+//   does the compass keep up with the gyro's turn (yawx10, full-rate)?
+// - "Wrist roll": point at one spot and turn the wrist in and out. On a real
+//   Balance 3 this threw the heading 7-13 degrees, and 17-21 degrees off
+//   still four seconds after the wrist was flat again.
 //
 // Each recording is 16 s in four 4 s steps; each step starts with that many
 // buzzes (1, 2, 3, 4) and a long buzz ends it.
@@ -38,6 +42,15 @@ const RECORDINGS = {
       ['level again', 'the middle again'],
     ],
   },
+  'Turn': {
+    intro: 'Point ahead, palm down; turn the whole arm.',
+    phases: [
+      ['ahead', 'a spot ahead'],
+      ['left', 'a spot to the left'],
+      ['right', 'a spot to the right'],
+      ['ahead again', 'the first spot again'],
+    ],
+  },
   'Wrist roll': {
     intro: 'Point at one spot; turn only the wrist.',
     phases: [
@@ -63,6 +76,10 @@ export const tiltProbe = {
     const once = guard(ctx)
     let lastA = null
     let lastG = null
+    // the gyro's turn about gravity, integrated at the gyro's full rate (about 25 Hz):
+    // the 10 Hz rows are too coarse for a quick wrist roll (as in page/aim.js)
+    let yaw = 0
+    let yawT = 0
     const a = accel()
     const g = gyro()
     const c = compass()
@@ -71,6 +88,13 @@ export const tiltProbe = {
     })
     g.start('NORMAL', (s) => {
       lastG = s
+      const now = Date.now()
+      if (lastA && yawT) {
+        const gm = Math.sqrt(lastA.x * lastA.x + lastA.y * lastA.y + lastA.z * lastA.z)
+        const dt = Math.min(0.2, (now - yawT) / 1000)
+        if (gm > 0) yaw += ((s.x * lastA.x + s.y * lastA.y + s.z * lastA.z) / gm) * dt
+      }
+      yawT = now
     })
     c.start('NORMAL', () => {})
     ctx.onCleanup(() => {
@@ -153,7 +177,8 @@ export const tiltProbe = {
           if (!ctx.alive()) return
         }
 
-        const rows = [] // [ms, heading12 x10 (-1 = none), calibrated, ax, ay, az, gx, gy, gz]
+        const rows = [] // [ms, heading12 x10 (-1 = none), calibrated, ax, ay, az, gx, gy, gz, gyro yaw x10]
+        const yaw0 = yaw
         const perPhase = phases.map(() => [])
         const t0 = Date.now()
         for (let p = 0; p < phases.length; p++) {
@@ -176,6 +201,7 @@ export const tiltProbe = {
                 Math.round(gg.x),
                 Math.round(gg.y),
                 Math.round(gg.z),
+                Math.round((yaw - yaw0) * 10),
               ])
               if (Date.now() - phaseStart >= SETTLE_MS) {
                 const att = attitude(lastA.x, lastA.y, lastA.z, angle)
@@ -213,7 +239,7 @@ export const tiltProbe = {
         )
         ctx.status(`${name}\n${lines.join('\n')}`)
         ctx.primary('Record again')
-        ctx.log({ recording: name, phases: summary, raw: { columns: 'ms,heading12x10,calibrated,ax,ay,az,gx,gy,gz', rows } })
+        ctx.log({ recording: name, phases: summary, raw: { columns: 'ms,heading12x10,calibrated,ax,ay,az,gx,gy,gz,yawx10', rows } })
       }),
     )
   },
