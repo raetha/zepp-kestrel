@@ -33,4 +33,11 @@ meta["description"] = f"Test build {build} {sha}".strip()
 for lang in app.get("i18n", {}).values():
     lang["appName"] = meta["appName"]
 (dst / "app.json").write_text(json.dumps(app, indent=2) + "\n")
+# both halves of the app report the build (lib/version.js)
+version_js = dst / "lib" / "version.js"
+text = version_js.read_text()
+old = f"export const BUILD = '{base_version}'"
+if old not in text:
+    sys.exit(f"{version_js}: expected {old!r} (keep it in step with app.json)")
+version_js.write_text(text.replace(old, f"export const BUILD = '{meta['version']['name']}'"))
 print(f"{dst.relative_to(REPO)}: {meta['appName']} {meta['version']['name']} (appId {meta['appId']})")

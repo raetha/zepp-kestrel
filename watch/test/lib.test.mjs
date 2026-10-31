@@ -52,3 +52,11 @@ test('tiltBetween: degrees between two gravity directions', async () => {
   assert.equal(tiltBetween({ x: 0, y: 0, z: 9.8 }, { x: 0, y: 0, z: 9.8 }), 0)
   assert.equal(tiltBetween({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }), 0)
 })
+
+import { readFileSync } from 'node:fs'
+import { BUILD } from '../lib/version.js'
+
+test('lib/version.js matches app.json (both halves of the app report it)', () => {
+  const app = JSON.parse(readFileSync(new URL('../app.json', import.meta.url), 'utf8'))
+  assert.equal(BUILD, app.app.version.name)
+})

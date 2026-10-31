@@ -9,6 +9,8 @@
 //   fetch({ url, method, headers, body, timeout }) -> Promise<{ status, body }>
 //   store.getItem(key) -> string | null ; store.setItem(key, string)
 
+import { BUILD } from './version.js'
+
 // New Home Assistant OS installs (2026.8+) listen on port 80; older installs and
 // containers on 8123. Users with another port or name can type an address on the watch.
 export const DISCOVERY_CANDIDATES = [
@@ -227,6 +229,7 @@ export class HaClient {
     if (only) q.push(`only=${only.join(',')}`)
     if (have) q.push(`have=${Object.keys(have).map((k) => `${k}:${have[k]}`).join(',')}`)
     if (version) q.push(`v=${encodeURIComponent(version)}`)
+    q.push(`s=${encodeURIComponent(BUILD)}`) // the side service's own build: Home Assistant shows both
     return (await this.component(`/api/kestrel/sync${q.length ? `?${q.join('&')}` : ''}`)) || {}
   }
 

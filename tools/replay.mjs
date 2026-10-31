@@ -122,6 +122,16 @@ for (const p of sweeps) {
   console.log(`  ${new Date(p.at).toISOString().slice(5, 16)} ${short(p.target).padEnd(28)} ${sp.padEnd(16)} ${p.trace.length} readings, biggest heading step ${jump.toFixed(1)}° (room ${p.room || '-'})`)
 }
 
+// ------------------------------------------------------------------ builds
+// when the watch's and the phone's builds changed (sent with each trail; page/trail.js noteBuilds)
+const withBuilds = probes.filter((x) => x.test === 'trail' && Array.isArray(x.builds) && x.builds.length)
+if (withBuilds.length) {
+  console.log('\nBuilds (watch / phone side service)')
+  for (const [t, w, ph] of withBuilds[withBuilds.length - 1].builds) {
+    console.log(`  ${new Date(t).toISOString().slice(5, 16)} ${w} / ${ph || '?'}${ph && ph !== w ? '  MISMATCH' : ''}`)
+  }
+}
+
 // ------------------------------------------------------------------ battery
 const sessions = []
 for (const p of probes.filter((x) => x.test === 'trail')) {

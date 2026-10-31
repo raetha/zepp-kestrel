@@ -173,6 +173,17 @@
       "address": {
         "name": "Home Assistant address"
       },
+      "phone_version": {
+        "name": "Phone app version",
+        "state_attributes": {
+          "watch_version": {
+            "name": "Watch app version"
+          },
+          "matches_watch": {
+            "name": "Matches the watch"
+          }
+        }
+      },
       "painted_devices": {
         "name": "Painted devices"
       },

@@ -29,7 +29,7 @@
 
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked, note } from './trail.js'
-import { batteryLevel } from './sensors.js'
+import { batteryLevel, stepCount } from './sensors.js'
 import { setWakeUpRelaunch, setPageBrightTime, resetPageBrightTime } from '@zos/display'
 import { event as uiEvent } from '@zos/ui'
 import { text, setText, button, clear, rect, setColor, setTextColor, fit, ask, listenKeys, tickRing, COLOR, SIZE } from './ui.js'
@@ -168,7 +168,7 @@ Page(
         const changed = (r.room && r.room.id) !== (this.room && this.room.id) || sure !== !!(this.room && this.room.sure)
         this.room = r.room ? { ...r.room, sure } : null
         if (this.detailed) {
-          this.roomLog.push({ t: Date.now(), source: r.source, room: r.room ? r.room.id : null, sure, ranked: r.ranked, scan: r.scan || null })
+          this.roomLog.push({ t: Date.now(), source: r.source, room: r.room ? r.room.id : null, sure, ranked: r.ranked, scan: r.scan || null, steps: this.stepsSince() })
           while (this.roomLog.length > ROOM_LOG) this.roomLog.shift()
         }
         if (changed) this.applyRoom()
@@ -216,6 +216,7 @@ Page(
         this.detailed = settings().diagnostics.detailed
         this.openedAt = Date.now()
         if (this.detailed) {
+          this.steps0 = stepCount() // steps taken since Point opened: did the arm's owner move between aims?
           this.roomLog = []
           this.missSent = 0
         }
@@ -687,6 +688,11 @@ Page(
         this.sendTrace({ via: 'none', action: null, value: null, target, ok: null, heldMs: a.t - span.t0 }, a.t, span.t0 - 500, a.t)
       },
 
+      stepsSince() {
+        const now = this.steps0 === null || this.steps0 === undefined ? null : stepCount()
+        return now === null ? null : Math.max(0, now - this.steps0)
+      },
+
       sendTrace(fields, t0, from, to) {
         const r1 = (v) => (v === null || v === undefined ? null : Math.round(v * 10) / 10)
         const r2 = (v) => (v === null || v === undefined ? null : Math.round(v * 100) / 100)
@@ -703,8 +709,9 @@ Page(
             ...fields,
             room: this.room ? this.room.id : null,
             roomSure: this.room ? this.room.sure : null,
-            // room checks so far (raw scans: addresses are pseudonymised in diagnostics)
+            // room checks so far (raw scans: addresses are pseudonymised in diagnostics), steps since Point opened
             rooms: (this.roomLog || []).map((x) => ({ ...x, t: undefined, ago: now - x.t })),
+            steps: this.stepsSince(),
             openFor: now - this.openedAt,
             columns: TRACE_COLUMNS,
             trace,

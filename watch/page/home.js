@@ -2,9 +2,9 @@
 // Syncs quietly once per run, so changes made in Home Assistant arrive.
 
 import { BasePage } from '@zeppos/zml/base-page'
-import { tracked, previousRuns, forgetPreviousRuns, noteLaunch, appVersion } from './trail.js'
+import { tracked, previousRuns, forgetPreviousRuns, noteLaunch, appVersion, builds } from './trail.js'
 import { push } from '@zos/router'
-import { text, setText, setLabel, button, clear, ask, phoneMismatch, PHONE_MISMATCH, COLOR, SIZE } from './ui.js'
+import { text, setText, setLabel, button, clear, ask, phoneMismatch, phoneBuildDiffers, PHONE_MISMATCH, COLOR, SIZE } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
 import { targets, paintedDevices, settings } from './store.js'
 import { sync, firstSyncOfRun, firstOpenOfRun } from './sync.js'
@@ -61,13 +61,15 @@ Page(
           add(text({ x: 50, y: 150, w: 380, h: 240, size: SIZE.small, value: PHONE_MISMATCH }))
           return
         }
+        // both halves talk, but are different builds: say so, keep working (noted in the trail)
+        const other = phoneBuildDiffers(st)
         if (st.offline) {
           setText(this.statusW, 'Phone not reachable')
         } else if (!st.paired) {
           setText(this.statusW, 'Not connected to Home Assistant')
         } else {
           const painted = paintedDevices().length
-          setText(this.statusW, `${st.haName} · ${painted} painted`)
+          setText(this.statusW, other ? `${st.haName} · phone runs ${other}` : `${st.haName} · ${painted} painted`)
         }
 
         if (!st.paired && !st.offline) {
@@ -92,7 +94,8 @@ Page(
           forgetPreviousRuns()
           return
         }
-        ask(this, METHOD.PROBE_LOG, { test: 'trail', at: Date.now(), trail }, 15000)
+        // with when the watch's and the phone's builds last changed (trail.js noteBuilds)
+        ask(this, METHOD.PROBE_LOG, { test: 'trail', at: Date.now(), trail, builds: builds() }, 15000)
           .then((r) => r && r.forwarded && forgetPreviousRuns())
           .catch(() => null)
       },

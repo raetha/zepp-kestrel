@@ -81,6 +81,7 @@ The watch is offered every supported entity except hidden, disabled, and devices
 | Learn from use (switch) | Let confirmed triggers refine paints and clear room checks refine room calibrations. |
 | Volume limit, Volume change per twist (numbers) | Twisting at a media player never raises the volume above the limit (10–100%), and one twist changes it by at most the change per twist (5–50%). |
 | Paint map (image) | One compass dial per room with every paint where it was made: north up, higher spots (ceiling lights) towards the centre, lower ones towards the edge, each as wide as it was painted. Filled: painted; outlined: learned; dots: corrections. Shows at a glance which devices crowd each other. |
+| Phone app version | The build of Kestrel's part that runs inside the Zepp app on the phone; attributes give the watch app's build and whether they match. They should always be the same build. |
 | Last seen, Home Assistant address, Painted devices, Calibrated rooms | Diagnostics: when the watch last talked to Home Assistant, the address it used, and what it has set up. |
 
 The device's software version is the watch app's build. Changes reach the watch on its next sync. Every setting is also under Configure; the room sensor only there.
@@ -225,6 +226,7 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 - **"Phone not reachable"**: the Zepp app must be running on the phone (in the background is fine) and connected to the watch over Bluetooth.
 - **"Kestrel only works on your home network"** or **"Home Assistant not reachable"**: the phone must be on your home Wi-Fi (or a VPN into it). Kestrel never goes through Home Assistant Cloud.
 - **Pairing can't find Home Assistant**: your phone must be on the home Wi-Fi, with the Kestrel integration added. Choose Type address on the watch and enter Home Assistant's IP (and port, if not 80 or 8123). More shows the address in use once paired.
+- **"The Zepp app is running a different Kestrel build"** (or the watch asks to pair again after an update, and pairing fails with "unknown method"): the Zepp app is still running Kestrel's phone side from another build. Force-quit the Zepp app; if that doesn't help, reinstall Kestrel; if that doesn't either, reinstall the Zepp app (seen once on an iPhone, where nothing else cleared it). The Phone app version sensor shows both builds, and the watch notes when the mismatch began for the diagnostics.
 - **Wrong room, or the room shows "?"**: calibrate the room again (and any room nearby you haven't calibrated), especially after adding or moving Bluetooth devices; see Better room detection under Rooms above.
 - **Nothing locks on when pointing**: calibrate the compass (the Compass app, or turn the watch in a circle when asked, until the dots round the edge go green), then paint again from where you stand.
 - **Two devices get mixed up**: paint each of them from where you stand when you use them, sweeping only across the device itself (a narrow sweep is a precise paint). If Paint says they're too close from there, paint them from another spot as well. Use **Not it?** when it picks the wrong one: it teaches the watch where you aimed.
@@ -236,7 +238,7 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 By default Kestrel keeps little: probes you run on purpose (More → Probes) and, when something goes wrong on the watch, the record of screens, buttons and errors leading up to it. Nothing about where you point, your rooms' Bluetooth surroundings or your battery is kept.
 
 **Detailed diagnostics** (a switch on each watch's device page, also under Configure) has the watch also send, for one week before it turns itself off:
-- the aim of the few seconds before each trigger, and of aims held out that never triggered, to tune pointing (with the room checks made while pointing);
+- the aim of the few seconds before each trigger, and of aims held out that never triggered, to tune pointing (with the room checks made while pointing, and how many steps you took since opening Point, never your step count itself);
 - the readings of each Paint sweep;
 - the record of screens, buttons and swipes of every run, and battery levels while pointing;
 - the raw Bluetooth scans of room calibrations.

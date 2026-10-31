@@ -4,6 +4,7 @@
 import { BaseSideService } from '@zeppos/zml/base-side'
 import { METHOD, Dedupe } from '../lib/protocol.js'
 import { HaClient } from '../lib/ha-client.js'
+import { BUILD } from '../lib/version.js'
 
 const LOG_KEY = 'probeLog'
 const LOG_MAX = 40
@@ -54,7 +55,8 @@ AppSideService(
             return { t: Date.now() }
 
           case METHOD.STATUS:
-            return this.ha.status()
+            // build: this side service's, so the watch can tell a mismatch (lib/version.js)
+            return { ...this.ha.status(), build: BUILD }
           case METHOD.DISCOVER:
             return { found: await this.ha.discover(p.address ? [p.address] : []) }
           case METHOD.PAIR_START:

@@ -6,6 +6,7 @@ import { scoreSpot, rank, Aimer, STATE } from '../lib/classifier.js'
 import { spotsForRoom } from '../lib/rooms.js'
 import { crowdedBy } from '../lib/paint.js'
 import { HaClient, normalizeUrl, expandAddress, DISCOVERY_CANDIDATES } from '../lib/ha-client.js'
+import { BUILD } from '../lib/version.js'
 
 // ------------------------------------------------------------------ painting
 function sweep(center, pitch, n = 40, width = 10) {
@@ -272,9 +273,10 @@ test('sync, section saves, settings and room go to the component', async () => {
   const url = 'http://homeassistant.local'
   const store = memStore({ 'kestrel.pairing': JSON.stringify({ token: 'tok', urls: [url] }) })
   const fetch = fakeFetch({
-    [`GET ${url}/api/kestrel/sync`]: async () => ({ status: 200, body: { targets: [], paints: {}, paints_rev: 2 } }),
-    [`GET ${url}/api/kestrel/sync?only=paints`]: async () => ({ status: 200, body: { paints: {}, paints_rev: 2 } }),
-    [`GET ${url}/api/kestrel/sync?have=targets:abc,paints:2`]: async () => ({ status: 200, body: { paints_rev: 2 } }),
+    // s=: the side service's own build, so Home Assistant can show both halves' versions
+    [`GET ${url}/api/kestrel/sync?s=${BUILD}`]: async () => ({ status: 200, body: { targets: [], paints: {}, paints_rev: 2 } }),
+    [`GET ${url}/api/kestrel/sync?only=paints&s=${BUILD}`]: async () => ({ status: 200, body: { paints: {}, paints_rev: 2 } }),
+    [`GET ${url}/api/kestrel/sync?have=targets:abc,paints:2&v=0.1.0-dev.9&s=${BUILD}`]: async () => ({ status: 200, body: { paints_rev: 2 } }),
     [`POST ${url}/api/kestrel/paints`]: async (r) => {
       assert.deepEqual(JSON.parse(r.body), { changes: { 'light.b': null }, base: 3 })
       return { status: 200, body: { ok: true, rev: 5, stale: true } }
@@ -289,7 +291,7 @@ test('sync, section saves, settings and room go to the component', async () => {
   const ha = new HaClient({ fetch, store })
   assert.equal((await ha.sync()).paints_rev, 2)
   assert.deepEqual(await ha.sync(['paints']), { paints: {}, paints_rev: 2 })
-  assert.deepEqual(await ha.sync(null, { targets: 'abc', paints: 2 }), { paints_rev: 2 })
+  assert.deepEqual(await ha.sync(null, { targets: 'abc', paints: 2 }, '0.1.0-dev.9'), { paints_rev: 2 })
   // only what changed (a removal here), and whether Home Assistant changed something else meanwhile
   assert.deepEqual(await ha.saveChanges('paints', { 'light.b': null }, 3), { ok: true, rev: 5, stale: true })
   assert.equal((await ha.saveSettings({ dwell: { enabled: true } })).settings.dwell.seconds, 3)

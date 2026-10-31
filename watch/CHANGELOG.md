@@ -8,8 +8,9 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Added
 
+- The watch and its part in the Zepp app now report their builds: the home screen says when they differ, and the watch notes when that began, so it shows up in the diagnostics even without Detailed diagnostics.
 - When the Zepp app on the phone is running a different Kestrel build than the watch (seen after a test-build install), Home and Pair say so and suggest force-quitting the Zepp app, instead of asking you to pair again.
-- More for tuning with Detailed diagnostics on (nothing extra is measured or sent with it off): aims held out that never triggered, the score, lead, gyro and compass state in each aim trace, the room checks made while pointing, and the readings of each Paint sweep.
+- More for tuning with Detailed diagnostics on (nothing extra is measured or sent with it off): aims held out that never triggered, the score, lead, gyro and compass state in each aim trace, the room checks made while pointing, steps taken since Point opened (not your step count), and the readings of each Paint sweep. The app asks for step data for this; deny it and only the step counts are missing.
 - Faster, steadier locking on a device that has nothing else painted near it: when the compass reads well off from where you painted (it often drifts 7–12° between visits), Point still locks instead of staying amber until you move. Instant toggle still needs an ordinary lock.
 - Rooms: a Bluetooth scan has to match a room better before the watch believes it, so a room you haven't calibrated is no longer taken for the one that sounds most like it.
 - Dim without holding: once a dimmable light (or a media player's volume) is locked, slowly roll your wrist and Point switches to the dimmer; hold still for a second and it's sent. Holding the button or screen while twisting still works.

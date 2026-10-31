@@ -12,7 +12,8 @@ import { px } from '@zos/utils'
 import { getDeviceInfo } from '@zos/device'
 import { onKey, offKey, onGesture, offGesture, KEY_SELECT, KEY_BACK, KEY_EVENT_CLICK, KEY_EVENT_PRESS, KEY_EVENT_RELEASE } from '@zos/interaction'
 import { back } from '@zos/router'
-import { note, safe } from './trail.js'
+import { note, noteOnce, noteBuilds, appVersion, safe } from './trail.js'
+import { BUILD } from '../lib/version.js'
 
 let SCREEN = { w: 480, h: 480 }
 try {
@@ -158,6 +159,21 @@ export function phoneMismatch(r) {
   return !!(r && r.error && /unknown method/.test(String(r.error)))
 }
 
+/**
+ * Compare the side service's build (in its status reply) with the watch's. Notes
+ * a difference in the trail as an error, once per run, so the trail reaches Home
+ * Assistant (diagnostics) with what happened before it, even without detailed
+ * diagnostics. -> the phone's build when it differs, else null
+ */
+export function phoneBuildDiffers(st) {
+  if (!st || st.error || st.offline) return null
+  const phone = st.build || 'older (no build reported)'
+  noteBuilds(appVersion() || BUILD, phone)
+  if (phone === BUILD) return null
+  noteOnce('phone-build', 'error', { where: 'phone', error: 'different build', watch: BUILD, phone })
+  return phone
+}
+
 export function ask(page, method, params, timeout = 6000) {
   unstickHandshake(page)
   const req = page.request({ method, params }, { timeout })
@@ -175,7 +191,15 @@ export function ask(page, method, params, timeout = 6000) {
       clearTimeout(backup)
       fn(v)
     }
-    req.then(finish(resolve), finish(reject))
+    req.then(
+      finish((r) => {
+        // the phone runs a different build's side service: note it once per run (see phoneMismatch)
+        if (phoneMismatch(r)) noteBuilds(appVersion() || BUILD, 'unknown method')
+        if (phoneMismatch(r)) noteOnce('phone-mismatch', 'error', { where: 'phone', error: String(r.error).slice(0, 80), method, watch: BUILD })
+        resolve(r)
+      }),
+      finish(reject),
+    )
   })
 }
 

@@ -8,6 +8,8 @@ import { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } from '
 import { append, splitPrevious, describeError } from '../lib/trail.js'
 
 const KEY = 'kestrel.trail'
+const BUILDS_KEY = 'kestrel.builds'
+const BUILDS_MAX = 10
 
 function read() {
   const v = get(KEY, [])
@@ -24,6 +26,52 @@ function write(list) {
 
 export function note(kind, data = null) {
   write(append(read(), [Date.now(), kind, data]))
+}
+
+/**
+ * Note something once per run of the app (the app's globalData outlives pages):
+ * for a state that every page would otherwise note again.
+ */
+export function noteOnce(key, kind, data = null) {
+  let g = null
+  try {
+    const app = getApp()
+    g = app && app._options && app._options.globalData
+  } catch (e) {
+    g = null
+  }
+  if (g) {
+    g.noted = g.noted || {}
+    if (g.noted[key]) return
+    g.noted[key] = true
+  }
+  note(kind, data)
+}
+
+/**
+ * Each change in the builds the two halves run: [time, watch build, phone build].
+ * Kept apart from the trail (which keeps only its newest entries) so the moment
+ * a mismatch began survives, and sent with every trail. phone: the side
+ * service's build, 'unknown method' when it couldn't say, undefined = not asked.
+ */
+export function noteBuilds(watch, phone) {
+  let list = get(BUILDS_KEY, [])
+  if (!Array.isArray(list)) list = []
+  const last = list[list.length - 1]
+  const p = phone === undefined ? (last ? last[2] : null) : phone
+  if (last && last[1] === watch && last[2] === p) return
+  list.push([Date.now(), watch, p])
+  while (list.length > BUILDS_MAX) list.shift()
+  try {
+    set(BUILDS_KEY, list)
+  } catch (e) {
+    // best effort
+  }
+}
+
+export const builds = () => {
+  const v = get(BUILDS_KEY, [])
+  return Array.isArray(v) ? v : []
 }
 
 /** Entries from earlier runs, not yet sent. */
@@ -89,6 +137,7 @@ export function noteLaunch() {
     device = { error: String((e && e.message) || e) }
   }
   note('launch', { version: appVersion(), device, keys: { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } })
+  noteBuilds(appVersion())
 }
 
 /** This build's version, e.g. "0.1.0-dev.187", or "" if the firmware won't say. */

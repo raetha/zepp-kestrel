@@ -43,6 +43,13 @@ def _fired_attrs(w: dict[str, Any]) -> dict[str, Any] | None:
     return {k: fired.get(k) for k in ("entity_id", "action", "via", "room", "at")}
 
 
+def _versions(w: dict[str, Any]) -> dict[str, Any]:
+    """The watch's build next to the phone's: they should be the same build."""
+    status = _status(w)
+    watch, phone = status.get("app_version"), status.get("phone_version")
+    return {"watch_version": watch, "matches_watch": None if not (watch and phone) else watch == phone}
+
+
 SENSORS: tuple[WatchSensorDescription, ...] = (
     WatchSensorDescription(
         key="last_triggered",
@@ -68,6 +75,13 @@ SENSORS: tuple[WatchSensorDescription, ...] = (
         translation_key="address",
         entity_category=EntityCategory.DIAGNOSTIC,
         value=lambda w: _status(w).get("address"),
+    ),
+    WatchSensorDescription(
+        key="phone_version",
+        translation_key="phone_version",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value=lambda w: _status(w).get("phone_version"),
+        attrs=lambda w: _versions(w),
     ),
     WatchSensorDescription(
         key="painted_devices",

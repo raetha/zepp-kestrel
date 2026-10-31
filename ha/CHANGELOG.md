@@ -16,6 +16,7 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 
 ### Added
 
+- Phone app version sensor (diagnostic): the build of Kestrel's part inside the Zepp app, with the watch app's build and whether they match.
 - Paints and rooms take just the entries a watch changed, merged into Home Assistant's copy, instead of whole sections.
 - Detailed diagnostics: a switch per watch (and in Configure) that has the watch also send its aim traces (including aims that never triggered), Paint sweeps, screen and button trail and room scans for one week, then turns itself off. Without it, only probes run on purpose and trails that hold an error are kept. Kept results are dropped after 14 days, and the watch's own records no longer fill Home Assistant's event history.
 - Diagnostics downloads are safe to attach to a public issue: no token hashes or network addresses, and Bluetooth addresses are replaced by codes that stay consistent within one download.

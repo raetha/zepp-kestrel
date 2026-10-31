@@ -249,8 +249,10 @@ class SyncView(_WatchView):
             return auth
         hass, watches, watch = auth
         version = request.query.get("v", "").strip()[:40]
-        if version:
-            watches.note_status(watch["id"], app_version=version)
+        # s: the build of the side service in the Zepp app, which should match the watch's
+        phone = request.query.get("s", "").strip()[:40]
+        if version or phone:
+            watches.note_status(watch["id"], app_version=version or None, phone_version=phone or None)
         synced = watches.synced(watch["id"])
         have = dict(item.split(":", 1) for item in request.query.get("have", "").split(",") if ":" in item)
         only = [x for x in request.query.get("only", "").split(",") if x]
