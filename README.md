@@ -29,7 +29,7 @@ Test builds are for development and change often.
 2. Open the [test-build page](https://raetha.github.io/zepp-kestrel/dev/) on another screen and pick your watch (each screen size needs its own package; see [Supported devices](#supported-devices)).
 3. In the Zepp app: Profile → your watch → Developer Mode → scan icon (top right). Scan the QR code and confirm. It never changes and always installs the newest build; the home screen shows the build number at the bottom.
 
-**3. Pair.** With your phone on the home Wi-Fi, open Kestrel DEV on the watch → Pair with HA. Pick your Home Assistant, then type the 6-digit code from the notification Home Assistant shows. The watch then fetches your devices. (If the Zepp app asks for Local Network access, allow it: that's how the phone finds `homeassistant.local`.)
+**3. Pair.** With your phone on the home Wi-Fi, open Kestrel DEV on the watch → Pair with HA. Pick your Home Assistant, then type the 6-digit code from the notification Home Assistant shows. The watch then fetches your devices. Pairing again (after a reset or reinstall), or pairing a new watch, offers the setups Home Assistant already has: another paired watch's, or one removed in the last 30 days. Pick one and the watch takes over its paints, rooms and settings (taking over a paired watch keeps its Home Assistant device and entities); or start fresh. (If the Zepp app asks for Local Network access, allow it: that's how the phone finds `homeassistant.local`.)
 
 **4. Paint and point.** Paint a device: pick it, stand where you'd use it, press Start, and sweep your arm slowly across it for 15 s, palm down. Then Point: hold your arm out at it, palm down. The screen turns amber while you aim, then bright green (with one buzz) when the watch has locked onto a device; press the select button, tap the screen, or do your gesture to toggle it. A second buzz and a green flash say it's done; red means it failed. Locks ask for a confirming tap. If the watch picked the wrong device, tap **Not it?** within 5 s: it undoes the first (lights, switches, fans and the like), toggles the right one, and remembers where you aimed. Dropping your wrist and raising it again brings Point back.
 
@@ -50,6 +50,8 @@ Better room detection. The watch tells rooms apart by which Bluetooth devices it
 
 The phone can't help on its own: the Zepp app gives Kestrel no access to the phone's location or Bluetooth, and indoors phone location is metres off, coarser than a room.
 
+**Screen time.** Kestrel's screens stay on for 30 s without a touch, however short the watch's own screen timeout is. More → Screen: 10, 20, 30 or 60 s (any 5–120 s in Home Assistant). Point also keeps the screen on while you aim; lowering your wrist turns it off as usual.
+
 **9. Launch from the shortcut key.** More → Open on: Point. Then assign Kestrel to the watch's shortcut button in the watch's own settings (where it lets you choose an app for the button). Pressing it opens Kestrel straight on Point; back goes to the home screen.
 
 **10. Scenes and scripts as virtual spots.** A scene, script or button has no place in the room, so give it one: Paint → Scenes & more, pick it, and paint any spot you like (the sofa for a movie scene, the window for "close all blinds"). Pointing there runs it.
@@ -60,9 +62,9 @@ The phone can't help on its own: the Zepp app gives Kestrel no access to the pho
 - **Painted devices**: remove a bad paint (the newest spot) or all of a device's paints, or make a paint trigger a different entity.
 - **Rooms**: delete a room's calibration.
 - **Devices for watches**: choose which devices (or single entities) watches can paint and trigger, with Home Assistant's searchable pickers. Leave it empty to offer everything.
-- **Settings** (per watch): gesture on or off, which gesture and its thresholds; instant toggle and its delay; opening on Point; learning from use; the volume limit and change per twist; where the current room comes from.
+- **Settings** (per watch): gesture on or off, which gesture and its thresholds; instant toggle and its delay; opening on Point; learning from use; the volume limit and change per twist; how long screens stay on; where the current room comes from.
 
-The watch picks changes up on its next Sync (it also syncs quietly each time the app starts). Paints, rooms and settings live in Home Assistant, so a reset or new watch gets them back on Sync.
+The watch picks changes up on its next Sync (it also syncs quietly each time the app starts). Paints, rooms and settings live in Home Assistant, so a reset or new watch gets them back: pair it and choose the earlier setup. Deleting a watch's device in Home Assistant keeps its setup for 30 days for that.
 
 The watch is offered every supported entity except hidden, disabled, and devices' configuration or diagnostic entities, up to 1000 (Sync shows "1000 of N devices" when some are left out). To offer only some, choose them under Configure → Devices for watches; watches get the new list when they next sync. Each paired watch appears in Home Assistant as a device under the Kestrel integration; delete the device to unpair it.
 
@@ -79,6 +81,7 @@ The watch is offered every supported entity except hidden, disabled, and devices
 | Room from (select) | The watch's own Bluetooth room calibration, or a Home Assistant sensor (chosen under Configure). |
 | Open on Point (switch) | Start the app on Point, for launching it from the watch's shortcut key. |
 | Learn from use (switch) | Let confirmed triggers refine paints and clear room checks refine room calibrations. |
+| Screen on time (number) | How long Kestrel's screens stay on without a touch (5–120 s, 30 by default), whatever the watch's own screen timeout. |
 | Volume limit, Volume change per twist (numbers) | Twisting at a media player never raises the volume above the limit (10–100%), and one twist changes it by at most the change per twist (5–50%). |
 | Paint map (image) | One compass dial per room with every paint where it was made: north up, higher spots (ceiling lights) towards the centre, lower ones towards the edge, each as wide as it was painted. Filled: painted; outlined: learned; dots: corrections. Shows at a glance which devices crowd each other. |
 | Phone app version | The build of Kestrel's part that runs inside the Zepp app on the phone; attributes give the watch app's build and whether they match. They should always be the same build. |
@@ -98,7 +101,7 @@ Under **More → Probes** on the watch. Results show on the watch, and once the 
 | --- | --- | --- |
 | Sensor rates | Start, then keep the watch moving gently for 45 s | Real rates of the accelerometer and gyro in each mode, and the compass |
 | Snap recorder | Arm out, pick a gesture, Record, gesture after the buzz. About 10 each of snap, finger tap, wrist flick, arm wave, nothing | Whether a snap leaves a spike that stands apart from other movement |
-| Compass tilt | **Up and down**: point along one vertical line (a door frame or wall edge), following the buzzes: level, higher, lower, level. **Wrist roll**: point at one spot, turn the wrist in, then out. 12 s each | Whether the compass heading holds as the arm tilts and the wrist turns |
+| Compass tilt | **Up and down**: point along one vertical line (a door frame or wall edge), following the buzzes: level, higher, lower, level. **Wrist roll**: point at one spot, turn the wrist in, then out. 12 s each. If the compass isn't calibrated, Record first shows the turn-in-a-circle ring; then read the steps again and press Record | Whether the compass heading holds as the arm tilts and the wrist turns |
 | BLE scan | In each room, pick a label and Scan | How many steady Bluetooth devices each room has |
 | Latency | Run, with HA set up | Watch ↔ phone and phone ↔ HA round trips (target: under 500 ms) |
 

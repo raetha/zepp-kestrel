@@ -8,7 +8,8 @@ export const METHOD = {
   STATUS: 'kestrel.status', // { paired, mode, haName }
   DISCOVER: 'kestrel.discover', // { address? } look for Home Assistant on the local network (or at a typed address)
   PAIR_START: 'kestrel.pairStart', // { url, watchName } -> { pairingId } (HA shows a code)
-  PAIR_CONFIRM: 'kestrel.pairConfirm', // { url, pairingId, code } -> { ok, haName, error }
+  PAIR_CONFIRM: 'kestrel.pairConfirm', // { url, pairingId, code } -> { ok, haName, setups, error }
+  TAKE_OVER: 'kestrel.takeOver', // { from } right after pairing: take over that watch's (or a removed one's) setup -> { ok, error }
   UNPAIR: 'kestrel.unpair',
   SYNC: 'kestrel.sync', // { only?, have? } -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room } (see ha-client sync)
   FIRE: 'kestrel.fire', // { seq, target, action, value, confirmed } -> { ok, state, needsConfirm, error }

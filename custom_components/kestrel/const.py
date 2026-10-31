@@ -21,6 +21,9 @@ STORAGE_VERSION = 1
 PROBES_STORAGE_KEY = "kestrel.probes"  # recent probe results, for diagnostics downloads
 PROBES_KEPT = 500
 PROBES_MAX_AGE = 14 * 86400  # seconds: older probe results are dropped
+PHONE_NOT_REPORTED = "older (not reported)"  # Phone app version when the side service doesn't send its build
+TAKE_OVER_WINDOW = 600  # seconds after pairing in which a watch may take over another setup
+REMOVED_KEPT_DAYS = 30  # a removed watch's paints, rooms and settings, offered to the next watch that pairs
 DETAILED_DIAGNOSTICS_FOR = 7 * 86400  # seconds: detailed diagnostics turn themselves off after this
 # Recorded by the watch as it's used (not run on purpose from Probes): kept only with detailed
 # diagnostics on (a trail also when it holds an error), and never fired as kestrel_probe events,

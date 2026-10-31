@@ -154,7 +154,17 @@ export class HaClient {
       urls: [...new Set(urls)],
     })
     this.store.setItem(KEY.lastGood, url)
-    return { ok: true, haName: b.ha_name || 'Home Assistant' }
+    // setups this watch could take over: [{ id, name, paints, rooms, removed }] (Home Assistant's own list)
+    const setups = Array.isArray(b.setups) ? b.setups.slice(0, 5) : []
+    return { ok: true, haName: b.ha_name || 'Home Assistant', setups }
+  }
+
+  /** Right after pairing: take over another watch's setup (paints, rooms, settings). */
+  async takeOver(from) {
+    const b = await this.component('/api/kestrel/takeover', { method: 'POST', body: { from } })
+    const p = this.pairing()
+    if (p && b && b.watch_id) this.savePairing({ ...p, watchId: b.watch_id })
+    return { ok: true }
   }
 
   /** Note the address that answered; storage trouble never fails a request. */

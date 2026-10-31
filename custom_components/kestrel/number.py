@@ -18,7 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .entity import KestrelEntity, add_per_watch
-from .watchdata import DWELL_SECONDS, VOLUME_MAX, VOLUME_STEP, settings_of, thresholds
+from .watchdata import DWELL_SECONDS, SCREEN_SECONDS, VOLUME_MAX, VOLUME_STEP, settings_of, thresholds
 from .watches import Watches
 
 PARALLEL_UPDATES = 0
@@ -82,6 +82,18 @@ NUMBERS: tuple[WatchNumberDescription, ...] = (
         mode=NumberMode.SLIDER,
         value=lambda s: s["volume"]["step"],
         change=lambda s, v: {"volume": {"step": v}},
+    ),
+    WatchNumberDescription(
+        key="screen_time",
+        translation_key="screen_time",
+        entity_category=EntityCategory.CONFIG,
+        native_min_value=SCREEN_SECONDS[0],
+        native_max_value=SCREEN_SECONDS[1],
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        mode=NumberMode.BOX,
+        value=lambda s: s["screen"]["seconds"],
+        change=lambda s, v: {"screen": {"seconds": v}},
     ),
     WatchNumberDescription(
         key="gesture_gyro",

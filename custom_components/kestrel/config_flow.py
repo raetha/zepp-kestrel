@@ -36,6 +36,7 @@ from .watchdata import (
     DWELL_SECONDS,
     GESTURE_KINDS,
     ROOM_SOURCES,
+    SCREEN_SECONDS,
     VOLUME_MAX,
     VOLUME_STEP,
     clean_thresholds,
@@ -239,6 +240,7 @@ class KestrelOptionsFlow(OptionsFlow):
                     "start": {"point": user_input["open_on_point"]},
                     "learn": {"enabled": user_input["learn"]},
                     "volume": {"max": int(user_input["volume_max"]), "step": int(user_input["volume_step"])},
+                    "screen": {"seconds": int(user_input["screen_seconds"])},
                     "diagnostics": current["diagnostics"],
                 }
                 await self._watches.async_save_settings(self.watch_id, settings)
@@ -265,6 +267,11 @@ class KestrelOptionsFlow(OptionsFlow):
             vol.Required("detailed_diagnostics", default=current["diagnostics"]["detailed"]): BooleanSelector(),
             vol.Required("volume_max", default=volume["max"]): _percent(VOLUME_MAX),
             vol.Required("volume_step", default=volume["step"]): _percent(VOLUME_STEP),
+            vol.Required("screen_seconds", default=current["screen"]["seconds"]): NumberSelector(
+                NumberSelectorConfig(
+                    min=SCREEN_SECONDS[0], max=SCREEN_SECONDS[1], step=1, unit_of_measurement="s", mode=NumberSelectorMode.BOX
+                )
+            ),
             vol.Required("room_source", default=room["source"]): _select([(s, s) for s in ROOM_SOURCES], "room_source"),
             vol.Optional("room_sensor", description={"suggested_value": room["sensor"]}): EntitySelector(
                 EntitySelectorConfig(domain="sensor")

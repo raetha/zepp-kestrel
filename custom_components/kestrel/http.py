@@ -53,6 +53,7 @@ from .const import (
     EVENT_PROBE,
     NAME,
     PAIRING_TTL,
+    PHONE_NOT_REPORTED,
     PROBE_MAX_BYTES,
     SUPPORTED_DOMAINS,
     TOKEN_HEADER,
@@ -201,6 +202,8 @@ class PairConfirmView(HomeAssistantView):
             {
                 "token": token,
                 "watch_id": watch["id"],
+                # setups this watch could take over (a watch paired again, or replaced): POST /api/kestrel/takeover
+                "setups": watches.setups_for(watch["id"]),
                 "ha_name": hass.config.location_name,
                 "urls": _urls(hass),
             }
@@ -251,6 +254,10 @@ class SyncView(_WatchView):
         version = request.query.get("v", "").strip()[:40]
         # s: the build of the side service in the Zepp app, which should match the watch's
         phone = request.query.get("s", "").strip()[:40]
+        if version and not phone:
+            # the watch's build came through the phone, but the phone's own didn't: an older
+            # side service (before builds were reported) is still running in the Zepp app
+            phone = PHONE_NOT_REPORTED
         if version or phone:
             watches.note_status(watch["id"], app_version=version or None, phone_version=phone or None)
         synced = watches.synced(watch["id"])
@@ -327,6 +334,32 @@ class RoomsView(_ChangesView):
     url = "/api/kestrel/rooms"
     name = "api:kestrel:rooms"
     key = "rooms"
+
+
+class TakeOverView(_WatchView):
+    """A just-paired watch takes over another watch's setup (paints, rooms, settings).
+
+    Offered right after pairing (the confirm reply lists the setups), so a watch paired
+    again, or a new watch, doesn't start from nothing. Body: {"from": watch id}.
+    """
+
+    url = "/api/kestrel/takeover"
+    name = "api:kestrel:takeover"
+
+    async def post(self, request: web.Request) -> web.Response:
+        auth = self._authorize(request)
+        if isinstance(auth, web.Response):
+            return auth
+        _hass, watches, watch = auth
+        try:
+            body = await request.json()
+        except ValueError:
+            return _error("Bad request", HTTPStatus.BAD_REQUEST)
+        source = str((body or {}).get("from") or "")[:40] if isinstance(body, dict) else ""
+        watch_id = await watches.async_take_over(watch["id"], source)
+        if watch_id is None:
+            return _error("No such setup", HTTPStatus.NOT_FOUND)
+        return web.json_response({"ok": True, "watch_id": watch_id})
 
 
 class SettingsView(_WatchView):
@@ -494,6 +527,7 @@ VIEWS = (
     PaintsView,
     RoomsView,
     SettingsView,
+    TakeOverView,
     RoomView,
     FireView,
     ProbeView,

@@ -16,6 +16,9 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 
 ### Added
 
+- A watch paired again (or a new watch) can take over an earlier setup: another paired watch's (keeping its device and entities), or that of a watch removed in the last 30 days, which is now kept that long.
+- Screen on time number (and under Configure): how long Kestrel's screens stay on.
+- The Phone app version sensor shows "older (not reported)" when the phone runs a side service from before builds were reported.
 - Phone app version sensor (diagnostic): the build of Kestrel's part inside the Zepp app, with the watch app's build and whether they match.
 - Paints and rooms take just the entries a watch changed, merged into Home Assistant's copy, instead of whole sections.
 - Detailed diagnostics: a switch per watch (and in Configure) that has the watch also send its aim traces (including aims that never triggered), Paint sweeps, screen and button trail and room scans for one week, then turns itself off. Without it, only probes run on purpose and trails that hold an error are kept. Kept results are dropped after 14 days, and the watch's own records no longer fill Home Assistant's event history.

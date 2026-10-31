@@ -83,6 +83,7 @@
           "learn": "Learn from use",
           "volume_max": "Volume limit (%)",
           "volume_step": "Volume change per twist (%)",
+          "screen_seconds": "Screen on time (s)",
           "detailed_diagnostics": "Detailed diagnostics (one week)"
         },
         "data_description": {
@@ -97,6 +98,7 @@
           "learn": "Each trigger that wasn't corrected sharpens that device's paint a little, and confident room checks keep room calibrations up to date.",
           "volume_max": "Twisting at a media player never raises its volume above this. Turning it down always works.",
           "volume_step": "The most one twist can change the volume by, however far the wrist turns. Twists are also at least a second apart.",
+          "screen_seconds": "How long Kestrel's screens stay on without a touch, whatever the watch's own screen timeout. Point also keeps it on while you aim.",
           "detailed_diagnostics": "The watch also sends its aim traces, screen and button trail and room scans, for the diagnostics download. Turns itself off after a week. Errors are always kept."
         }
       },
@@ -245,6 +247,9 @@
       },
       "volume_step_limit": {
         "name": "Volume change per twist"
+      },
+      "screen_time": {
+        "name": "Screen on time"
       }
     },
     "image": {

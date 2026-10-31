@@ -54,6 +54,11 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: Kestrel
         "version": watches.version,
         "watches": list(watches.watches.values()),
         "pairings_in_progress": len(watches.pairings),
+        # removed watches' setups, kept 30 days for the next pairing: what, not the data
+        "removed_setups": [
+            {"name": r["name"], "removed_at": r.get("removed_at"), "paints": len(r.get("paints", {})), "rooms": len(r.get("rooms", {}))}
+            for r in watches.removed.values()
+        ],
         "targets": len(list_targets(hass, limit=None, offered=watches.offered)),
         "offered": {"devices": sorted(watches.offered.devices), "entities": sorted(watches.offered.entities)},
         "probes": watches.probes_for(),

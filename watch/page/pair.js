@@ -165,7 +165,7 @@ Page(
         setText(this.codeW, 'Checking…')
         ask(this, METHOD.PAIR_CONFIRM, { url: this.ha.url, pairingId: this.pairingId, code: this.code }, 15000)
           .then((r) => {
-            if (r && r.ok) return this.paired(r.haName)
+            if (r && r.ok) return r.setups && r.setups.length ? this.offerSetups(r.haName, r.setups) : this.paired(r.haName)
             haptics.failed()
             const err = (r && r.error) || 'Failed'
             if (/expired|start again/i.test(err)) return this.nothing(`${err}.`)
@@ -176,9 +176,53 @@ Page(
           .catch(() => setText(this.codeW, 'Phone not reachable'))
       },
 
-      // ------------------------------------------------------------ step 3: done
-      paired(haName) {
+      // ------------------------------------------------------------ step 3: an earlier setup?
+      // Paired again (or a new watch): offer the paints, rooms and settings Home Assistant
+      // already has, from a paired watch or one removed in the last 30 days.
+      offerSetups(haName, setups) {
         haptics.done()
+        clear(this.widgets)
+        setText(this.titleW, 'Paired')
+        setText(this.msgW, 'Use an earlier setup?\n(devices painted)')
+        setups.slice(0, 3).forEach((s, i) => {
+          // a removed watch's setup is marked; the number is its painted devices
+          const name = s.removed ? `Removed: ${fit(s.name, 10)}` : fit(s.name, 16)
+          this.add(
+            button({
+              x: 60,
+              w: 360,
+              y: 160 + i * 66,
+              h: 58,
+              size: SIZE.small,
+              label: `${name} (${s.paints})`,
+              primary: i === 0,
+              onClick: () => this.takeOver(haName, s),
+            }),
+          )
+        })
+        this.add(button({ x: 120, w: 240, y: 160 + Math.min(3, setups.length) * 66, h: 54, size: SIZE.small, label: 'Start fresh', onClick: () => this.paired(haName, true) }))
+      },
+
+      takeOver(haName, s) {
+        clear(this.widgets)
+        setText(this.msgW, `Taking over ${s.name}…`)
+        ask(this, METHOD.TAKE_OVER, { from: s.id }, 15000)
+          .then((r) => {
+            if (r && r.ok) return this.paired(haName, true)
+            this.nothingAfterPairing(haName, (r && r.error) || 'Home Assistant did not answer')
+          })
+          .catch(() => this.nothingAfterPairing(haName, 'Phone not reachable'))
+      },
+
+      nothingAfterPairing(haName, error) {
+        clear(this.widgets)
+        setText(this.msgW, `Paired, but the setup wasn't taken over: ${error}.`)
+        this.add(button({ x: 120, w: 240, y: 320, h: 56, label: 'Continue', primary: true, onClick: () => this.paired(haName) }))
+      },
+
+      // ------------------------------------------------------------ step 4: done
+      paired(haName, tookOver = false) {
+        if (!tookOver) haptics.done()
         clear(this.widgets)
         setText(this.titleW, 'Paired')
         setText(this.msgW, `Connected to ${haName}. Getting your devices…`)

@@ -188,7 +188,7 @@ test('pairing stores the token and the home addresses, never a cloud one', async
   assert.equal(start.pairingId, 'p1')
   assert.deepEqual(await ha.pairConfirm(start.url, 'p1', 111111), { ok: false, error: 'Wrong code' })
   assert.equal(ha.status().paired, false)
-  assert.deepEqual(await ha.pairConfirm(start.url, 'p1', 123456), { ok: true, haName: 'Home' })
+  assert.deepEqual(await ha.pairConfirm(start.url, 'p1', 123456), { ok: true, haName: 'Home', setups: [] }) // no earlier setups to take over
   assert.deepEqual(ha.status(), { paired: true, haName: 'Home', url: 'http://homeassistant.local:8123' }) // the address that answered
   assert.deepEqual(ha.pairing().urls, ['http://homeassistant.local:8123', 'http://192.168.1.5:8123'])
 })
@@ -308,4 +308,18 @@ test('painting next to another device says which one crowds it', () => {
   // the chandelier, 18° away, stands clear now that wide spots don't claim the space between
   assert.equal(crowdedBy({ 'light.chandelier': chandelier.spots, 'light.far': far }, 'light.island', island.spots[0]), null)
   assert.equal(crowdedBy({ 'light.near': near }, 'light.island', null), null)
+})
+
+test('after pairing, the watch can take over an earlier setup', async () => {
+  const url = 'http://homeassistant.local'
+  const store = memStore({ 'kestrel.pairing': JSON.stringify({ token: 'tok', watchId: 'new', urls: [url] }) })
+  const fetch = fakeFetch({
+    [`POST ${url}/api/kestrel/takeover`]: async (r) => {
+      assert.deepEqual(JSON.parse(r.body), { from: 'old' })
+      return { status: 200, body: { ok: true, watch_id: 'old' } }
+    },
+  })
+  const ha = new HaClient({ fetch, store })
+  assert.deepEqual(await ha.takeOver('old'), { ok: true })
+  assert.equal(ha.pairing().watchId, 'old') // the token now belongs to the old watch's record
 })

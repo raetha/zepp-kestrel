@@ -31,11 +31,13 @@ from .const import (
     PROBES_SAVE_DELAY,
     PROBES_MAX_CHARS,
     PROBES_STORAGE_KEY,
+    REMOVED_KEPT_DAYS,
     SEEN_EVERY,
     SIGNAL_WATCH_ADDED,
     STATUS_SAVE_DELAY,
     STORAGE_KEY,
     STORAGE_VERSION,
+    TAKE_OVER_WINDOW,
     VOLUME_MIN_INTERVAL,
     WATCH_NAME_MAX,
     signal_watch_updated,
@@ -80,6 +82,8 @@ class Watches:
     store: Store[dict[str, Any]] = field(init=False)
     probe_store: Store[dict[str, Any]] = field(init=False)
     watches: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # removed watches' setups (paints, rooms, settings), kept REMOVED_KEPT_DAYS for the next pairing
+    removed: dict[str, dict[str, Any]] = field(default_factory=dict)
     pairings: dict[str, Pairing] = field(default_factory=dict)
     starts: dict[str, deque[float]] = field(default_factory=dict)
     seen_seqs: dict[str, deque[Any]] = field(default_factory=dict)
@@ -94,12 +98,15 @@ class Watches:
     async def async_load(self) -> None:
         data = await self.store.async_load() or {}
         self.watches = data.get("watches", {})
+        self.removed = data.get("removed", {})
         probes = await self.probe_store.async_load() or {}
         for record in probes.get("probes", []):
             self._keep_probe(record)
 
     async def _async_save(self) -> None:
-        await self.store.async_save({"watches": self.watches})
+        cutoff = time.time() - REMOVED_KEPT_DAYS * 86400
+        self.removed = {k: v for k, v in self.removed.items() if v.get("removed_at", 0) >= cutoff}
+        await self.store.async_save({"watches": self.watches, "removed": self.removed})
 
     # ------------------------------------------------------------ pairing
     def allow_start(self, client: str, now: float | None = None) -> bool:
@@ -158,6 +165,58 @@ class Watches:
         async_dispatcher_send(self.hass, SIGNAL_WATCH_ADDED, watch_id)
         return "ok", watch, token
 
+    # ------------------------------------------------------------ carrying a setup over
+    def setups_for(self, watch_id: str) -> list[dict[str, Any]]:
+        """Setups a newly paired watch could take over: other paired watches, then removed ones."""
+        out = [
+            {"id": wid, "name": w["name"], "paints": len(w.get("paints", {})), "rooms": len(w.get("rooms", {})), "removed": False}
+            for wid, w in self.watches.items()
+            if wid != watch_id and (w.get("paints") or w.get("rooms"))
+        ]
+        out += [
+            {"id": wid, "name": r["name"], "paints": len(r.get("paints", {})), "rooms": len(r.get("rooms", {})), "removed": True}
+            for wid, r in sorted(self.removed.items(), key=lambda kv: -kv[1].get("removed_at", 0))
+        ]
+        return out
+
+    async def async_take_over(self, watch_id: str, from_id: str) -> str | None:
+        """Give the watch `watch_id` (just paired) the setup of `from_id`; returns its watch id now.
+
+        From a paired watch: the new token moves onto that watch's record (same id, device and
+        entities, so automations keep working) and the just-paired record goes. From a removed
+        watch: its paints, rooms and settings are copied in. None if `from_id` is unknown or the
+        watch paired too long ago.
+        """
+        new = self.watches.get(watch_id)
+        if new is None or from_id == watch_id:
+            return None
+        # only just after pairing: a watch's token can't be used later to take another watch's place
+        if time.time() - float(new.get("paired_at") or 0) > TAKE_OVER_WINDOW:
+            return None
+        if from_id in self.watches:
+            old = self.watches[from_id]
+            old["token_hash"] = new["token_hash"]
+            old["paired_at"] = new["paired_at"]
+            del self.watches[watch_id]
+            self.seen_seqs.pop(watch_id, None)
+            dev_reg = dr.async_get(self.hass)
+            device = dev_reg.async_get_device_by_identifier((DOMAIN, watch_id), self.entry_id)
+            if device is not None:
+                dev_reg.async_remove_device(device.id)
+            await self._async_save()
+            async_dispatcher_send(self.hass, signal_watch_updated(from_id))
+            return from_id
+        backup = self.removed.pop(from_id, None)
+        if backup is None:
+            return None
+        for section in SECTIONS:
+            if section in backup:
+                new[section] = backup[section]
+                new[f"{section}_rev"] = new.get(f"{section}_rev", 0) + 1
+        await self._async_save()
+        async_dispatcher_send(self.hass, signal_watch_updated(watch_id))
+        return watch_id
+
     # ------------------------------------------------------------ paired watches
     def by_token(self, token: str | None) -> dict[str, Any] | None:
         if not token:
@@ -170,7 +229,14 @@ class Watches:
 
     async def async_remove(self, watch_ids: list[str]) -> None:
         for wid in watch_ids:
-            self.watches.pop(wid, None)
+            watch = self.watches.pop(wid, None)
+            if watch and (watch.get("paints") or watch.get("rooms")):
+                # kept a while: a watch paired again (or a new one) can take this setup over
+                self.removed[wid] = {
+                    "name": watch["name"],
+                    "removed_at": time.time(),
+                    **{k: watch[k] for k in ("settings", "paints", "rooms") if k in watch},
+                }
             self.seen_seqs.pop(wid, None)
         kept = [p for p in self.probes if p.get("watch_id") not in watch_ids]
         if len(kept) != len(self.probes):

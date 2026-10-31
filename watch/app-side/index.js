@@ -63,6 +63,8 @@ AppSideService(
             return this.ha.pairStart(p.url, p.watchName)
           case METHOD.PAIR_CONFIRM:
             return this.ha.pairConfirm(p.url, p.pairingId, p.code)
+          case METHOD.TAKE_OVER:
+            return this.ha.takeOver(String(p.from || ''))
           case METHOD.UNPAIR:
             this.ha.unpair()
             return { ok: true }

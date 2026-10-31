@@ -19,6 +19,7 @@ const ROOM_SOURCES = [
 const DWELL_SECONDS = [1, 1.5, 2, 2.5, 3, 4, 5, 7, 10].map((v) => ({ name: `${v} s`, value: v }))
 const VOLUME_MAX = [20, 30, 40, 50, 60, 70, 80, 100].map((v) => ({ name: `${v}%`, value: v }))
 const VOLUME_STEP = [5, 10, 15, 20, 30, 50].map((v) => ({ name: `${v}%`, value: v }))
+const SCREEN_SECONDS = [10, 15, 20, 30, 45, 60, 90, 120].map((v) => ({ name: `${v} s`, value: v }))
 
 function readSettings(storage) {
   try {
@@ -63,6 +64,12 @@ function watchSettings(s) {
       label: 'Learn from use',
       value: !cur.learn || cur.learn.enabled !== false,
       onChange: (x) => change(s, 'learn', 'enabled', x),
+    }),
+    Select({
+      label: 'Screen stays on (Kestrel only)',
+      options: SCREEN_SECONDS,
+      value: (cur.screen && cur.screen.seconds) || 30,
+      onChange: (x) => change(s, 'screen', 'seconds', Number(x)),
     }),
     Select({ label: 'Volume limit (twisting never goes above)', options: VOLUME_MAX, value: v.max, onChange: (x) => change(s, 'volume', 'max', Number(x)) }),
     Select({ label: 'Volume change per twist', options: VOLUME_STEP, value: v.step, onChange: (x) => change(s, 'volume', 'step', Number(x)) }),

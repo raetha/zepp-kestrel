@@ -33,7 +33,7 @@ async def test_a_paired_watch_gets_its_entities(hass, setup_entry):
         f"{watch['id']}_{k}"
         for k in ("last_triggered", "room", "last_seen", "address", "phone_version", "painted_devices", "calibrated_rooms", "gesture", "gesture_kind",
             "instant_toggle", "instant_toggle_delay", "gesture_gyro", "gesture_jolt", "room_source",
-            "open_on_point", "learn", "volume_limit", "volume_step_limit", "paint_map", "detailed_diagnostics")
+            "open_on_point", "learn", "volume_limit", "volume_step_limit", "screen_time", "paint_map", "detailed_diagnostics")
     }
     assert hass.states.get(_entity(hass, watch["id"], "painted_devices", "sensor")).state == "0"
     assert hass.states.get(_entity(hass, watch["id"], "last_triggered", "sensor")).state == "unknown"
@@ -56,9 +56,9 @@ async def test_requests_report_last_seen_address_version_and_room(
     assert dt_util.parse_datetime(seen) is not None
     device = dr.async_get(hass).async_get_device_by_identifier((DOMAIN, watch["id"]), setup_entry.entry_id)
     assert device.sw_version == "0.1.0-dev.37"
-    # the phone's side service didn't say: nothing to compare
+    # the watch's build came through, the phone's own didn't: an older side service in the Zepp app
     phone = hass.states.get(_entity(hass, watch["id"], "phone_version", "sensor"))
-    assert phone.state == "unknown" and phone.attributes["matches_watch"] is None
+    assert phone.state == "older (not reported)" and phone.attributes["matches_watch"] is False
 
     # both halves report their build: the same, then different
     await client.get("/api/kestrel/sync?v=0.1.0-dev.37&s=0.1.0-dev.37", headers=h)

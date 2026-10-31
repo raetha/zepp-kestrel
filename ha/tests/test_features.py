@@ -101,6 +101,7 @@ async def test_new_settings_are_entities_and_cleaned(hass, setup_entry):
     watch, _ = await _token(hass, setup_entry)
     s = settings_of(watch)
     assert s["start"] == {"point": False} and s["learn"] == {"enabled": True} and s["volume"] == {"max": 80, "step": 20}
+    assert s["screen"] == {"seconds": 30}
 
     await hass.services.async_call(
         "switch", "turn_on", {"entity_id": _entity(hass, watch["id"], "open_on_point", "switch")}, blocking=True
@@ -115,13 +116,19 @@ async def test_new_settings_are_entities_and_cleaned(hass, setup_entry):
         "number", "set_value",
         {"entity_id": _entity(hass, watch["id"], "volume_step_limit", "number"), "value": 10}, blocking=True,
     )
+    await hass.services.async_call(
+        "number", "set_value", {"entity_id": _entity(hass, watch["id"], "screen_time", "number"), "value": 45}, blocking=True
+    )
     s = settings_of(setup_entry.runtime_data.watches[watch["id"]])
+    assert s["screen"] == {"seconds": 45}
     assert s["start"]["point"] is True and s["learn"]["enabled"] is False
     assert s["volume"] == {"max": 45, "step": 10}
 
     assert clean_settings({"volume": {"max": 7, "step": 999}, "start": {"point": "yes"}, "learn": {"enabled": 1}}) == {
         "volume": {"max": 10, "step": 50}
     }
+    assert clean_settings({"screen": {"seconds": 2}}) == {"screen": {"seconds": 5}}
+    assert clean_settings({"screen": {"seconds": "long"}}) == {}
 
 
 def test_paints_keep_known_spot_fields_only():

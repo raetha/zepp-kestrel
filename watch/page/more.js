@@ -1,5 +1,6 @@
 // More: the Home Assistant address in use, the gesture trigger, instant
-// toggle, rooms, the M0 probes, and unpairing.
+// toggle, what the app opens on, how long screens stay on, rooms, the M0
+// probes, and unpairing.
 
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
@@ -8,6 +9,7 @@ import { text, setText, setLabel, button, ask, listenKeys, COLOR, SIZE } from '.
 import { METHOD } from '../lib/protocol.js'
 import { gesture, rooms, settings, setSetting } from './store.js'
 import { syncSoon } from './sync.js'
+import { SCREEN_STEPS, holdScreen } from './screen.js'
 
 // Instant toggle: Off, then these delays in seconds (any value can be set in Home Assistant)
 const DWELL_STEPS = [2, 3, 5]
@@ -29,13 +31,14 @@ Page(
         ask(this, METHOD.STATUS, undefined, 5000)
           .then((st) => this.alive && st && st.url && setText(this.statusW, st.url.replace(/^http:\/\//, '')))
           .catch(() => null)
-        const btn = (i, label, onClick) => button({ x: 100, w: 280, y: 132 + i * 52, h: 46, label, onClick })
+        const btn = (i, label, onClick) => button({ x: 110, w: 260, y: 126 + i * 46, h: 42, size: SIZE.small, label, onClick })
         btn(0, `Gesture: ${g.enabled ? g.kind : 'off'}`, () => push({ url: 'page/gesture' }))
         this.dwellW = btn(1, this.dwellLabel(), () => this.nextDwell())
         this.startW = btn(2, this.startLabel(), () => this.toggleStart())
-        btn(3, `Rooms${nRooms ? ` (${nRooms})` : ''}`, () => push({ url: 'page/rooms' }))
-        btn(4, 'Probes', () => push({ url: 'page/probes' }))
-        btn(5, 'Unpair', () => this.unpair())
+        this.screenW = btn(3, this.screenLabel(), () => this.nextScreen())
+        btn(4, `Rooms${nRooms ? ` (${nRooms})` : ''}`, () => push({ url: 'page/rooms' }))
+        btn(5, 'Probes', () => push({ url: 'page/probes' }))
+        btn(6, 'Unpair', () => this.unpair())
       },
 
       startLabel() {
@@ -48,6 +51,21 @@ Page(
         setSetting('start', { point })
         setLabel(this.startW, this.startLabel())
         setText(this.statusW, point ? 'Opens on Point; back for Home' : 'Opens on Home')
+        syncSoon((m, p, t) => ask(this, m, p, t), 'settings')
+      },
+
+      screenLabel() {
+        return `Screen: ${settings().screen.seconds} s`
+      },
+
+      // how long Kestrel's screens stay on: 10 -> 20 -> 30 -> 60 -> 10 s
+      nextScreen() {
+        const now = settings().screen.seconds
+        const next = SCREEN_STEPS.find((s) => s > now) || SCREEN_STEPS[0]
+        setSetting('screen', { seconds: next })
+        holdScreen()
+        setLabel(this.screenW, this.screenLabel())
+        setText(this.statusW, `Screens stay on ${next} s`)
         syncSoon((m, p, t) => ask(this, m, p, t), 'settings')
       },
 

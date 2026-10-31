@@ -149,6 +149,15 @@ Releasing (only when the owner asks):
 
 Versions follow [Semantic Versioning](https://semver.org/).
 
+**Compatibility between the watch app and the integration.** Until the first release, the two only need to work at the same build: no shims for older test builds. From the first release on, each side should keep working with the other side's last two releases, with the newer features simply missing:
+- Add, don't change: new endpoints, new message methods and new optional fields; keep old ones until no supported release uses them, and say in a comment which release that is.
+- Every reader ignores fields it doesn't know (Home Assistant's `clean_*` in `watchdata.py` already does) and copes with missing ones (a default).
+- A watch method the phone side doesn't know comes back as "unknown method" (the watch reads it as "phone runs another build"); an endpoint Home Assistant doesn't have comes back as 404: treat both as "not supported here" where a feature is optional.
+- Both halves report their build (Phone app version sensor; `watch/lib/version.js`), and `InfoView` reports the integration's version: when a feature needs a minimum version on the other side, check it rather than guess.
+- Test it: before a release, install the previous two releases of each side against the new one (the emulator for the watch; an older `ha-v…` HACS release for Home Assistant).
+
+(A test build of the watch app with an older test build of the integration happened to work in October 2026; there's no guarantee of that before the first release.)
+
 Repository settings (owner, one time):
 
 - **Settings → Pages → Source: GitHub Actions.** Without this the deploy step fails and no test build is published.

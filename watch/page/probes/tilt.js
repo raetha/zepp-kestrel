@@ -18,8 +18,13 @@ import { accel, gyro, compass } from '../sensors.js'
 import { attitude } from '../../lib/aim.js'
 import { circularMean, angleDiff } from '../../lib/circular.js'
 import { mean } from '../../lib/stats.js'
+import { Circling } from '../../lib/circling.js'
+import { tickRing, clear, COLOR } from '../ui.js'
 import * as haptics from '../haptics.js'
 import { sleep, guard, r1 } from './util.js'
+
+const CALIBRATE_MS = 60000 // how long to wait for the compass to calibrate
+const TICK = { off: 0x333333, on: COLOR.accent, done: 0x3ddc84 }
 
 // Each step is announced by that many short buzzes, so the screen needn't be
 // read during a recording; a long buzz ends it. All steps are shown before Start.
@@ -79,7 +84,7 @@ export const tiltProbe = {
     const intro = () => {
       const r = RECORDINGS[names[which]]
       const steps = r.phases.map(([, how], i) => `${i + 1} buzz${i ? 'es' : ''}: ${how}`).join('\n')
-      ctx.status(`${r.intro}\n\n${steps}\nLong buzz: done`)
+      ctx.status(`${r.intro}\n${steps}\nLong buzz: done`)
     }
     ctx.secondary(`Recording: ${names[which]}`, () => {
       which = (which + 1) % names.length
@@ -88,13 +93,58 @@ export const tiltProbe = {
     })
     intro()
 
+    // As in Point and Paint: dots round the edge light as the watch leans each way,
+    // until Zepp OS says the compass is calibrated (apps can't calibrate it themselves).
+    // -> true once calibrated
+    const calibrate = async () => {
+      const ring = tickRing()
+      ctx.onCleanup(() => clear(ring.dots))
+      const circling = new Circling({ ticks: ring.dots.length })
+      ctx.status('The compass needs calibrating.\n\nTurn the watch slowly in a circle until the dots go green.')
+      const until = Date.now() + CALIBRATE_MS
+      let ok = false
+      while (Date.now() < until) {
+        if (!ctx.alive()) return false
+        const h = c.read()
+        if (h && h.calibrated && h.angle !== null) {
+          ok = true
+          break
+        }
+        const att = lastA && attitude(lastA.x, lastA.y, lastA.z, null)
+        if (att) {
+          const i = circling.add(att.pitch, att.roll)
+          if (i >= 0) ring.set(i, TICK.on)
+          if (circling.count === circling.ticks) {
+            circling.reset()
+            ring.all(TICK.off)
+          }
+        }
+        await sleep(SAMPLE_MS)
+      }
+      if (ok) {
+        ring.all(TICK.done)
+        haptics.done()
+        ctx.status('Compass calibrated.')
+        await sleep(1200)
+      }
+      clear(ring.dots)
+      return ok
+    }
+
     ctx.primary('Record', () =>
       once(async () => {
         const name = names[which]
         const { phases } = RECORDINGS[name]
         const h = c.read()
         if (!h || !h.calibrated || h.angle === null) {
-          ctx.status('The compass needs calibrating first. Open the Compass app on the watch and follow its prompt, then come back and press Record.')
+          const ok = await calibrate()
+          if (!ctx.alive()) return
+          if (!ok) {
+            ctx.status('The compass didn\'t calibrate. Turn the watch in a slow circle, away from metal, and press Record to try again.')
+            return
+          }
+          // read the steps again, then Record starts it
+          intro()
           return
         }
         for (let s = 3; s > 0; s--) {

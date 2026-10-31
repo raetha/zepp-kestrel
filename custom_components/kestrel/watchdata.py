@@ -7,7 +7,7 @@ every change, so the watch can tell whether Home Assistant changed something
 (in the integration's options) since it last synced.
 
   settings  gesture trigger, instant toggle, where the current room comes from,
-            what the app opens on, volume limits, learning from use
+            what the app opens on, volume limits, learning from use, how long the screen stays on
   paints    {entity_id: [spot]} where the user pointed at each device
   rooms     {area_id: {name, fingerprint: {mac: [rssi, seen]}, scans, at}}
 """
@@ -48,6 +48,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "volume": {"max": 80, "step": 20},
     # Learn from use: confirmed triggers refine paints, confident room checks refine rooms.
     "learn": {"enabled": True},
+    # How long Kestrel's screens stay on without a touch (seconds), whatever the watch's own timeout.
+    "screen": {"seconds": 30},
     # Detailed diagnostics: the watch also sends aim traces, its screen and button trail and room
     # scans (for tuning and bug reports). Set only in Home Assistant; off again at `until` (epoch s).
     "diagnostics": {"detailed": False, "until": 0.0},
@@ -55,6 +57,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
 DWELL_SECONDS = (1.0, 10.0)  # allowed range, in half seconds
 VOLUME_MAX = (10, 100)  # allowed range for the volume ceiling, percent, steps of 5
 VOLUME_STEP = (5, 50)  # allowed range for one twist, percent, steps of 5
+SCREEN_SECONDS = (5, 120)  # allowed range for how long Kestrel keeps the screen on, whole seconds
 
 SECTIONS = ("settings", "paints", "rooms")
 
@@ -120,6 +123,8 @@ def clean_settings(values: Any) -> dict[str, dict[str, Any]]:
         out["start"] = {"point": st["point"]}
     if isinstance(le := values.get("learn"), dict) and isinstance(le.get("enabled"), bool):
         out["learn"] = {"enabled": le["enabled"]}
+    if isinstance(sc := values.get("screen"), dict) and is_number(sc.get("seconds")):
+        out["screen"] = {"seconds": int(round(min(max(float(sc["seconds"]), SCREEN_SECONDS[0]), SCREEN_SECONDS[1])))}
     if isinstance(v := values.get("volume"), dict):
         volume: dict[str, Any] = {}
         for field, (low, high) in (("max", VOLUME_MAX), ("step", VOLUME_STEP)):

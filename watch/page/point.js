@@ -19,7 +19,7 @@
 //
 // The screen stays on while you're pointing: each time the arm is held out
 // (aiming or a device in mind) or something is triggered, the screen gets
-// another AWAKE_MS. Lowering the wrist lets it go off as usual.
+// another screen time (the Screen setting). Lowering the wrist lets it go off as usual.
 //
 // After a trigger, "Not it?" offers the runner-up for a few seconds: choosing
 // it undoes the first action where that's possible, runs the right one, and
@@ -30,6 +30,7 @@
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked, note } from './trail.js'
 import { batteryLevel, stepCount } from './sensors.js'
+import { screenMs } from './screen.js'
 import { setWakeUpRelaunch, setPageBrightTime, resetPageBrightTime } from '@zos/display'
 import { event as uiEvent } from '@zos/ui'
 import { text, setText, button, clear, rect, setColor, setTextColor, fit, ask, listenKeys, tickRing, COLOR, SIZE } from './ui.js'
@@ -83,7 +84,7 @@ const TWIST_LOCK_MEMORY_MS = 1500 // the lock may drop as the wrist turns (the c
 const ROOM_LEARN_MS = 10 * 60000 // a room's fingerprint learns from at most one check this often
 const ROOM_EVERY_MS = 60000 // check the room again this often while pointing (a 3 s Bluetooth scan)
 const GESTURE_COOLDOWN_MS = 3000 // after a trigger, gestures are ignored this long (one gesture, one toggle)
-const AWAKE_MS = 30000 // screen time from the last aim or trigger
+// screen time from the last aim or trigger: the Screen setting (page/screen.js)
 const AWAKE_EVERY_MS = 5000 // renew it at most this often
 // Toggling these again undoes a wrong trigger. Scenes, scripts and buttons can't be undone.
 const REVERSIBLE = ['light', 'switch', 'fan', 'input_boolean', 'media_player', 'cover']
@@ -129,13 +130,13 @@ Page(
         this.keepAwake()
       },
 
-      /** Give the screen another AWAKE_MS (called while aiming and on triggers). */
+      /** Give the screen another screen time (called while aiming and on triggers). */
       keepAwake() {
         const now = Date.now()
         if (now - this.awakeAt < AWAKE_EVERY_MS) return
         this.awakeAt = now
         try {
-          setPageBrightTime({ brightTime: AWAKE_MS })
+          setPageBrightTime({ brightTime: screenMs() })
         } catch (e) {
           // not critical
         }

@@ -154,7 +154,7 @@ rules:
     comment: Nothing for the user to repair: Kestrel needs no outside address (it works on the home network only), and every setting has a clear place in Configure.
   stale-devices:
     status: done
-    comment: Devices of watches no longer paired are removed at setup; deleting a device unpairs the watch.
+    comment: Devices of watches no longer paired are removed at setup; deleting a device unpairs the watch (its paints, rooms and settings are kept 30 days for a watch paired later to take over, then dropped).
 
   # Platinum
   async-dependency:

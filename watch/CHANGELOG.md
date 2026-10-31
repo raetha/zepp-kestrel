@@ -8,6 +8,9 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Added
 
+- Pairing again, or pairing a new watch, offers the setups Home Assistant already has (another watch's, or one removed in the last 30 days): pick one to take over its paints, rooms and settings instead of starting from nothing.
+- Screen time: Kestrel's screens stay on 30 s without a touch, whatever the watch's own timeout (More → Screen: 10, 20, 30 or 60 s; any 5–120 s in Home Assistant and the Zepp app's settings page).
+- The compass tilt probe calibrates the compass itself (turn the watch in a circle until the dots go green), then shows the steps again for you to press Record, instead of sending you to the Compass app.
 - The watch and its part in the Zepp app now report their builds: the home screen says when they differ, and the watch notes when that began, so it shows up in the diagnostics even without Detailed diagnostics.
 - When the Zepp app on the phone is running a different Kestrel build than the watch (seen after a test-build install), Home and Pair say so and suggest force-quitting the Zepp app, instead of asking you to pair again.
 - More for tuning with Detailed diagnostics on (nothing extra is measured or sent with it off): aims held out that never triggered, the score, lead, gyro and compass state in each aim trace, the room checks made while pointing, steps taken since Point opened (not your step count), and the readings of each Paint sweep. The app asks for step data for this; deny it and only the step counts are missing.

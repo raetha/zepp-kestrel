@@ -6,6 +6,7 @@ import { getDeviceInfo } from '@zos/device'
 import { getPackageInfo } from '@zos/app'
 import { KEY_BACK, KEY_SELECT, KEY_HOME, KEY_UP, KEY_DOWN, KEY_SHORTCUT } from '@zos/interaction'
 import { append, splitPrevious, describeError } from '../lib/trail.js'
+import { holdScreen } from './screen.js'
 
 const KEY = 'kestrel.trail'
 const BUILDS_KEY = 'kestrel.builds'
@@ -101,6 +102,7 @@ export function tracked(name, def) {
     const f = def[k]
     out[k] = function (...args) {
       if (k === 'onInit') note('open', name)
+      if (k === 'build') holdScreen() // every Kestrel screen stays on as long as the settings say
       if (k === 'onDestroy') note('close', name)
       if (!f) return undefined
       try {
