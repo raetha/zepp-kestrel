@@ -5,7 +5,7 @@ import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
 import { replace } from '@zos/router'
 import { getDeviceInfo } from '@zos/device'
-import { text, setText, button, clear, fit, ask, COLOR, SIZE } from './ui.js'
+import { text, setText, button, clear, fit, ask, phoneMismatch, PHONE_MISMATCH, COLOR, SIZE } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
 import { saveTargets } from './store.js'
 import * as haptics from './haptics.js'
@@ -49,6 +49,7 @@ Page(
         ask(this, METHOD.DISCOVER, address ? { address } : undefined, 15000)
           .then((r) => {
             const found = (r && r.found) || []
+            if (phoneMismatch(r)) return this.nothing(PHONE_MISMATCH)
             if (r && r.error) return this.nothing(r.error)
             if (!found.length) return this.nothing()
             clear(this.widgets)

@@ -4,7 +4,7 @@
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked, previousRuns, forgetPreviousRuns, noteLaunch, appVersion } from './trail.js'
 import { push } from '@zos/router'
-import { text, setText, setLabel, button, clear, ask, COLOR, SIZE } from './ui.js'
+import { text, setText, setLabel, button, clear, ask, phoneMismatch, PHONE_MISMATCH, COLOR, SIZE } from './ui.js'
 import { METHOD } from '../lib/protocol.js'
 import { targets, paintedDevices, settings } from './store.js'
 import { sync, firstSyncOfRun, firstOpenOfRun } from './sync.js'
@@ -55,6 +55,12 @@ Page(
         const btn = (i, label, onClick, primary = false) =>
           add(button({ x: 110, w: 260, y: 146 + i * 64, h: 56, label, onClick, primary }))
 
+        if (phoneMismatch(st)) {
+          // not "not paired": pairing again wouldn't help (ui.js)
+          setText(this.statusW, 'Phone runs another build')
+          add(text({ x: 50, y: 150, w: 380, h: 240, size: SIZE.small, value: PHONE_MISMATCH }))
+          return
+        }
         if (st.offline) {
           setText(this.statusW, 'Phone not reachable')
         } else if (!st.paired) {

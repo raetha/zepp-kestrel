@@ -148,6 +148,16 @@ export function fit(s, n = 18) {
  * A backup timer of the asking page's own makes sure it always settles
  * (see unstickHandshake for why ZML's might not).
  */
+// The phone runs the side service from the Zepp app's own copy of Kestrel. If that
+// copy is older or newer than the watch's (seen on an iPhone after a QR install:
+// the watch had the new build, the phone still ran one from before the message
+// names changed), the phone answers "unknown method". Say what to do instead of
+// treating it as "not paired".
+export const PHONE_MISMATCH = 'The Zepp app is running a different Kestrel build than the watch. Force-quit the Zepp app and open it again; if that doesn\'t help, reinstall Kestrel.'
+export function phoneMismatch(r) {
+  return !!(r && r.error && /unknown method/.test(String(r.error)))
+}
+
 export function ask(page, method, params, timeout = 6000) {
   unstickHandshake(page)
   const req = page.request({ method, params }, { timeout })
