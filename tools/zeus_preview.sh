@@ -14,6 +14,9 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 proj="$1"; out="$2"; devices="$3"
 dec() { python3 -c 'import sys, urllib.parse; print(urllib.parse.unquote(sys.argv[1]).strip())' "$1"; }
 mkdir -p "$HOME/.zepp" "$out"
+# Zeus writes this file itself (version checks) without a final newline: start on a new line,
+# or the first key is glued to its last line and Zeus asks for a login (seen in CI)
+echo >> "$HOME/.zepp/.zeus"
 {
   echo "____user_zepp_com__token=\"$(dec "${ZEPP_APPTOKEN:?}")\""
   echo "____user_zepp_com__userid=\"$(dec "${ZEPP_USERID:?}")\""
@@ -21,7 +24,7 @@ mkdir -p "$HOME/.zepp" "$out"
 } >> "$HOME/.zepp/.zeus"
 log="$(mktemp)"
 # no terminal: an expired login would wait for a browser forever, hence the timeout
-(cd "$proj" && NODE_OPTIONS="--require $root/tools/zeus_preview_hook.cjs" timeout 600 zeus preview -s -t "$devices" </dev/null >"$log" 2>&1) || true
+(cd "$proj" && NODE_OPTIONS="--require $root/tools/zeus_preview_hook.cjs" timeout ${ZEUS_TIMEOUT:-600} zeus preview -s -t "$devices" </dev/null >"$log" 2>&1) || true
 url="$(tr '\r' '\n' <"$log" | grep -o 'KESTREL_PREVIEW_URL=.*' | head -1 | cut -d= -f2- || true)"
 if [ -z "$url" ]; then
   tr '\r' '\n' <"$log" | grep -v '^\s*$' | tail -15
