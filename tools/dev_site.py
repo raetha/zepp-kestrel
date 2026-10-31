@@ -37,12 +37,12 @@ Each watch needs the package built for its screen. The codes never change; they 
 The QR code never changes; it always installs the newest build.</p>
 <img class="qr" src="watch/install-qr.png" alt="QR code for the Kestrel test build">'''
     if (w / "preview-qr.png").exists():
-        # Zepp's preview service (tools/zepp_preview.py, only with the ZEPP_* secrets): an experiment,
+        # Zepp's preview service (tools/zeus_preview.sh, only with the ZEPP_* secrets): an experiment,
         # to see whether the Zepp app updates the side service for this route
         expires = (w / "preview-expires.txt").read_text().strip()
         variant_file = w / "preview-variant.txt"
-        variant = variant_file.read_text().strip() if variant_file.exists() else "with intermediate products"
-        primary = f'''<h3>Zepp preview install (Balance 3)</h3>
+        variant = variant_file.read_text().strip() if variant_file.exists() else "our copy of its upload"
+        primary = f'''<h3>Zepp preview install (Balance 3 and 3 Ti)</h3>
 <p class="note">Through Zepp's own preview service, as <code>zeus preview</code> does: the same Kestrel DEV app. Expires {html.escape(expires)};
 each push to dev makes a new one. Scan it the same way. (Uploaded {html.escape(variant)}.)</p>
 <img class="qr" src="watch/preview-qr.png" alt="QR code for the Kestrel test build through Zepp's preview service">

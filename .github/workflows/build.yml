@@ -91,6 +91,8 @@ jobs:
           ZEPP_APPTOKEN: ${{ secrets.ZEPP_APPTOKEN }}
           ZEPP_USERID: ${{ secrets.ZEPP_USERID }}
           ZEPP_CNAME: ${{ secrets.ZEPP_CNAME }}
+          # the watches test builds are made for (Zeus device names); the owner's is a Balance 3 Ti
+          TEST_WATCHES: Amazfit Balance 3,Amazfit Balance 3 Ti
         run: |
           set -e
           out="$PWD/out-dev"
@@ -104,14 +106,17 @@ jobs:
           short=$(git rev-parse --short HEAD)
           mkdir -p "$out/watch" && echo "$short" > "$out/SOURCE_SHA"
           python3 tools/make_dev_variant.py "$GITHUB_RUN_NUMBER" "$short"
-          (cd watch-dev && zeus build)
+          # test builds: the watches being tested only (one package, its own device IDs), as
+          # zeus preview builds them; releases build every watch
+          (cd watch-dev && zeus build -s -t "$TEST_WATCHES" </dev/null)
           python3 tools/extract_zpk.py watch-dev/dist "$out/watch/kestrel.zpk"
           python3 tools/packages.py watch-dev/dist "$out/watch"
           cp watch-dev/dist/*.zab "$out/watch/kestrel-dev.zab"
           # Zepp's preview service (like zeus preview), only when the secrets are set; a failed
           # upload is a warning, not a failed build: the page then has our own QR codes only
           if [ -n "$ZEPP_APPTOKEN" ] && [ -n "$ZEPP_USERID" ] && [ -n "$ZEPP_CNAME" ]; then
-            python3 tools/zepp_preview.py watch-dev/dist "$out/watch" || echo "::warning title=Zepp preview::upload failed (see the annotation above); the test page shows our own QR codes only"
+            # the real zeus preview (it builds its own package, in preview mode), not our copy of its upload
+            tools/zeus_preview.sh watch-dev "$out/watch" "$TEST_WATCHES" || echo "::warning title=Zepp preview::upload failed (see the annotation above); the test page shows our own QR codes only"
           else
             echo "No ZEPP_* secrets: no preview upload (the test page shows our own QR codes)"
           fi
