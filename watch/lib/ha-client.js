@@ -120,13 +120,14 @@ export class HaClient {
     return results.filter((r) => r && !seen.has(r.haName) && seen.add(r.haName))
   }
 
-  async pairStart(url, watchName) {
+  /** deviceId: the watch's own unique id, so Home Assistant can recognise a watch paired again. */
+  async pairStart(url, watchName, deviceId = null) {
     url = normalizeUrl(url)
     const res = await this.fetch({
       url: `${url}/api/kestrel/pair`,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ watch_name: watchName || 'Amazfit watch' }),
+      body: JSON.stringify(deviceId ? { watch_name: watchName || 'Amazfit watch', device_id: deviceId } : { watch_name: watchName || 'Amazfit watch' }),
       timeout: REMOTE_TIMEOUT,
     })
     const b = parseBody(res) || {}
@@ -234,12 +235,13 @@ export class HaClient {
    * says what the watch already has, so unchanged parts are left out.
    * -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room }
    */
-  async sync(only = null, have = null, version = null) {
+  async sync(only = null, have = null, version = null, deviceId = null) {
     const q = []
     if (only) q.push(`only=${only.join(',')}`)
     if (have) q.push(`have=${Object.keys(have).map((k) => `${k}:${have[k]}`).join(',')}`)
     if (version) q.push(`v=${encodeURIComponent(version)}`)
     q.push(`s=${encodeURIComponent(BUILD)}`) // the side service's own build: Home Assistant shows both
+    if (deviceId) q.push(`d=${encodeURIComponent(deviceId)}`) // the watch's unique id (Home Assistant keeps a hash)
     return (await this.component(`/api/kestrel/sync${q.length ? `?${q.join('&')}` : ''}`)) || {}
   }
 

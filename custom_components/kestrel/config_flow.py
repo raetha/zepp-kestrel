@@ -151,9 +151,12 @@ class KestrelOptionsFlow(OptionsFlow):
     async def async_step_watch(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """What to manage for this watch."""
         assert self.watch_id is not None
+        menu = ["paints", "settings", "rooms"]
+        if self._watches.setups_for(self.watch_id):
+            menu.append("take_over")
         return self.async_show_menu(
             step_id="watch",
-            menu_options=["paints", "settings", "rooms"],
+            menu_options=menu,
             description_placeholders={"watch": self._watches.watches[self.watch_id]["name"]},
         )
 
@@ -196,6 +199,25 @@ class KestrelOptionsFlow(OptionsFlow):
             return self._done()
         schema = _schema({vol.Required("entity"): EntitySelector(EntitySelectorConfig(domain=list(SUPPORTED_DOMAINS)))})
         return self.async_show_form(step_id="reassign", data_schema=schema, description_placeholders={"device": self.paint})
+
+    async def async_step_take_over(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Give this watch another watch's setup (a watch paired again as a new one, or a new watch)."""
+        assert self.watch_id is not None
+        setups = self._watches.setups_for(self.watch_id)
+        if user_input is not None:
+            # here in Home Assistant, by its owner: not limited to just after pairing
+            await self._watches.async_take_over(self.watch_id, user_input["source"], any_time=True)
+            return self._done()
+
+        def label(s: dict[str, Any]) -> str:
+            what = f"{s['name']}: {s['paints']} painted, {s['rooms']} rooms"
+            return f"{what} (removed)" if s["removed"] else what
+
+        return self.async_show_form(
+            step_id="take_over",
+            data_schema=_schema({vol.Required("source"): _select([(s["id"], label(s)) for s in setups])}),
+            description_placeholders={"watch": self._watches.watches[self.watch_id]["name"]},
+        )
 
     # ------------------------------------------------------------ rooms
     async def async_step_rooms(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

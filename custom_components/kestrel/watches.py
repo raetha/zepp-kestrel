@@ -59,6 +59,16 @@ def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def hardware_hash(device_id: Any) -> str | None:
+    """A watch's unique id (getDeviceInfo().uuid, Zepp OS 4.2+) as stored: a hash, never the id."""
+    if not isinstance(device_id, str):
+        return None
+    device_id = device_id.strip()
+    if not 8 <= len(device_id) <= 128:
+        return None
+    return hashlib.sha256(f"kestrel-watch:{device_id}".encode()).hexdigest()
+
+
 @dataclass
 class Pairing:
     """A watch waiting for its code to be entered."""
@@ -68,6 +78,7 @@ class Pairing:
     code: str
     expires: float
     attempts: int = 0
+    hardware: str | None = None  # hash of the watch's own unique id (Zepp OS 4.2+), see hardware_hash()
 
 
 @dataclass
@@ -123,7 +134,7 @@ class Watches:
         q.append(now)
         return True
 
-    def start_pairing(self, watch_name: str, now: float | None = None) -> Pairing:
+    def start_pairing(self, watch_name: str, now: float | None = None, device_id: Any = None) -> Pairing:
         now = time.monotonic() if now is None else now
         self._expire(now)
         pairing = Pairing(
@@ -132,6 +143,7 @@ class Watches:
             watch_name=re.sub(r"[^\w \-.'()]", "", watch_name or "").strip()[:WATCH_NAME_MAX] or "Watch",
             code=f"{secrets.randbelow(1_000_000):06d}",
             expires=now + PAIRING_TTL,
+            hardware=hardware_hash(device_id),
         )
         self.pairings[pairing.pairing_id] = pairing
         return pairing
@@ -157,8 +169,21 @@ class Watches:
             return "wrong", None, None
         del self.pairings[pairing_id]
         token = secrets.token_urlsafe(32)
+        # the same watch paired again (a reinstall, a reset): it gets its own record back,
+        # with its paints, rooms, settings, device and entities; only the token is new
+        same = pairing.hardware and next(
+            (w for w in self.watches.values() if w.get("hardware") == pairing.hardware), None
+        )
+        if same:
+            same["token_hash"] = _hash(token)
+            same["paired_at"] = time.time()
+            await self._async_save()
+            async_dispatcher_send(self.hass, signal_watch_updated(same["id"]))
+            return "ok", same, token
         watch_id = secrets.token_hex(6)
         watch = {"id": watch_id, "name": pairing.watch_name, "token_hash": _hash(token), "paired_at": time.time()}
+        if pairing.hardware:
+            watch["hardware"] = pairing.hardware
         self.watches[watch_id] = watch
         await self._async_save()
         self._device(watch)
@@ -179,7 +204,18 @@ class Watches:
         ]
         return out
 
-    async def async_take_over(self, watch_id: str, from_id: str) -> str | None:
+    def note_hardware(self, watch_id: str, device_id: Any) -> None:
+        """Remember a watch's unique id (hashed) if it paired before ids were sent, or from a stale phone side."""
+        watch = self.watches.get(watch_id)
+        h = hardware_hash(device_id)
+        if watch is None or h is None or watch.get("hardware") == h:
+            return
+        if any(w.get("hardware") == h for wid, w in self.watches.items() if wid != watch_id):
+            return  # another record already is this watch: leave it to take-over
+        watch["hardware"] = h
+        self.store.async_delay_save(lambda: {"watches": self.watches, "removed": self.removed}, STATUS_SAVE_DELAY)
+
+    async def async_take_over(self, watch_id: str, from_id: str, *, any_time: bool = False) -> str | None:
         """Give the watch `watch_id` (just paired) the setup of `from_id`; returns its watch id now.
 
         From a paired watch: the new token moves onto that watch's record (same id, device and
@@ -191,12 +227,14 @@ class Watches:
         if new is None or from_id == watch_id:
             return None
         # only just after pairing: a watch's token can't be used later to take another watch's place
-        if time.time() - float(new.get("paired_at") or 0) > TAKE_OVER_WINDOW:
+        if not any_time and time.time() - float(new.get("paired_at") or 0) > TAKE_OVER_WINDOW:
             return None
         if from_id in self.watches:
             old = self.watches[from_id]
             old["token_hash"] = new["token_hash"]
             old["paired_at"] = new["paired_at"]
+            if new.get("hardware"):
+                old["hardware"] = new["hardware"]
             del self.watches[watch_id]
             self.seen_seqs.pop(watch_id, None)
             dev_reg = dr.async_get(self.hass)

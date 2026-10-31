@@ -23,7 +23,7 @@ from . import KestrelConfigEntry
 from .const import DOMAIN
 from .targets import list_targets
 
-TO_REDACT = {"token_hash", "address", "url", "urls"}
+TO_REDACT = {"token_hash", "address", "url", "urls", "hardware"}
 MAC = re.compile(r"\b[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}\b")
 
 

@@ -16,6 +16,7 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 
 ### Added
 
+- A watch paired again is recognised by its unique id (kept only as a hash) and gets its own record back; Configure → a watch → Take over another watch's setup moves a setup over by hand, for a watch that already became a second one.
 - A watch paired again (or a new watch) can take over an earlier setup: another paired watch's (keeping its device and entities), or that of a watch removed in the last 30 days, which is now kept that long.
 - Screen on time number (and under Configure): how long Kestrel's screens stay on.
 - The Phone app version sensor shows "older (not reported)" when the phone runs a side service from before builds were reported.

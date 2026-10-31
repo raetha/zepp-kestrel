@@ -39,7 +39,15 @@
         "menu_options": {
           "paints": "Painted devices",
           "settings": "Settings",
-          "rooms": "Rooms"
+          "rooms": "Rooms",
+          "take_over": "Take over another watch's setup"
+        }
+      },
+      "take_over": {
+        "title": "Take over another watch's setup",
+        "description": "Give {watch} the paints, rooms and settings of another watch, for a watch that was paired again as a new one, or a new watch. Picking a paired watch makes {watch} take its place: it keeps that watch's device and entities (so automations keep working), and the device {watch} has now is removed. A removed watch's setup is copied in. The watch picks it up at its next sync.",
+        "data": {
+          "source": "Setup to take over"
         }
       },
       "paints": {

@@ -4,7 +4,7 @@
 // section merges.
 
 import { METHOD } from '../lib/protocol.js'
-import { note, appVersion } from './trail.js'
+import { note, appVersion, deviceId } from './trail.js'
 import { mergeSection } from '../lib/sync.js'
 import {
   targets,
@@ -67,6 +67,7 @@ async function syncNow(ask, only = null, { full = false } = {}) {
   if (only) params.only = only
   if (!full) params.have = have()
   params.version = appVersion() // shown on the watch's device in Home Assistant
+  params.deviceId = deviceId() // lets Home Assistant recognise this watch if it pairs again
   let r = await ask(METHOD.SYNC, params, 20000).catch(() => null)
   if (!r) return { ok: false, error: 'Phone not reachable' }
   if (r.error) return { ok: false, error: r.error }

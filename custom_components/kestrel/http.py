@@ -158,7 +158,7 @@ class PairView(HomeAssistantView):
             body = await request.json()
         except ValueError:
             body = {}
-        pairing = watches.start_pairing(str(body.get("watch_name") or "Watch"))
+        pairing = watches.start_pairing(str(body.get("watch_name") or "Watch"), device_id=body.get("device_id"))
         persistent_notification.async_create(
             hass,
             (
@@ -260,6 +260,8 @@ class SyncView(_WatchView):
             phone = PHONE_NOT_REPORTED
         if version or phone:
             watches.note_status(watch["id"], app_version=version or None, phone_version=phone or None)
+        # the watch's unique id (hashed at once), for watches paired before it was sent at pairing
+        watches.note_hardware(watch["id"], request.query.get("d"))
         synced = watches.synced(watch["id"])
         have = dict(item.split(":", 1) for item in request.query.get("have", "").split(",") if ":" in item)
         only = [x for x in request.query.get("only", "").split(",") if x]

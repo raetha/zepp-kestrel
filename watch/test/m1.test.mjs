@@ -323,3 +323,18 @@ test('after pairing, the watch can take over an earlier setup', async () => {
   assert.deepEqual(await ha.takeOver('old'), { ok: true })
   assert.equal(ha.pairing().watchId, 'old') // the token now belongs to the old watch's record
 })
+
+test('pairing and syncing send the watch id so Home Assistant can recognise the watch', async () => {
+  const url = 'http://homeassistant.local'
+  const store = memStore({ 'kestrel.pairing': JSON.stringify({ token: 'tok', urls: [url] }) })
+  const fetch = fakeFetch({
+    [`POST ${url}/api/kestrel/pair`]: async (r) => {
+      assert.deepEqual(JSON.parse(r.body), { watch_name: 'Balance 3', device_id: 'abc123' })
+      return { status: 200, body: { pairing_id: 'p1', expires_in: 600 } }
+    },
+    [`GET ${url}/api/kestrel/sync?s=${BUILD}&d=abc123`]: async () => ({ status: 200, body: { paints_rev: 1 } }),
+  })
+  const ha = new HaClient({ fetch, store })
+  assert.equal((await ha.pairStart(url, 'Balance 3', 'abc123')).pairingId, 'p1')
+  assert.equal((await ha.sync(null, null, null, 'abc123')).paints_rev, 1)
+})

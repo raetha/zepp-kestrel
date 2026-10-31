@@ -97,3 +97,74 @@ async def test_removed_setups_are_dropped_after_30_days(hass, setup_entry, hass_
     freezer.tick(31 * 86400)
     new = await _pair(hass, client, "New")
     assert new["setups"] == []
+
+
+async def _pair_with_id(hass, client, name, device_id):
+    res = await client.post("/api/kestrel/pair", json={"watch_name": name, "device_id": device_id})
+    pairing_id = (await res.json())["pairing_id"]
+    code = hass.config_entries.async_loaded_entries(DOMAIN)[0].runtime_data.pairings[pairing_id].code
+    res = await client.post("/api/kestrel/pair/confirm", json={"pairing_id": pairing_id, "code": code})
+    return await res.json()
+
+
+async def test_the_same_watch_paired_again_gets_its_own_record_back(hass, setup_entry, hass_client_no_auth):
+    watches = setup_entry.runtime_data
+    client = await hass_client_no_auth()
+    first = await _pair_with_id(hass, client, "Balance 3", "a" * 32)
+    await watches.async_save_paints(first["watch_id"], PAINT)
+    assert watches.watches[first["watch_id"]]["hardware"] != "a" * 32  # only a hash is kept
+
+    again = await _pair_with_id(hass, client, "Balance 3", "a" * 32)
+    assert again["watch_id"] == first["watch_id"] and list(watches.watches) == [first["watch_id"]]
+    res = await client.get("/api/kestrel/sync", headers={TOKEN_HEADER: again["token"]})
+    assert (await res.json())["paints"] == PAINT
+    res = await client.get("/api/kestrel/sync", headers={TOKEN_HEADER: first["token"]})
+    assert res.status == HTTPStatus.UNAUTHORIZED
+
+    # another watch is another record
+    other = await _pair_with_id(hass, client, "Balance 3", "b" * 32)
+    assert other["watch_id"] != first["watch_id"]
+    # nonsense ids are ignored
+    junk = await _pair_with_id(hass, client, "Old", "x")
+    assert "hardware" not in watches.watches[junk["watch_id"]]
+
+    diag = await async_get_config_entry_diagnostics(hass, setup_entry)
+    assert all(w.get("hardware") in (None, "**REDACTED**") for w in diag["watches"])
+
+
+async def test_a_watch_paired_before_ids_learns_its_id_from_a_sync(hass, setup_entry, hass_client_no_auth):
+    watches = setup_entry.runtime_data
+    client = await hass_client_no_auth()
+    old = await _pair(hass, client, "Balance 3")
+    await watches.async_save_paints(old["watch_id"], PAINT)
+    await client.get(f"/api/kestrel/sync?d={'c' * 32}", headers={TOKEN_HEADER: old["token"]})
+    assert watches.watches[old["watch_id"]].get("hardware")
+    # a second record syncing the same id doesn't claim it (the first one is that watch)
+    second = await _pair(hass, client, "Balance 3")
+    await client.get(f"/api/kestrel/sync?d={'c' * 32}", headers={TOKEN_HEADER: second["token"]})
+    assert not watches.watches[second["watch_id"]].get("hardware")
+    # and pairing again with it finds the first
+    again = await _pair_with_id(hass, client, "Balance 3", "c" * 32)
+    assert again["watch_id"] == old["watch_id"]
+
+
+async def test_configure_can_give_a_watch_another_watch_setup(hass, setup_entry, hass_client_no_auth, freezer):
+    watches = setup_entry.runtime_data
+    client = await hass_client_no_auth()
+    old = await _pair(hass, client, "Balance 3")
+    await watches.async_save_paints(old["watch_id"], PAINT)
+    new = await _pair(hass, client, "Balance 3")
+    freezer.tick(3600)  # long after pairing: Configure isn't limited to that
+
+    result = await hass.config_entries.options.async_init(setup_entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "pick_watch"})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"watch": new["watch_id"]})
+    assert "take_over" in result["menu_options"]
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "take_over"})
+    assert result["step_id"] == "take_over"
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"source": old["watch_id"]})
+    assert result["type"] == "create_entry"
+    await hass.async_block_till_done()
+    assert list(watches.watches) == [old["watch_id"]]
+    res = await client.get("/api/kestrel/sync", headers={TOKEN_HEADER: new["token"]})
+    assert (await res.json())["paints"] == PAINT

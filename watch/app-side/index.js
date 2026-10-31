@@ -63,7 +63,7 @@ AppSideService(
           case METHOD.DISCOVER:
             return { found: await this.ha.discover(p.address ? [p.address] : []) }
           case METHOD.PAIR_START:
-            return this.ha.pairStart(p.url, p.watchName)
+            return this.ha.pairStart(p.url, p.watchName, p.deviceId || null)
           case METHOD.PAIR_CONFIRM:
             return this.ha.pairConfirm(p.url, p.pairingId, p.code)
           case METHOD.TAKE_OVER:
@@ -72,7 +72,7 @@ AppSideService(
             this.ha.unpair()
             return { ok: true }
           case METHOD.SYNC:
-            return this.mirror(await this.ha.sync(p.only || null, p.have || null, p.version || null))
+            return this.mirror(await this.ha.sync(p.only || null, p.have || null, p.version || null, p.deviceId || null))
           case METHOD.FIRE:
             // the watch may retry over Bluetooth; never run a command twice
             if (p.seq !== undefined && !dedupe.accept(p.seq)) return { ok: true, duplicate: true }

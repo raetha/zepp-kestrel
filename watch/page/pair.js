@@ -2,7 +2,7 @@
 // a 6-digit code as a notification, and the code is typed in here.
 
 import { BasePage } from '@zeppos/zml/base-page'
-import { tracked } from './trail.js'
+import { tracked, deviceId } from './trail.js'
 import { replace } from '@zos/router'
 import { getDeviceInfo } from '@zos/device'
 import { text, setText, button, clear, fit, ask, phoneMismatch, PHONE_MISMATCH, COLOR, SIZE } from './ui.js'
@@ -113,7 +113,7 @@ Page(
       start(ha) {
         clear(this.widgets)
         setText(this.msgW, `Asking ${ha.haName} for a code…`)
-        ask(this, METHOD.PAIR_START, { url: ha.url, watchName: watchName() }, 15000)
+        ask(this, METHOD.PAIR_START, { url: ha.url, watchName: watchName(), deviceId: deviceId() }, 15000)
           .then((r) => {
             if (!r || r.error || !r.pairingId) return this.nothing((r && r.error) || 'Home Assistant did not answer')
             this.ha = ha

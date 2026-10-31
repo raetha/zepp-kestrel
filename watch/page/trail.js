@@ -142,6 +142,20 @@ export function noteLaunch() {
   noteBuilds(appVersion())
 }
 
+/**
+ * The watch's own unique id (Zepp OS 4.2+), or null: sent when pairing and syncing so
+ * Home Assistant (which keeps only a hash of it) gives the same watch its own record
+ * back when it pairs again, instead of a new, empty one.
+ */
+export function deviceId() {
+  try {
+    const id = getDeviceInfo().uuid
+    return typeof id === 'string' && id ? id : null
+  } catch (e) {
+    return null
+  }
+}
+
 /** This build's version, e.g. "0.1.0-dev.187", or "" if the firmware won't say. */
 export function appVersion() {
   try {
