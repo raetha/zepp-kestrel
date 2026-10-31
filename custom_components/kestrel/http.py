@@ -464,7 +464,7 @@ class FireView(_WatchView):
             EVENT_FIRED,
             {
                 "watch_id": watch["id"],
-                "watch_name": watch["name"],
+                "watch_name": watches.display_name(watch["id"]),
                 "target": target,
                 "action": action,
                 "via": str(body.get("via") or "")[:16] or None,

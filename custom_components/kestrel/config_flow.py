@@ -115,7 +115,7 @@ class KestrelOptionsFlow(OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             menu_options=menu,
-            description_placeholders={"watch": watches[self.watch_id]["name"] if self.watch_id else ""},
+            description_placeholders={"watch": self._watches.display_name(self.watch_id) if self.watch_id else ""},
         )
 
     async def async_step_offered(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -145,7 +145,7 @@ class KestrelOptionsFlow(OptionsFlow):
         if user_input is not None:
             self.watch_id = user_input["watch"]
             return await self.async_step_watch()
-        options = [(wid, w["name"]) for wid, w in watches.items()]
+        options = [(wid, self._watches.label(wid)) for wid in watches]
         return self.async_show_form(step_id="pick_watch", data_schema=_schema({vol.Required("watch"): _select(options)}))
 
     async def async_step_watch(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -157,7 +157,7 @@ class KestrelOptionsFlow(OptionsFlow):
         return self.async_show_menu(
             step_id="watch",
             menu_options=menu,
-            description_placeholders={"watch": self._watches.watches[self.watch_id]["name"]},
+            description_placeholders={"watch": self._watches.display_name(self.watch_id)},
         )
 
     # ------------------------------------------------------------ paints
@@ -216,7 +216,7 @@ class KestrelOptionsFlow(OptionsFlow):
         return self.async_show_form(
             step_id="take_over",
             data_schema=_schema({vol.Required("source"): _select([(s["id"], label(s)) for s in setups])}),
-            description_placeholders={"watch": self._watches.watches[self.watch_id]["name"]},
+            description_placeholders={"watch": self._watches.display_name(self.watch_id)},
         )
 
     # ------------------------------------------------------------ rooms

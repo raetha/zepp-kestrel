@@ -190,11 +190,25 @@ class Watches:
         async_dispatcher_send(self.hass, SIGNAL_WATCH_ADDED, watch_id)
         return "ok", watch, token
 
+    # ------------------------------------------------------------ names
+    def display_name(self, watch_id: str) -> str:
+        """The watch's name as shown in Home Assistant: the device's name if the user renamed it."""
+        watch = self.watches.get(watch_id, {})
+        device = dr.async_get(self.hass).async_get_device_by_identifier((DOMAIN, watch_id), self.entry_id)
+        return (device and (device.name_by_user or device.name)) or watch.get("name") or watch_id
+
+    def label(self, watch_id: str) -> str:
+        """A name that tells watches apart in lists, even two with the same name."""
+        watch = self.watches.get(watch_id, {})
+        paired = watch.get("paired_at")
+        when = dt_util.as_local(dt_util.utc_from_timestamp(paired)).strftime("%Y-%m-%d") if paired else "?"
+        return f"{self.display_name(watch_id)} ({len(watch.get('paints', {}))} painted, paired {when})"
+
     # ------------------------------------------------------------ carrying a setup over
     def setups_for(self, watch_id: str) -> list[dict[str, Any]]:
         """Setups a newly paired watch could take over: other paired watches, then removed ones."""
         out = [
-            {"id": wid, "name": w["name"], "paints": len(w.get("paints", {})), "rooms": len(w.get("rooms", {})), "removed": False}
+            {"id": wid, "name": self.display_name(wid), "paints": len(w.get("paints", {})), "rooms": len(w.get("rooms", {})), "removed": False}
             for wid, w in self.watches.items()
             if wid != watch_id and (w.get("paints") or w.get("rooms"))
         ]
@@ -267,11 +281,12 @@ class Watches:
 
     async def async_remove(self, watch_ids: list[str]) -> None:
         for wid in watch_ids:
+            shown = self.display_name(wid) if wid in self.watches else None
             watch = self.watches.pop(wid, None)
             if watch and (watch.get("paints") or watch.get("rooms")):
                 # kept a while: a watch paired again (or a new one) can take this setup over
                 self.removed[wid] = {
-                    "name": watch["name"],
+                    "name": shown or watch["name"],
                     "removed_at": time.time(),
                     **{k: watch[k] for k in ("settings", "paints", "rooms") if k in watch},
                 }

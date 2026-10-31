@@ -168,3 +168,25 @@ async def test_configure_can_give_a_watch_another_watch_setup(hass, setup_entry,
     assert list(watches.watches) == [old["watch_id"]]
     res = await client.get("/api/kestrel/sync", headers={TOKEN_HEADER: new["token"]})
     assert (await res.json())["paints"] == PAINT
+
+
+async def test_lists_use_the_name_given_in_home_assistant(hass, setup_entry, hass_client_no_auth):
+    watches = setup_entry.runtime_data
+    client = await hass_client_no_auth()
+    old = await _pair(hass, client, "Amazfit watch")
+    await watches.async_save_paints(old["watch_id"], PAINT)
+    dev_reg = dr.async_get(hass)
+    device = dev_reg.async_get_device_by_identifier((DOMAIN, old["watch_id"]), setup_entry.entry_id)
+    dev_reg.async_update_device(device.id, name_by_user="Old Balance")
+    new = await _pair(hass, client, "Amazfit watch")
+    assert new["setups"][0]["name"] == "Old Balance"
+
+    result = await hass.config_entries.options.async_init(setup_entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "pick_watch"})
+    labels = {o["value"]: o["label"] for o in result["data_schema"].schema["watch"].config["options"]}
+    assert labels[old["watch_id"]].startswith("Old Balance (1 painted, paired ")
+    assert labels[new["watch_id"]].startswith("Amazfit watch (0 painted, paired ")
+
+    # removed: the setup keeps the name it had
+    await watches.async_remove([old["watch_id"]])
+    assert watches.removed[old["watch_id"]]["name"] == "Old Balance"
