@@ -44,6 +44,9 @@ const dedupe = new Dedupe()
 AppSideService(
   BaseSideService({
     onInit() {
+      // shows in the Zepp app's developer mode log (Profile → Developer Mode → Mini Program → Side Service):
+      // which build the phone side really runs (it hasn't always been the one just installed)
+      console.log(`Kestrel side service ${BUILD} started`)
       this.ha = new HaClient({ fetch: (req) => this.fetch(req), store: this.settings })
     },
 
