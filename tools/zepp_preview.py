@@ -73,7 +73,7 @@ if len(zabs) != 1:
 
 
 
-def single_device_zab(zab_path, source):
+def single_device_zab(zab_path, source, keep_ip=True):
     """The .zab with only the package for one watch, as zeus preview builds it."""
     with zipfile.ZipFile(zab_path) as zab:
         manifest = json.loads(zab.read("manifest.json"))
@@ -93,24 +93,35 @@ def single_device_zab(zab_path, source):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr(keep[0]["name"], keep[1])
-        if ".ip-package" in names:    # Zepp's upload service requires it (HTTP 500 without)
+        if keep_ip and ".ip-package" in names:  # Zepp's upload service once refused a bundle without it
             z.writestr(".ip-package", ip)
         z.writestr("manifest.json", json.dumps(manifest, separators=(",", ":")))
     return buf.getvalue()
 
 
-payload = single_device_zab(zabs[0], device_source)
-try:
-    res = requests.post(
-        f"https://{host}/custom/tools/app-dial/upload",
-        params={"userid": userid},
-        headers={"apptoken": token},
-        files={"file": (zabs[0].name, payload, "application/octet-stream")},
-        data={"app_type": "2"},          # 1 = watch face, 2 = app
-        timeout=120,
-    )
-except requests.RequestException as e:
-    fail(f"could not reach the Zepp host from ZEPP_CNAME ({type(e).__name__}: {e})")
+def upload(payload):
+    try:
+        return requests.post(
+            f"https://{host}/custom/tools/app-dial/upload",
+            params={"userid": userid},
+            headers={"apptoken": token},
+            files={"file": (zabs[0].name, payload, "application/octet-stream")},
+            data={"app_type": "2"},          # 1 = watch face, 2 = app
+            timeout=120,
+        )
+    except requests.RequestException as e:
+        fail(f"could not reach the Zepp host from ZEPP_CNAME ({type(e).__name__}: {e})")
+
+
+# Without intermediate products first, as `zeus preview --ip false` does (NavGo, a Zepp OS
+# project whose phone side and settings install from previews, builds that way); Zepp
+# refused that once (HTTP 500), so fall back to the full bundle.
+variant = "without intermediate products"
+res = upload(single_device_zab(zabs[0], device_source, keep_ip=False))
+if res.status_code not in (200, 401):
+    print(f"::notice title=Zepp preview::without intermediate products: HTTP {res.status_code}; trying with them")
+    variant = "with intermediate products"
+    res = upload(single_device_zab(zabs[0], device_source, keep_ip=True))
 if res.status_code == 401:
     fail("Zepp rejected the login (401): the token has expired. Log in again and update ZEPP_APPTOKEN.")
 if res.status_code != 200:
@@ -129,5 +140,6 @@ expires = (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%d %H
 out.mkdir(parents=True, exist_ok=True)
 (out / "preview-url.txt").write_text(url + "\n")
 (out / "preview-expires.txt").write_text(expires + "\n")
+(out / "preview-variant.txt").write_text(variant + "\n")
 make(out / "preview-qr.png", url)
-print(f"preview uploaded; expires {expires}")
+print(f"preview uploaded ({variant}); expires {expires}")

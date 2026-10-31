@@ -40,9 +40,11 @@ The QR code never changes; it always installs the newest build.</p>
         # Zepp's preview service (tools/zepp_preview.py, only with the ZEPP_* secrets): an experiment,
         # to see whether the Zepp app updates the side service for this route
         expires = (w / "preview-expires.txt").read_text().strip()
+        variant_file = w / "preview-variant.txt"
+        variant = variant_file.read_text().strip() if variant_file.exists() else "with intermediate products"
         primary = f'''<h3>Zepp preview install (Balance 3)</h3>
 <p class="note">Through Zepp's own preview service, as <code>zeus preview</code> does. Expires {html.escape(expires)};
-each push to dev makes a new one. Scan it the same way.</p>
+each push to dev makes a new one. Scan it the same way. (Uploaded {html.escape(variant)}.)</p>
 <img class="qr" src="watch/preview-qr.png" alt="QR code for the Kestrel test build through Zepp's preview service">
 <h3>Our own packages</h3>''' + primary
     cards.append(f'''<section><h2>{html.escape(meta["appName"])} DEV</h2>
