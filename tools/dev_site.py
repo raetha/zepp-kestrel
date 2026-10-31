@@ -42,9 +42,8 @@ The QR code never changes; it always installs the newest build.</p>
         expires = (w / "preview-expires.txt").read_text().strip()
         variant_file = w / "preview-variant.txt"
         variant = variant_file.read_text().strip() if variant_file.exists() else "with intermediate products"
-        primary = f'''<h3>Zepp preview install (Balance 3): "Kestrel Preview"</h3>
-<p class="note">Through Zepp's own preview service, as <code>zeus preview</code> does, under the app ID registered with Zepp:
-it installs as a separate app, "Kestrel Preview", next to Kestrel DEV (pair it once). Expires {html.escape(expires)};
+        primary = f'''<h3>Zepp preview install (Balance 3)</h3>
+<p class="note">Through Zepp's own preview service, as <code>zeus preview</code> does: the same Kestrel DEV app. Expires {html.escape(expires)};
 each push to dev makes a new one. Scan it the same way. (Uploaded {html.escape(variant)}.)</p>
 <img class="qr" src="watch/preview-qr.png" alt="QR code for the Kestrel test build through Zepp's preview service">
 <h3>Our own packages</h3>''' + primary
