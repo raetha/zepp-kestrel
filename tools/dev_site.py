@@ -36,6 +36,15 @@ Each watch needs the package built for its screen. The codes never change; they 
         primary = '''<p class="note">Scan in the Zepp app: Profile → your watch → Developer Mode → scan.
 The QR code never changes; it always installs the newest build.</p>
 <img class="qr" src="watch/install-qr.png" alt="QR code for the Kestrel test build">'''
+    if (w / "preview-qr.png").exists():
+        # Zepp's preview service (tools/zepp_preview.py, only with the ZEPP_* secrets): an experiment,
+        # to see whether the Zepp app updates the side service for this route
+        expires = (w / "preview-expires.txt").read_text().strip()
+        primary = f'''<h3>Zepp preview install (Balance 3)</h3>
+<p class="note">Through Zepp's own preview service, as <code>zeus preview</code> does. Expires {html.escape(expires)};
+each push to dev makes a new one. Scan it the same way.</p>
+<img class="qr" src="watch/preview-qr.png" alt="QR code for the Kestrel test build through Zepp's preview service">
+<h3>Our own packages</h3>''' + primary
     cards.append(f'''<section><h2>{html.escape(meta["appName"])} DEV</h2>
 <p>based on {html.escape(meta["version"]["name"])} · build {html.escape(build)} · {html.escape(sha)}</p>
 {primary}

@@ -85,6 +85,12 @@ jobs:
 
       - name: Build the DEV test build (from the tip of dev)
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+        env:
+          # Optional (docs/development.md -> "Preview installs"): with all three set, the build
+          # also goes to Zepp's preview service and the test page shows that QR code too.
+          ZEPP_APPTOKEN: ${{ secrets.ZEPP_APPTOKEN }}
+          ZEPP_USERID: ${{ secrets.ZEPP_USERID }}
+          ZEPP_CNAME: ${{ secrets.ZEPP_CNAME }}
         run: |
           set -e
           out="$PWD/out-dev"
@@ -102,6 +108,13 @@ jobs:
           python3 tools/extract_zpk.py watch-dev/dist "$out/watch/kestrel.zpk"
           python3 tools/packages.py watch-dev/dist "$out/watch"
           cp watch-dev/dist/*.zab "$out/watch/kestrel-dev.zab"
+          # Zepp's preview service (like zeus preview), only when the secrets are set; a failed
+          # upload is a warning, not a failed build: the page then has our own QR codes only
+          if [ -n "$ZEPP_APPTOKEN" ] && [ -n "$ZEPP_USERID" ] && [ -n "$ZEPP_CNAME" ]; then
+            python3 tools/zepp_preview.py watch-dev/dist "$out/watch" || echo "::warning title=Zepp preview::upload failed (see the annotation above); the test page shows our own QR codes only"
+          else
+            echo "No ZEPP_* secrets: no preview upload (the test page shows our own QR codes)"
+          fi
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
