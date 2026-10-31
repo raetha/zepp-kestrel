@@ -34,7 +34,7 @@
         }
       },
       "watch": {
-        "title": "{watch}",
+        "title": "Manage watch",
         "description": "What would you like to manage? Changes reach the watch the next time it syncs (Sync on the watch's home screen).",
         "menu_options": {
           "paints": "Painted devices",

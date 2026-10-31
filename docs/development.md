@@ -82,6 +82,8 @@ We aim for the [integration quality scale](https://developers.home-assistant.io/
 - Strings live in `strings.json`, copied to `translations/en.json` (custom integrations load translations from there).
 - The manifest has no `categories` yet, so HACS validation warns about it. The hassfest image CI runs (the latest stable HA, 2026.10) rejects the key; HA's development branch accepts it. Once a stable HA release accepts it, add `"categories": ["buttons_remotes"]` (allowed values: https://contributors.home-assistant.io/core/integrations/categories/).
 
+**Options-flow menu titles take no placeholders.** Home Assistant's frontend fills `{placeholders}` in a menu's description and its options, but not in an options-flow menu step's title: a title of `{watch}` showed "Translation [formatjs Error: MISSING_VALUE…]" on a real install, though the flow passed the value (and tests can't see it). Keep titles plain.
+
 ## Testing on the emulator
 
 `tools/emu/emu.mjs` runs the app on the real Zepp OS firmware, headless, using the QEMU emulator that ships with Zepp's simulator. The image is the Amazfit Balance 2 (480×480 round, Zepp OS 5, API 4.2), the closest Zepp publishes to the Balance 3.
