@@ -17,17 +17,24 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 DEV_APPID_OFFSET = 1_000_000          # release ID 1132466 -> DEV 2132466
 
-build = int(sys.argv[1])
-sha = sys.argv[2] if len(sys.argv) > 2 else ""
-src, dst = REPO / "watch", REPO / "watch-dev"
+# --registered: keep the app ID registered in Zepp's developer console (1132466) and write
+# watch-preview/ as "Kestrel Preview", for Zepp preview uploads: a made-up ID (the DEV one)
+# may be why the Zepp app neither lists a preview under Developer Mode nor updates its
+# phone side, while a project with a registered ID gets both (docs/development.md).
+registered = "--registered" in sys.argv
+args = [a for a in sys.argv[1:] if not a.startswith("--")]
+build = int(args[0])
+sha = args[1] if len(args) > 1 else ""
+src, dst = REPO / "watch", REPO / ("watch-preview" if registered else "watch-dev")
 if dst.exists():
     shutil.rmtree(dst)
 shutil.copytree(src, dst, ignore=shutil.ignore_patterns("dist", "docs", "test", "__pycache__", "DRAFT"))
 app = json.loads((dst / "app.json").read_text())
 meta = app["app"]
 base_version = meta["version"]["name"]
-meta["appId"] += DEV_APPID_OFFSET
-meta["appName"] = f"{meta['appName']} DEV"
+if not registered:
+    meta["appId"] += DEV_APPID_OFFSET
+meta["appName"] = f"{meta['appName']} {'Preview' if registered else 'DEV'}"
 meta["version"] = {"code": build, "name": f"{base_version}-dev.{build}"}
 meta["description"] = f"Test build {build} {sha}".strip()
 for lang in app.get("i18n", {}).values():

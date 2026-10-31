@@ -9,6 +9,7 @@ site/
 out/
 out-dev/
 watch-dev/
+watch-preview/
 watch-compat/
 tools/.emu-m/
 tools/.emu*/

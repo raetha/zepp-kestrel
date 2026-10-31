@@ -12,6 +12,9 @@
     "vender": "kestrel",
     "description": "Point your watch at a smart-home device and trigger it, with Home Assistant."
   },
+  "setting": {
+    "path": "setting/index"
+  },
   "permissions": [
     "device:os.accelerometer",
     "device:os.ble",

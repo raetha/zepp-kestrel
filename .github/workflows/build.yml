@@ -111,7 +111,10 @@ jobs:
           # Zepp's preview service (like zeus preview), only when the secrets are set; a failed
           # upload is a warning, not a failed build: the page then has our own QR codes only
           if [ -n "$ZEPP_APPTOKEN" ] && [ -n "$ZEPP_USERID" ] && [ -n "$ZEPP_CNAME" ]; then
-            python3 tools/zepp_preview.py watch-dev/dist "$out/watch" || echo "::warning title=Zepp preview::upload failed (see the annotation above); the test page shows our own QR codes only"
+            # under the registered app ID (watch-preview/, "Kestrel Preview"): see make_dev_variant.py
+            python3 tools/make_dev_variant.py "$GITHUB_RUN_NUMBER" "$short" --registered
+            (cd watch-preview && zeus build)
+            python3 tools/zepp_preview.py watch-preview/dist "$out/watch" || echo "::warning title=Zepp preview::upload failed (see the annotation above); the test page shows our own QR codes only"
           else
             echo "No ZEPP_* secrets: no preview upload (the test page shows our own QR codes)"
           fi
