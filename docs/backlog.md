@@ -36,3 +36,8 @@ The emulator sweep (docs/development.md → "Checking other watch models"; resul
 - **Not yet run in the emulator** (no usable image): Balance Ultra, Cheetah 2 Pro, T-Rex 3 Pro 48 mm. Each shares a package with a model that ran; rerun the sweep when Zepp publishes images.
 - **Sensors** marked "not confirmed" in the table: check the manufacturer's specifications.
 - **Store submission**: pick only the supported models when uploading the `.zab`.
+
+## The phone side on an iPhone
+
+- **Does a preview's lifetime matter?** Build 85's preview (uploaded Oct 31, 21:06 New York time) passes its 48-hour `expiredTime` on Nov 2. Then open Kestrel: does the watch app still run, and does Home Assistant's Phone app version move to the installed build? If it catches up, shorten the lifetime for test builds (Zeus's packager hard-codes it); if the app stops running, leave it (`docs/development.md` → "The phone side doesn't update on an iPhone").
+- **Store installs**: at the first release, check that updating from the store replaces the phone side (Phone app version after an update).
