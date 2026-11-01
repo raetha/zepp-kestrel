@@ -12,15 +12,14 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-import voluptuous as vol
-from homeassistant import data_entry_flow
-from homeassistant.components.repairs import RepairsFlow
+from homeassistant.components.repairs import RepairsFlow, RepairsFlowResult
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import async_track_time_interval
 
+from .config_flow import _schema
 from .const import DOMAIN, QUIET_CHECK_EVERY, QUIET_DAYS, QUIET_ISSUE
 
 
@@ -79,10 +78,10 @@ class RemoveQuietWatch(RepairsFlow):
         self.entry_id = entry_id
         self.watch_id = watch_id
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> data_entry_flow.FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> RepairsFlowResult:
         return await self.async_step_confirm()
 
-    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> data_entry_flow.FlowResult:
+    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> RepairsFlowResult:
         entry = self.hass.config_entries.async_get_entry(self.entry_id)
         watches = entry.runtime_data if entry is not None and hasattr(entry, "runtime_data") else None
         if watches is None or self.watch_id not in watches.watches:
@@ -95,7 +94,7 @@ class RemoveQuietWatch(RepairsFlow):
             return self.async_create_entry(data={})
         return self.async_show_form(
             step_id="confirm",
-            data_schema=vol.Schema({}),
+            data_schema=_schema({}),
             description_placeholders={"watch": watches.display_name(self.watch_id)},
         )
 
