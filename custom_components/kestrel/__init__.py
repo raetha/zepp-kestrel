@@ -19,6 +19,7 @@ from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN
 from .http import VIEWS
+from .repairs import async_delete_quiet_issues, async_start_quiet_checks
 from .targets import Offered
 from .watches import Watches
 
@@ -44,6 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: KestrelConfigEntry) -> b
     entry.runtime_data = watches
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_options_changed))
+    async_start_quiet_checks(hass, entry)
     return True
 
 
@@ -60,6 +62,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: KestrelConfigEntry) -> 
 async def async_remove_entry(hass: HomeAssistant, entry: KestrelConfigEntry) -> None:
     """Removing the integration forgets every paired watch."""
     await Watches(hass, entry.entry_id).async_clear()
+    async_delete_quiet_issues(hass)
 
 
 async def async_remove_config_entry_device(

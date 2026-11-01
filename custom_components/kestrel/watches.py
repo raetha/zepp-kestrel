@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, cast
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -31,6 +31,8 @@ from .const import (
     PROBES_SAVE_DELAY,
     PROBES_MAX_CHARS,
     PROBES_STORAGE_KEY,
+    QUIET_DAYS,
+    QUIET_ISSUE,
     REMOVED_KEPT_DAYS,
     SEEN_EVERY,
     SIGNAL_WATCH_ADDED,
@@ -291,6 +293,7 @@ class Watches:
                     **{k: watch[k] for k in ("settings", "paints", "rooms") if k in watch},
                 }
             self.seen_seqs.pop(wid, None)
+            ir.async_delete_issue(self.hass, DOMAIN, f"{QUIET_ISSUE}_{wid}")
         kept = [p for p in self.probes if p.get("watch_id") not in watch_ids]
         if len(kept) != len(self.probes):
             self.probes.clear()
@@ -402,10 +405,23 @@ class Watches:
             return
         status.update(changed)
         status["last_seen"] = now.isoformat()
+        ir.async_delete_issue(self.hass, DOMAIN, f"{QUIET_ISSUE}_{watch_id}")  # heard from: not quiet any more
         if "app_version" in changed:
             self._device(watch)
         self.store.async_delay_save(lambda: {"watches": self.watches}, STATUS_SAVE_DELAY)
         async_dispatcher_send(self.hass, signal_watch_updated(watch_id))
+
+    def quiet(self, now: float | None = None) -> dict[str, int]:
+        """Watches not heard from in QUIET_DAYS (since pairing, if never seen): {watch id: days}."""
+        now = time.time() if now is None else now
+        out = {}
+        for wid, watch in self.watches.items():
+            seen = dt_util.parse_datetime(str(self.status(wid).get("last_seen") or ""))
+            last = seen.timestamp() if seen else float(watch.get("paired_at") or now)
+            days = int((now - last) // 86400)
+            if days >= QUIET_DAYS:
+                out[wid] = days
+        return out
 
     # ------------------------------------------------------------ probe results
     def add_probe(self, watch: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:

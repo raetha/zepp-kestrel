@@ -270,5 +270,21 @@
     "watch_unpaired": {
       "message": "This watch is no longer paired with Kestrel. Pair it again from the watch."
     }
+  },
+  "issues": {
+    "quiet_watch": {
+      "title": "{watch} hasn't been heard from in {days} days",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Remove {watch}?",
+            "description": "Kestrel hasn't heard from {watch} in over {limit} days. A paired watch keeps a working key to Home Assistant until it's removed, so remove watches you no longer use: an old watch, or a duplicate left from pairing again.\n\nRemoving it works like deleting its device: its key stops working, and its paints, rooms and settings are kept 30 days in case a watch paired later takes them over. If you still use it, ignore this notice: it goes away when the watch is next used."
+          }
+        },
+        "abort": {
+          "gone": "That watch has already been removed."
+        }
+      }
+    }
   }
 }

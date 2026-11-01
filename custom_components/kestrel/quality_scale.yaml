@@ -150,8 +150,8 @@ rules:
     status: exempt
     comment: Nothing to reconfigure.
   repair-issues:
-    status: exempt
-    comment: Nothing for the user to repair: Kestrel needs no outside address (it works on the home network only), and every setting has a clear place in Configure.
+    status: done
+    comment: A watch not heard from in 30 days gets a Repairs notice whose fix removes it (and its token); the notice goes away when the watch is used again (repairs.py).
   stale-devices:
     status: done
     comment: Devices of watches no longer paired are removed at setup; deleting a device unpairs the watch (its paints, rooms and settings are kept 30 days for a watch paired later to take over, then dropped).
