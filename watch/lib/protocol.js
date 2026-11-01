@@ -1,17 +1,20 @@
 // Messages between the watch (device app) and the phone (side service).
-// Kept in one place so both sides agree on method names.
+// Kept in one place so both sides agree on method names. The phone side handles
+// PING, HA_PING, STATUS, DISCOVER, PAIR_START, PAIR_CONFIRM, UNPAIR and RELAY; the
+// rest name requests for Home Assistant that the watch builds and sends through RELAY
+// (RELAYED below), so the phone never sees those names.
 
 export const METHOD = {
   PING: 'kestrel.ping', // phone answers immediately: measures watch <-> phone
-  HA_PING: 'kestrel.haPing', // phone calls HA GET /api/: measures phone <-> HA
-  PROBE_LOG: 'kestrel.probeLog', // watch sends a probe result for storage/forwarding
-  STATUS: 'kestrel.status', // { paired, mode, haName }
+  HA_PING: 'kestrel.haPing', // phone fetches /api/kestrel/targets: measures phone <-> HA
+  PROBE_LOG: 'kestrel.probeLog', // a probe result or trail, kept in Home Assistant
+  STATUS: 'kestrel.status', // -> { paired, haName, url, build } (build: the phone side's own)
   DISCOVER: 'kestrel.discover', // { address? } look for Home Assistant on the local network (or at a typed address)
-  PAIR_START: 'kestrel.pairStart', // { url, watchName } -> { pairingId } (HA shows a code)
+  PAIR_START: 'kestrel.pairStart', // { url, watchName, deviceId } -> { pairingId } (HA shows a code)
   PAIR_CONFIRM: 'kestrel.pairConfirm', // { url, pairingId, code } -> { ok, haName, setups, error }
   TAKE_OVER: 'kestrel.takeOver', // { from } right after pairing: take over that watch's (or a removed one's) setup -> { ok, error }
   UNPAIR: 'kestrel.unpair',
-  SYNC: 'kestrel.sync', // { only?, have? } -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room } (see ha-client sync)
+  SYNC: 'kestrel.sync', // { only?, have? } -> { watch_id, targets?, areas?, targets_hash, settings?, paints?, rooms?, *_rev, room } (lib/ha-api.js sync)
   FIRE: 'kestrel.fire', // { seq, target, action, value, confirmed } -> { ok, state, needsConfirm, error }
   SAVE: 'kestrel.save', // { section: 'paints' | 'rooms', changes: { key: value | null }, base: rev } -> { ok, rev, stale }
   SAVE_SETTINGS: 'kestrel.saveSettings', // { settings: { group: {...} } } -> { ok, rev, settings } after a change on the watch
@@ -24,8 +27,8 @@ export const METHOD = {
 
 /**
  * Requests the watch sends through RELAY (page/ui.js ask() -> lib/ha-api.js), by the
- * HaApi method that builds each. A phone side from before RELAY still answers them
- * by name. HA_PING stays a phone-side request: it times the phone <-> Home Assistant hop.
+ * HaApi method that builds each. HA_PING stays a phone-side request: it times the
+ * phone <-> Home Assistant hop.
  */
 export const RELAYED = {
   [METHOD.SYNC]: 'sync',

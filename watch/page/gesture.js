@@ -8,7 +8,7 @@
 import { BasePage } from '@zeppos/zml/base-page'
 import { tracked } from './trail.js'
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
-import { text, setText, button, setLabel, ask, listenKeys, COLOR, SIZE } from './ui.js'
+import { text, setText, button, setLabel, ask, listenKeys, SIZE } from './ui.js'
 import { accel, gyro } from './sensors.js'
 import { gesture, setGesture } from './store.js'
 import { sync } from './sync.js'

@@ -17,13 +17,11 @@ All notable changes to the Kestrel Home Assistant component. The format is based
 ### Added
 
 - A watch not heard from in 30 days gets a Repairs notice offering to remove it, so an old or duplicate watch doesn't keep a working key. The notice goes away by itself when the watch is used again.
-- The Phone app version sensor also reads the phone part's build from a header sent with every request (the relaying phone part sends it).
 - Configure shows each watch by the name its device has in Home Assistant (if you renamed it), with how many devices it has painted and when it paired, so two watches with the same name can be told apart. The take-over offer on the watch and the kestrel_fired event use that name too.
 - A watch paired again is recognised by its unique id (kept only as a hash) and gets its own record back; Configure → a watch → Take over another watch's setup moves a setup over by hand, for a watch that already became a second one.
 - A watch paired again (or a new watch) can take over an earlier setup: another paired watch's (keeping its device and entities), or that of a watch removed in the last 30 days, which is now kept that long.
 - Screen on time number (and under Configure): how long Kestrel's screens stay on.
-- The Phone app version sensor shows "older (not reported)" when the phone runs a side service from before builds were reported.
-- Phone app version sensor (diagnostic): the build of Kestrel's part inside the Zepp app, with the watch app's build and whether they match.
+- Phone app version sensor (diagnostic): the build of Kestrel's part inside the Zepp app (sent with every request), with the watch app's build and whether they match.
 - Paints and rooms take just the entries a watch changed, merged into Home Assistant's copy, instead of whole sections.
 - Detailed diagnostics: a switch per watch (and in Configure) that has the watch also send its aim traces (including aims that never triggered), Paint sweeps, screen and button trail and room scans for one week, then turns itself off. Without it, only probes run on purpose and trails that hold an error are kept. Kept results are dropped after 14 days, and the watch's own records no longer fill Home Assistant's event history.
 - Diagnostics downloads are safe to attach to a public issue: no token hashes or network addresses, and Bluetooth addresses are replaced by codes that stay consistent within one download.

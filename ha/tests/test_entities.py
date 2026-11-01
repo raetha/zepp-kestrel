@@ -56,20 +56,16 @@ async def test_requests_report_last_seen_address_version_and_room(
     assert dt_util.parse_datetime(seen) is not None
     device = dr.async_get(hass).async_get_device_by_identifier((DOMAIN, watch["id"]), setup_entry.entry_id)
     assert device.sw_version == "0.1.0-dev.37"
-    # the watch's build came through, the phone's own didn't: an older side service in the Zepp app
-    phone = hass.states.get(_entity(hass, watch["id"], "phone_version", "sensor"))
-    assert phone.state == "older (not reported)" and phone.attributes["matches_watch"] is False
-
-    # both halves report their build: the same, then different
-    await client.get("/api/kestrel/sync?v=0.1.0-dev.37&s=0.1.0-dev.37", headers=h)
+    # the phone side says its build in a header, on every request: the same, then different
+    side = {**h, "X-Kestrel-Side": "0.1.0-dev.37"}
+    await client.get("/api/kestrel/sync?v=0.1.0-dev.37", headers=side)
     await hass.async_block_till_done()
     phone = hass.states.get(_entity(hass, watch["id"], "phone_version", "sensor"))
     assert phone.state == "0.1.0-dev.37" and phone.attributes["matches_watch"] is True
-    # a relaying phone side says its build in a header, on every request
     await client.get("/api/kestrel/targets", headers={**h, "X-Kestrel-Side": "0.1.0-dev.39"})
     await hass.async_block_till_done()
     assert hass.states.get(_entity(hass, watch["id"], "phone_version", "sensor")).state == "0.1.0-dev.39"
-    await client.get("/api/kestrel/sync?v=0.1.0-dev.38&s=0.1.0-dev.37", headers=h)
+    await client.get("/api/kestrel/sync?v=0.1.0-dev.38", headers=side)
     await hass.async_block_till_done()
     phone = hass.states.get(_entity(hass, watch["id"], "phone_version", "sensor"))
     assert phone.attributes == {**phone.attributes, "watch_version": "0.1.0-dev.38", "matches_watch": False}

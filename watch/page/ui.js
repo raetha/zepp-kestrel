@@ -146,19 +146,13 @@ export function fit(s, n = 18) {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s
 }
 
-/**
- * A request to the phone, with a timeout so a missing phone fails fast.
- * A backup timer of the asking page's own makes sure it always settles
- * (see unstickHandshake for why ZML's might not).
- */
-// The phone runs the side service from the Zepp app's own copy of Kestrel. If that
-// copy is older or newer than the watch's (seen on an iPhone after a QR install:
-// the watch had the new build, the phone still ran one from before the message
-// names changed), the phone answers "unknown method". Say what to do instead of
-// treating it as "not paired".
-export const PHONE_MISMATCH = 'The Zepp app is running a different Kestrel build than the watch. Force-quit the Zepp app and open it again; if that doesn\'t help, reinstall Kestrel.'
+// The phone runs the side service from the Zepp app's own copy of Kestrel, and the
+// iPhone Zepp app keeps the first copy it installed through later installs (only
+// reinstalling the Zepp app replaces it: docs/development.md). A copy too old to know
+// a request answers "unknown method": say what to do instead of treating it as "not paired".
+export const PHONE_MISMATCH = 'The Zepp app is running an older Kestrel phone part. Reinstall the Zepp app, then install Kestrel again.'
 export function phoneMismatch(r) {
-  return !!(r && r.error && /unknown method/.test(String(r.error)))
+  return !!(r && r.error && (/unknown method/.test(String(r.error)) || r.error === PHONE_MISMATCH))
 }
 
 /**
@@ -169,7 +163,7 @@ export function phoneMismatch(r) {
  */
 export function phoneBuildDiffers(st) {
   if (!st || st.error || st.offline) return null
-  const phone = st.build || 'older (no build reported)'
+  const phone = st.build || 'unknown'
   noteBuilds(appVersion() || BUILD, phone)
   if (phone === BUILD) return null
   noteOnce('phone-build', 'error', { where: 'phone', error: 'different build', watch: BUILD, phone })
@@ -178,41 +172,30 @@ export function phoneBuildDiffers(st) {
 
 /**
  * Ask the phone. Requests for Home Assistant (RELAYED in lib/protocol.js) are built
- * here (lib/ha-api.js) and the phone side only relays them, so new features need no
- * new phone side; a phone side from before the relay gets them by name instead.
- * Resolves with the reply ({ ok: false, error } when Home Assistant or the phone
- * refused); rejects only when the phone didn't answer.
+ * here (lib/ha-api.js) and the phone side only relays them (METHOD.RELAY), so new
+ * features need no new phone side. Resolves with the reply ({ ok: false, error } when
+ * Home Assistant or the phone refused; PHONE_MISMATCH when the phone runs a Kestrel
+ * without the relay); rejects only when the phone didn't answer.
  */
 export function ask(page, method, params, timeout = 6000) {
   const fn = RELAYED[method]
-  const g = appData()
-  if (!fn || (g && g.noRelay)) return askPhone(page, method, params, timeout)
+  if (!fn) return askPhone(page, method, params, timeout)
   const api = new HaApi(async (path, opts = {}) => {
     const r = await askPhone(page, METHOD.RELAY, { path, method: opts.method || 'GET', body: opts.body }, timeout)
     if (r && r.relayed) return r.body
-    throw Object.assign(new Error((r && r.error) || 'No reply'), { replied: true, noRelay: phoneMismatch(r) })
+    const error = phoneMismatch(r) ? PHONE_MISMATCH : (r && r.error) || 'No reply'
+    throw Object.assign(new Error(error), { replied: true })
   })
   return api[fn](params || {}).catch((e) => {
-    if (e && e.noRelay) {
-      // an older phone side: it still knows the request by name
-      if (g) g.noRelay = true
-      return askPhone(page, method, params, timeout)
-    }
     if (e && e.replied) return { ok: false, error: e.message }
     throw e // the phone didn't answer
   })
 }
 
-function appData() {
-  try {
-    const app = getApp()
-    return (app && app._options && app._options.globalData) || null
-  } catch (e) {
-    return null
-  }
-}
-
-/** One request to the phone side, with a backup timeout (see unstickHandshake). */
+/**
+ * One request to the phone side, with a timeout so a missing phone fails fast, and a
+ * backup timer of the asking page's own so it always settles (see unstickHandshake).
+ */
 export function askPhone(page, method, params, timeout = 6000) {
   unstickHandshake(page)
   const req = page.request({ method, params }, { timeout })

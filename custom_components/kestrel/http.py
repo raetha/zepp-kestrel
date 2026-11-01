@@ -53,7 +53,6 @@ from .const import (
     EVENT_PROBE,
     NAME,
     PAIRING_TTL,
-    PHONE_NOT_REPORTED,
     PROBE_MAX_BYTES,
     SIDE_HEADER,
     SUPPORTED_DOMAINS,
@@ -253,15 +252,10 @@ class SyncView(_WatchView):
         if isinstance(auth, web.Response):
             return auth
         hass, watches, watch = auth
+        # v: the watch app's build (the phone side's comes in SIDE_HEADER, noted in _authorize)
         version = request.query.get("v", "").strip()[:40]
-        # s: the build of the side service in the Zepp app, which should match the watch's
-        phone = request.query.get("s", "").strip()[:40] or request.headers.get(SIDE_HEADER, "").strip()[:40]
-        if version and not phone:
-            # the watch's build came through the phone, but the phone's own didn't: an older
-            # side service (before builds were reported) is still running in the Zepp app
-            phone = PHONE_NOT_REPORTED
-        if version or phone:
-            watches.note_status(watch["id"], app_version=version or None, phone_version=phone or None)
+        if version:
+            watches.note_status(watch["id"], app_version=version)
         # the watch's unique id (hashed at once), for watches paired before it was sent at pairing
         watches.note_hardware(watch["id"], request.query.get("d"))
         synced = watches.synced(watch["id"])

@@ -240,8 +240,8 @@ test('spotProblem flags too few samples and unsteady compass readings', async ()
 })
 
 test('discovery tries port 80 and 8123, and typed addresses', async () => {
-  assert.ok(DISCOVERY_CANDIDATES.includes('http://homeassistant.local'))
-  assert.ok(DISCOVERY_CANDIDATES.includes('http://homeassistant.local:8123'))
+  // port 80 (Home Assistant OS 2026.8+) first, then 8123
+  assert.deepEqual(DISCOVERY_CANDIDATES.slice(0, 2), ['http://homeassistant.local', 'http://homeassistant.local:8123'])
   assert.deepEqual(expandAddress('192.168.1.20'), ['http://192.168.1.20', 'http://192.168.1.20:8123'])
   assert.deepEqual(expandAddress('192.168.1.20:9000'), ['http://192.168.1.20:9000'])
   assert.deepEqual(expandAddress('https://ha.example/'), ['https://ha.example'])

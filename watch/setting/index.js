@@ -164,8 +164,8 @@ function builds(s) {
       same
         ? `The phone part running now is the same build.`
         : side
-          ? `The phone part running now is ${side}: force-quit the Zepp app and open it again to run ${BUILD}.`
-          : `The phone part hasn't reported its build yet: open Kestrel on the watch, or force-quit and reopen the Zepp app.`,
+          ? `The phone part running now is ${side}. The Zepp app keeps the first one it installed: reinstall the Zepp app, then install Kestrel again, to run ${BUILD}.`
+          : `The phone part hasn't reported its build yet: open Kestrel on the watch.`,
     ),
   ])
 }
