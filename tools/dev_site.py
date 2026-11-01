@@ -43,7 +43,8 @@ The QR code never changes; it always installs the newest build.</p>
         variant_file = w / "preview-variant.txt"
         variant = variant_file.read_text().strip() if variant_file.exists() else "our copy of its upload"
         primary = f'''<h3>Zepp preview install (Balance 3 and 3 Ti)</h3>
-<p class="note">Through Zepp's own preview service, as <code>zeus preview</code> does: the same Kestrel DEV app. Expires {html.escape(expires)};
+<p class="note">Use this one: through Zepp's own preview service (the real <code>zeus preview</code>). It installs Kestrel DEV
+with its Settings page (Developer Mode → Kestrel DEV → Settings). In the Zepp app: Profile → your watch → Developer Mode → + → Scan. Expires {html.escape(expires)};
 each push to dev makes a new one. Scan it the same way. (Uploaded {html.escape(variant)}.)</p>
 <img class="qr" src="watch/preview-qr.png" alt="QR code for the Kestrel test build through Zepp's preview service">
 <h3>Our own packages</h3>''' + primary

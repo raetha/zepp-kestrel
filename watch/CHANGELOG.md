@@ -8,6 +8,7 @@ All notable changes to the Kestrel watch app. The format is based on
 
 ### Added
 
+- Settings page in the Zepp app: each drop-down's label now shows the current choice ("Gesture: Wrist flick"); the Zepp app left the fields empty.
 - The part of Kestrel inside the Zepp app is now a small relay: the watch builds its Home Assistant requests and the phone passes them on (to Kestrel's own endpoints only). The Zepp app doesn't always update that part when a new build is installed, so new features no longer depend on it. With an older phone part, the watch falls back to asking it by name.
 - The same watch paired again (after a reinstall or reset) gets its own setup back in Home Assistant, instead of becoming a new, empty watch: it sends its unique id when pairing (Home Assistant keeps only a hash).
 - Compass tilt probe: a Turn recording (ahead, left, right, ahead again), and the gyro's turn recorded at its full rate, to test steadying the compass with the gyro.
