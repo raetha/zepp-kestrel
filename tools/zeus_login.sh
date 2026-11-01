@@ -1,5 +1,5 @@
-# Sourced by tools/zeus_preview.sh and tools/zeus_bridge.sh: put the developer login
-# (ZEPP_APPTOKEN, ZEPP_USERID, ZEPP_CNAME; docs/development.md -> "Preview installs") into
+# Sourced by tools/zeus_preview.sh: put the developer login
+# (ZEPP_APPTOKEN, ZEPP_USERID, ZEPP_CNAME; docs/development.md -> "Preview uploads from CI") into
 # Zeus's own login file (~/.zepp/.zeus), as `zeus login` would, only until the script ends.
 dec() { python3 -c 'import sys, urllib.parse; print(urllib.parse.unquote(sys.argv[1]).strip())' "$1"; }
 token="$(dec "${ZEPP_APPTOKEN:?}")"; userid="$(dec "${ZEPP_USERID:?}")"; cname="$(dec "${ZEPP_CNAME:?}")"

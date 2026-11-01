@@ -86,7 +86,7 @@ jobs:
       - name: Build the DEV test build (from the tip of dev)
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
         env:
-          # Optional (docs/development.md -> "Preview installs"): with all three set, the build
+          # Optional (docs/development.md -> "Preview uploads from CI"): with all three set, the build
           # also goes to Zepp's preview service, and the test page shows that QR code only.
           ZEPP_APPTOKEN: ${{ secrets.ZEPP_APPTOKEN }}
           ZEPP_USERID: ${{ secrets.ZEPP_USERID }}

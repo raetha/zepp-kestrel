@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Upload a test build to Zepp's preview service with the real `zeus preview`, the way
 # other Zepp OS projects whose previews show up under Developer Mode do it
-# (docs/development.md -> "Preview installs"). Zeus builds the package itself in
+# (docs/development.md -> "Preview uploads from CI"). Zeus builds the package itself in
 # preview mode (no intermediate products) for the given watches only.
 #
 #   tools/zeus_preview.sh <project dir> <out dir> "<Zeus device names, comma-separated>"
