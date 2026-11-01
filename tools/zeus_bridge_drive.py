@@ -38,11 +38,35 @@ def read(seconds):
         if "login page has been opened" in chunk:
             print("::error title=Zeus bridge::Zepp refused the login: it has expired. Log in again and update ZEPP_APPTOKEN.")
             sys.exit(1)
-        text = ANSI.sub("", chunk).replace("\r", "")
-        seen += text
-        sys.stdout.write(text)
-        sys.stdout.flush()
+        seen += ANSI.sub("", chunk).replace("\r", "")
     return True
+
+
+# Once connected, Zeus prints the Zepp app's whole log (logPush), which holds the app's
+# stored settings: Kestrel's pairing token among them. The repository is public, and so
+# are its Actions logs: print only Zeus's own lines and a summary, never the log itself.
+SAFE = re.compile(r"^\[ℹ\] (building|getting package|Start building|Install result|successfully connected)|^\[(ROLLUP|QJSC|PNG2TGA|RESIZE)\]|^\[(✖|ERROR)|error", re.I)
+SECRET = re.compile(r"(token|apptoken)(\\*\"\s*[:=]\s*\\*\")[^\\\"]+", re.I)
+
+
+def report(text):
+    lines = [line for line in text.splitlines() if line.strip()]
+    pushed = [line for line in lines if re.match(r"^\[ℹ\] \[(DEBUG|INFO|WARN|ERROR)-", line)]
+    print("--- Zeus ---")
+    for line in lines:
+        if line not in pushed and SAFE.search(line) and not re.search(r"pairing|Token|settingsStorage", line):
+            print(SECRET.sub(r"\1\2…", line)[:300])
+    print(f"--- Zepp app log: {len(pushed)} lines received, not printed (they hold the pairing token) ---")
+    blob = "\n".join(pushed)
+    for label, pattern in [
+        ("installed", r"appInstalled"),
+        ("phone side started", r"Side-Service Running|postAppInfo"),
+    ]:
+        print(f"{label}: {'yes' if re.search(pattern, blob) else 'no'}")
+    sides = sorted(set(re.findall(r'appInfo\\*":\{.{0,200}?version\\*":\{\\*"code\\*":(\d+)', blob)))
+    builds = sorted(set(re.findall(r"X-Kestrel-Side\\*\":\\*\"([0-9a-z.-]+)", blob)))
+    print(f"phone side package version code: {', '.join(sides) or 'not seen'}")
+    print(f"phone side build in requests: {', '.join(builds) or 'not seen'}")
 
 
 def wait_for(pattern, seconds):
@@ -56,7 +80,7 @@ def wait_for(pattern, seconds):
 
 
 def send(line):
-    print(f"\n>>> {line}")
+    print(f">>> {line}", flush=True)
     os.write(fd, (line + "\r").encode())
 
 
@@ -81,5 +105,4 @@ wait_for(r"(?s)(QR code|getting package).*", 600)
 read(120)
 send("exit")
 read(5)
-print("\n--- Zepp app replies after install ---")
-print("\n".join(line for line in seen[mark:].splitlines() if line.strip())[-4000:])
+report(seen[mark:])
