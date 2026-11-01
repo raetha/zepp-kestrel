@@ -1,3 +1,6 @@
 # Exact versions; Dependabot proposes updates weekly.
 pillow==13.0.0
 qrcode==8.2
+# Shared Zepp tooling (DEV variants, previews, releases, packages, the emulator): one pin, used
+# by CI and sessions alike. Update to a tagged devkit release (docs/development.md -> "Dependencies").
+zepp-devkit @ git+https://github.com/raetha/zepp-devkit@c75efe35eb11c2e71c9006fd62072af2bb87b7ee

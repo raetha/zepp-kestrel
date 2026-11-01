@@ -3,7 +3,7 @@
 
 Shows the Zepp preview QR code (zepp-devkit's preview action) when the build has one. Without it
 (no ZEPP_* secrets), falls back to our own packages: site/dev/watch/kestrel.zpk and, from
-tools/packages.py, a package per screen and chip with packages.json (one QR code per package,
+zepp-devkit packages, a package per screen and chip with packages.json (one QR code per package,
 chosen by watch model: tools/model_picker.py). Writes site/dev/index.html. The page is not linked from the main site and is marked noindex;
 its QR code never changes, so you can bookmark the page.
 
@@ -16,11 +16,19 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from zepp_devkit.changelog import section as _section, to_html
+from zepp_devkit.project import component as devkit_component
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from changelog import section, to_html  # noqa: E402
-from components import PAGES, WATCH_ZPK, watch_meta  # noqa: E402
+from components import REPO, PAGES, WATCH_ZPK, watch_meta  # noqa: E402
+
 from make_qr import make  # noqa: E402
 from model_picker import picker  # noqa: E402
+
+
+def section(name, version):
+    """A component's changelog section (zepp-devkit.json lists where each changelog is)."""
+    return _section(devkit_component(name, REPO).changelog, version)
 
 site, sha, build = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
 dev = site / "dev"

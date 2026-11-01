@@ -49,17 +49,19 @@ uv pip install --python .venv/bin/python -r ha/requirements_test.txt
 
 What the first sweep (2026-10-24) found: every model on Zepp OS 4 or later ran through all four screens. Every model whose image is Zepp OS 3.x (API 3.6: Falcon, Cheetah round, square and Pro, T-Rex Ultra, Active) crashed the whole watch (`configASSERT` in the firmware log) the moment a screen called one of the app's `async` functions: Paint's room lookup, Point's sync, whichever ran first. Home has none, so it worked. Narrowed down on the Falcon by moving calls around and logging each step: not the sensors, files, buttons, battery or requests. Making those watches work would mean writing the app without `async`/`await`; they're documented as unsupported instead. Zeus can't leave them out of the build: it builds per screen and chip, and the Balance (Zepp OS 4) shares a package with the Cheetah Pro. When submitting the `.zab` to the store, choose only the supported models.
 
-Older firmware (Zepp OS 3.x) gives itself a fixed address (192.168.166.188) instead of taking QEMU's; `emu.mjs start` notices and restarts with the port forwarded there.
+Older firmware (Zepp OS 3.x) gives itself a fixed address (192.168.166.188) instead of taking QEMU's; `zepp-devkit emu start` notices and restarts with the port forwarded there.
 
 ### Packages per watch
 
-A QR install sends one `.zpk`, and the Zepp app can't install a `.zab`, so CI splits the build into one package per screen and chip (`tools/packages.py`, with `packages.json` listing the device IDs each is for). The install pages list the models from `watch/models.json` and show the QR code of the package for the one picked (`tools/model_picker.py`). The `.zab` itself is what the Zepp store takes: releases attach it (`kestrel-<version>.zab`, the one to submit), and the test page links the DEV one.
+A QR install sends one `.zpk`, and the Zepp app can't install a `.zab`, so CI splits the build into one package per screen and chip (`zepp-devkit packages`, with `packages.json` listing the device IDs each is for). The install pages list the models from `watch/models.json` and show the QR code of the package for the one picked (`tools/model_picker.py`). The `.zab` itself is what the Zepp store takes: releases attach it (`kestrel-<version>.zab`, the one to submit), and the test page links the DEV one.
 
 ### Replaying diagnostics
 
 `node tools/replay.mjs <diagnostics.json>` (the integration's diagnostics download) runs the current `watch/lib` against what a real watch recorded: each room calibration scan against all rooms, rooms that sound alike, each paint and what crowds it, each trigger's aim trace through the Aimer (which device it would pick today, its lead, and how long it took to lock then and now), aims held out that never triggered, Paint sweeps (readings and the biggest heading jump), learned spots, and battery use per hour of pointing. In Home Assistant, each watch's Paint map image shows the same paints as compass dials per room. Use it before and after changing the classifier or room matching; turn a case worth keeping into a test (`watch/test/m1.test.mjs` has one from a real kitchen).
 
 ## Dependencies
+
+**Shared Zepp tooling** (DEV variants, Zepp previews, releases from changelogs, packages and QR codes, store images, the emulator) comes from [raetha/zepp-devkit](https://github.com/raetha/zepp-devkit), pinned once, in `tools/requirements.txt`, so CI and sessions run the same commit (`pip install -r tools/requirements.txt` gives the `zepp-devkit` command). Change shared behaviour there, not here; to try a devkit change, point the pin at its `dev` commit on a branch here, and once a devkit release is tagged, pin the tag. Kestrel keeps only its own settings and texts: `zepp-devkit.json` (the components), `tools/make_dev_variant.py` (the DEV app ID), `tools/release_notes.py` (install texts), the pages (`dev_site.py`, `build_site.py`).
 
 Prefer a maintained library over our own code; write our own when nothing maintained fits. Pin exact versions (Dependabot proposes updates weekly). Everything bundled into the watch app runs in Zepp's QuickJS and counts against the package size, so check the bundled size too.
 
@@ -88,27 +90,27 @@ We aim for the [integration quality scale](https://developers.home-assistant.io/
 
 ## Testing on the emulator
 
-`tools/emu/emu.mjs` runs the app on the real Zepp OS firmware, headless, using the QEMU emulator that ships with Zepp's simulator. The image is the Amazfit Balance 2 (480×480 round, Zepp OS 5, API 4.2), the closest Zepp publishes to the Balance 3.
+`zepp-devkit emu` (from [zepp-devkit](https://github.com/raetha/zepp-devkit), shared with the watch faces) runs the app on the real Zepp OS firmware, headless, using the QEMU emulator that ships with Zepp's simulator. The image is the Amazfit Balance 2 (480×480 round, Zepp OS 5, API 4.2), the closest Zepp publishes to the Balance 3.
 
 One-time setup (Linux x86_64, about 5 minutes, about 240 MB from Zepp's CDN into `tools/.emu/`, which isn't committed):
 
 ```bash
 apt-get update && apt-get install -y libvte-2.91-0 libaio1t64 xvfb xdotool
-node tools/emu/emu.mjs setup
-node tools/emu/emu.mjs start                  # boots in about 40 s
+zepp-devkit emu setup
+zepp-devkit emu start                  # boots in about 40 s
 ```
 
-Everyday commands (`npm run emu -- <command>` works too):
+Everyday commands, from the repository's folder (`npm run emu -- <command>` works too):
 
 ```bash
-node tools/emu/emu.mjs install watch          # zeus build + install (or watch-dev for a test build)
-node tools/emu/emu.mjs apps                   # open the app list
-node tools/emu/emu.mjs tap 240 362            # Kestrel's row (below Settings on a fresh watch)
-node tools/emu/emu.mjs tap 240 148            # tap anything; long-press: tap x y 2.5
-node tools/emu/emu.mjs swipe 5 240 300 240    # back
-node tools/emu/emu.mjs key backspace          # lower button
-node tools/emu/emu.mjs shot out.png           # 480x480 screenshot
-node tools/emu/emu.mjs stop
+zepp-devkit emu install watch          # zeus build + install (or watch-dev for a test build)
+zepp-devkit emu apps                   # open the app list
+zepp-devkit emu tap 240 362            # Kestrel's row (below Settings on a fresh watch)
+zepp-devkit emu tap 240 148            # tap anything; long-press: tap x y 2.5
+zepp-devkit emu swipe 5 240 300 240    # back
+zepp-devkit emu key backspace          # lower button
+zepp-devkit emu shot out.png           # 480x480 screenshot
+zepp-devkit emu stop
 ```
 
 What the emulator can and can't tell you:
@@ -117,7 +119,7 @@ What the emulator can and can't tell you:
 - **No phone.** The side service and settings page don't run, so every watch → phone request fails. The probes show "Phone not reachable"; that's the expected result.
 - **Sensors are synthetic.** Accelerometer and gyro report about 25 Hz in every frequency mode, the compass wanders, and Bluetooth scans find nothing. Measure on the watch.
 - **Startup log line.** Every launch logs `Mini Program Error TypeError: cannot set property 'exports' of undefined` from `app.js`, after ZML's `BaseApp` has registered the app. Everything keeps working. Check whether the real watch logs it too.
-- `zeus build` converts images to the watch's compressed format, which the emulator can't decode. `tools/emu/prepare.py` swaps the original PNGs back in for the emulator only.
+- `zeus build` converts images to the watch's compressed format, which the emulator can't decode. `zepp-devkit emu install` swaps the original PNGs back in for the emulator only.
 
 ### Zeus behind a proxy
 
@@ -177,7 +179,7 @@ Repository settings (owner, one time):
 
 `.github/workflows/build.yml`:
 
-- **Every push and pull request:** `tools/release_plan.py` (fails if a non-draft component's version has no changelog section), `npm test`, a Zeus build of the watch app, the HA component's tests with at least 95% coverage (`ha-tests`, Python 3.14), and `validate`: Home Assistant's hassfest and the HACS repository checks.
+- **Every push and pull request:** `zepp-devkit release-plan` (fails if a non-draft component's version has no changelog section), `npm test`, a Zeus build of the watch app, the HA component's tests with at least 95% coverage (`ha-tests`, Python 3.14), and `validate`: Home Assistant's hassfest and the HACS repository checks.
 - **On `main`, for each component whose `<component>-vX.Y.Z` tag doesn't exist yet:** creates the tag and a GitHub release, with notes from the changelog plus install instructions (`tools/release_notes.py`). The integration's dev pre-releases (each push to `dev`) carry the changelog's `[Unreleased]` section.
 - **Every push to `main` or `dev`, and every 5 days (schedule):** builds the DEV test build from the tip of `dev` and redeploys the Pages site. The schedule runs the default branch's copy of the workflow (`dev` here) and exists to keep the preview QR code valid (`preview-check` fails the run if the upload didn't happen). The public install page only ever offers released versions.
 
@@ -188,7 +190,7 @@ Every push to `dev` (or `main`) publishes a test build on an unlisted page: **ht
 - `tools/make_dev_variant.py` copies `watch/` to `watch-dev/` (ignored by git) as "Kestrel DEV": its own app ID (1134161, registered in Zepp's developer console), the version `<X.Y.Z>-dev.<run number>` (the run number is also the version code, so each build is newer), and that build stamped into `lib/version.js`.
 - It installs **next to** the released app and pairs separately.
 - Test builds are made for the watches in `TEST_WATCHES` (`build.yml`: the Balance 3 and 3 Ti, `zeus build -s -t`); releases build every watch.
-- **Install:** the page shows a Zepp preview QR code (below). In the Zepp app: Profile → your watch → Developer Mode → + → Scan. Each push makes a new one, and a scheduled run every 5 days makes a fresh one before the last expires (7 days), so there's always one to install. A scheduled run whose upload fails (an expired Zepp login) fails, and GitHub emails the owner. Without the preview secrets, or if the upload failed, the page falls back to our own `.zpk` packages (one QR code per screen, `tools/packages.py`), which install the watch app but get no Settings page.
+- **Install:** the page shows a Zepp preview QR code (below). In the Zepp app: Profile → your watch → Developer Mode → + → Scan. Each push makes a new one, and a scheduled run every 5 days makes a fresh one before the last expires (7 days), so there's always one to install. A scheduled run whose upload fails (an expired Zepp login) fails, and GitHub emails the owner. Without the preview secrets, or if the upload failed, the page falls back to our own `.zpk` packages (one QR code per screen, `zepp-devkit packages`), which install the watch app but get no Settings page.
 - Older test builds used other app IDs (a made-up 2132466 before Oct 31, 2026, and for an October experiment the release ID 1132466, shown as "Kestrel"). Each is a separate app with its own storage and pairing that no longer updates: delete it from the watch.
 
 ### The phone side doesn't update on an iPhone

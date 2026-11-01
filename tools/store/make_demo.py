@@ -6,7 +6,7 @@ with "Home", and a sync with a few devices in a few rooms, painted wide so Point
 on whatever the emulator's wandering compass says. Never commit watch-store/.
 
   python3 tools/store/make_demo.py
-  node tools/emu/emu.mjs install watch-store     # then open it and take shots (docs/store.md)
+  zepp-devkit emu install watch-store     # then open it and take shots (docs/store.md)
 """
 import shutil
 import subprocess
@@ -67,4 +67,4 @@ old = "      onAim(a) {\n"
 if old not in s:
     sys.exit("page/point.js: onAim() not found")
 pt.write_text(s.replace(old, old + "        a = { ...a, ready: true, heading: 2, pitch: 4, roll: 0 }\n", 1))
-print("watch-store ready: node tools/emu/emu.mjs install watch-store")
+print("watch-store ready: zepp-devkit emu install watch-store")

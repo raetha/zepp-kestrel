@@ -45,8 +45,8 @@ print(json.dumps(out))`;
 }
 
 function emu(dir, args, env = {}, timeout = 600000) {
-  const r = spawnSync('node', [path.join(REPO, 'tools/emu/emu.mjs'), ...args], {
-    env: { ...process.env, ZEPP_EMU_DIR: dir, ...env }, encoding: 'utf8', timeout,
+  const r = spawnSync('zepp-devkit', ['emu', ...args], {
+    cwd: REPO, env: { ...process.env, ZEPP_EMU_DIR: dir, ...env }, encoding: 'utf8', timeout,
   });
   return { ok: r.status === 0, out: `${r.stdout || ''}${r.stderr || ''}`.trim() };
 }
