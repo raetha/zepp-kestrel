@@ -9,7 +9,12 @@ name: Build and publish
 # Push to main or dev (and manual runs): builds a "DEV" test build of the watch app from
 # the tip of `dev` (own app ID, installs next to the release) and redeploys the Pages site:
 # the install site from the latest release, plus the unlisted test-build page
-# https://raetha.github.io/zepp-kestrel/dev/.
+# https://raetha.github.io/zepp-kestrel/dev/. With the ZEPP_* secrets, the test build is
+# also uploaded with `zeus preview`, so it shows up under the Zepp app's Developer Mode.
+# Every 5 days (schedule, which runs the default branch's copy of this file: dev): rebuilds
+# and re-uploads the test build, so there's always a preview QR code (valid 7 days) to
+# install; a preview that fails to upload then fails the run, which is how an expired
+# Zepp login gets noticed.
 #
 # Adapted from raetha/zepp-watch-faces.
 
@@ -18,6 +23,8 @@ on:
     branches: [main, dev]
   pull_request:
   workflow_dispatch:      # manual run: rebuild the install site and test build
+  schedule:
+    - cron: "17 9 */5 * *"  # refresh the test build's Zepp preview before it expires (7 days)
 
 permissions:
   contents: read
@@ -37,6 +44,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       releases: ${{ steps.plan.outputs.releases }}
+      preview_failed: ${{ steps.dev.outputs.preview_failed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -84,6 +92,7 @@ jobs:
           path: out/
 
       - name: Build the DEV test build (from the tip of dev)
+        id: dev
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
         env:
           # Optional (docs/development.md -> "Preview uploads from CI"): with all three set, the build
@@ -116,9 +125,13 @@ jobs:
           # upload is a warning, not a failed build: the page then falls back to our own QR codes
           if [ -n "$ZEPP_APPTOKEN" ] && [ -n "$ZEPP_USERID" ] && [ -n "$ZEPP_CNAME" ]; then
             # the real zeus preview (it builds its own package, in preview mode), not our copy of its upload
-            tools/zeus_preview.sh watch-dev "$out/watch" "$TEST_WATCHES" || echo "::warning title=Zepp preview::upload failed (see the annotation above); the test page falls back to our own QR codes"
+            if ! tools/zeus_preview.sh watch-dev "$out/watch" "$TEST_WATCHES"; then
+              echo "::warning title=Zepp preview::upload failed (see the annotation above); the test page falls back to our own QR codes"
+              echo "preview_failed=the preview upload failed" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "No ZEPP_* secrets: no preview upload (the test page shows our own QR codes)"
+            echo "preview_failed=no ZEPP_* secrets" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -319,3 +332,25 @@ jobs:
           else
             echo "dev has changes that aren't on main: left as it is"
           fi
+
+  # Scheduled runs exist to keep the test build's preview valid: if it didn't upload (an
+  # expired Zepp login, missing secrets), fail the run so GitHub emails the owner. Pushes
+  # keep treating it as a warning. Runs after the site is deployed with the fallback codes.
+  preview-check:
+    needs: [build, pages]
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check the preview uploaded
+        env:
+          FAILED: ${{ needs.build.outputs.preview_failed }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          if [ "$BUILD" != success ]; then
+            echo "::error title=Zepp preview::the build failed, so the test build wasn't refreshed"; exit 1
+          fi
+          if [ -n "$FAILED" ]; then
+            echo "::error title=Zepp preview::$FAILED. If the log says the login expired, get new values and update ZEPP_APPTOKEN, ZEPP_USERID and ZEPP_CNAME here and in zepp-watch-faces (docs/development.md -> \"Preview uploads from CI\")."
+            exit 1
+          fi
+          echo "preview refreshed"

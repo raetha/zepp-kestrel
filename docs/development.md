@@ -179,7 +179,7 @@ Repository settings (owner, one time):
 
 - **Every push and pull request:** `tools/release_plan.py` (fails if a non-draft component's version has no changelog section), `npm test`, a Zeus build of the watch app, the HA component's tests with at least 95% coverage (`ha-tests`, Python 3.14), and `validate`: Home Assistant's hassfest and the HACS repository checks.
 - **On `main`, for each component whose `<component>-vX.Y.Z` tag doesn't exist yet:** creates the tag and a GitHub release, with notes from the changelog plus install instructions (`tools/release_notes.py`). The integration's dev pre-releases (each push to `dev`) carry the changelog's `[Unreleased]` section.
-- **Every push to `main` or `dev`:** builds the DEV test build from the tip of `dev` and redeploys the Pages site. The public install page only ever offers released versions.
+- **Every push to `main` or `dev`, and every 5 days (schedule):** builds the DEV test build from the tip of `dev` and redeploys the Pages site. The schedule runs the default branch's copy of the workflow (`dev` here) and exists to keep the preview QR code valid (`preview-check` fails the run if the upload didn't happen). The public install page only ever offers released versions.
 
 ### Test builds
 
@@ -188,7 +188,7 @@ Every push to `dev` (or `main`) publishes a test build on an unlisted page: **ht
 - `tools/make_dev_variant.py` copies `watch/` to `watch-dev/` (ignored by git) as "Kestrel DEV": its own app ID (1134161, registered in Zepp's developer console), the version `<X.Y.Z>-dev.<run number>` (the run number is also the version code, so each build is newer), and that build stamped into `lib/version.js`.
 - It installs **next to** the released app and pairs separately.
 - Test builds are made for the watches in `TEST_WATCHES` (`build.yml`: the Balance 3 and 3 Ti, `zeus build -s -t`); releases build every watch.
-- **Install:** the page shows a Zepp preview QR code (below). In the Zepp app: Profile → your watch → Developer Mode → + → Scan. Each push makes a new one; it expires after 7 days. Without the preview secrets, or if the upload failed, the page falls back to our own `.zpk` packages (one QR code per screen, `tools/packages.py`), which install the watch app but get no Settings page.
+- **Install:** the page shows a Zepp preview QR code (below). In the Zepp app: Profile → your watch → Developer Mode → + → Scan. Each push makes a new one, and a scheduled run every 5 days makes a fresh one before the last expires (7 days), so there's always one to install. A scheduled run whose upload fails (an expired Zepp login) fails, and GitHub emails the owner. Without the preview secrets, or if the upload failed, the page falls back to our own `.zpk` packages (one QR code per screen, `tools/packages.py`), which install the watch app but get no Settings page.
 - Older test builds used other app IDs (a made-up 2132466 before Oct 31, 2026, and for an October experiment the release ID 1132466, shown as "Kestrel"). Each is a separate app with its own storage and pairing that no longer updates: delete it from the watch.
 
 ### The phone side doesn't update on an iPhone
@@ -217,7 +217,7 @@ The Zepp app's `Select` shows no value in its field: put the current choice in i
 
 ### Preview uploads from CI
 
-CI uploads each `dev` build to Zepp's preview service with the real `zeus preview -s -t "<TEST_WATCHES>"` (`tools/zeus_preview.sh`). `tools/zeus_login.sh` puts the developer login into Zeus's own login file (`~/.zepp/.zeus`, keys `____user_zepp_com__token`, `…__userid`, `…__cname`, as `zeus login` writes them) while it runs, and `tools/zeus_preview_hook.cjs` prints the QR code's URL, which Zeus otherwise only draws in the terminal. It runs only when all three repository secrets are set (**Settings → Secrets and variables → Actions**): `ZEPP_APPTOKEN`, `ZEPP_USERID`, `ZEPP_CNAME`; without them the step is skipped, and a failed or expired login is an error annotation on the run, not a failed build. To get the secrets, from any browser including a phone:
+CI uploads each `dev` build to Zepp's preview service with the real `zeus preview -s -t "<TEST_WATCHES>"` (`tools/zeus_preview.sh`). `tools/zeus_login.sh` puts the developer login into Zeus's own login file (`~/.zepp/.zeus`, keys `____user_zepp_com__token`, `…__userid`, `…__cname`, as `zeus login` writes them) while it runs, and `tools/zeus_preview_hook.cjs` prints the QR code's URL, which Zeus otherwise only draws in the terminal. It runs only when all three repository secrets are set (**Settings → Secrets and variables → Actions**): `ZEPP_APPTOKEN`, `ZEPP_USERID`, `ZEPP_CNAME`; without them the step is skipped, and a failed or expired login is an error annotation on a push's run, not a failed build (a scheduled run fails, so the expiry gets noticed). The same three secrets are set in `raetha/zepp-watch-faces`: when the login expires, update both repositories. To get the secrets, from any browser including a phone:
 
 
 1. Open https://user.zepp.com/universalLogin/index.html#/login?project_name=zeppos_zeus_cli&platform_app=com.huami.webapp&project_redirect_uri=http%3A%2F%2Flocalhost%3A8765%2Flogin%2Fcallback and sign in with the Zepp developer account.
