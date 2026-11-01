@@ -21,7 +21,7 @@ release; record what changed.
   (every phone side since build 79 relays), Home Assistant's "older (not reported)"
   phone version and the `s=` sync parameter, the bridge-install experiment (its first
   run published the Zepp app's log, with the pairing token, in a public Actions log;
-  the logs were deleted and the owner re-paired), and our own `.zpk` QR codes on the
+  the logs were deleted and re-pairing replaces the token), and our own `.zpk` QR codes on the
   test page whenever a Zepp preview exists.
 - **Relay:** the phone side's logic moved to `watch/lib/side.js` and is now tested in
   Node (`watch/test/side.test.mjs`): status and build, relaying with the token and
