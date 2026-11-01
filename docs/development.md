@@ -223,7 +223,7 @@ The release QR code (`watch/docs/install-qr.png`) encodes `zpkd1://raetha.github
 
 ## Audits
 
-Quality scale, performance and security reviews are in [audits.md](audits.md). Repeat them before each release.
+Quality scale, performance and security reviews are in [audits.md](audits.md), which starts with the checklist for a full review: open pull requests (Dependabot's included), security alerts, tests, the quality scale, the security design, workflows and leftovers. Repeat it before each release.
 
 ## Licensing
 

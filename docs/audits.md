@@ -1,10 +1,43 @@
 # Audits
 
 Quality scale, performance and security reviews of every part of Kestrel: the
-watch app (`watch/page`, `watch/lib`), the phone side service (`watch/app-side`,
+watch app (`watch/page`, `watch/lib`), the phone side service (`watch/lib/side.js`,
 `watch/lib/ha-client.js`), the settings page (`watch/setting`), the Home
 Assistant integration (`custom_components/kestrel`) and CI. Repeat before each
-release; record what changed.
+release, and whenever asked for a full review; record what changed below.
+
+## Checklist for a full review
+
+1. **Open pull requests**, Dependabot's especially (`gh api "repos/raetha/zepp-kestrel/pulls?state=open"`;
+   sessions have the REST API, not GraphQL, so `gh pr list` fails). For each: read the diff;
+   check its CI run passed (`gh api repos/raetha/zepp-kestrel/commits/<sha>/check-runs`);
+   for a GitHub Action, check the pinned commit is the tag it claims
+   (`git ls-remote https://github.com/<owner>/<action> refs/tags/<tag>`) or, for a branch pin,
+   what changed (`git log <old>..<new>` in a clone); for a Python or npm package, its release
+   notes. Squash-merge good ones into `dev` (`gh api -X PUT repos/raetha/zepp-kestrel/pulls/<n>/merge
+   -f merge_method=squash`); never into `main`. Record any held back, and why.
+2. **Security alerts.** Sessions can't read the repository's code scanning, Dependabot or secret
+   scanning alerts (403): ask the owner for their titles, and run the same checks here: CodeQL
+   (the bundle from `github/codeql-action` releases; `codeql database create --build-mode=none`
+   over a copy of the tracked files only, then `database analyze` with the
+   `<language>-security-and-quality` suites for actions, javascript and python), `npm audit`, and
+   `pip-audit -r tools/requirements.txt` (and `-r ha/requirements_test.txt`, whose pins inside
+   Home Assistant core are test-only).
+3. **Tests:** `npm test`; `cd ha && ../.venv/bin/pytest -q --cov=custom_components.kestrel`
+   (≥95%); `mypy --config-file ha/mypy.ini custom_components/kestrel`; `ruff check` (no new
+   findings); `zeus build`; the emulator (Home, Sync, More open with no new errors in the log).
+4. **Quality scale:** every rule in `quality_scale.yaml` still true of the code.
+5. **Security of the design:** home network only (`_from_home` on every endpoint), only offered
+   devices fire, every watch-sent value cleaned (`watchdata.py`), the relay's limits
+   (`relayable()`), diagnostics safe to post publicly (tokens, addresses, hardware ids redacted;
+   Bluetooth addresses pseudonymised), nothing secret in logs (CI masks the Zepp login; never
+   print the Zepp app's log, which holds the pairing token).
+6. **Workflows:** `contents: read` at the top, write only where a job needs it, actions pinned to
+   commits, no `${{ }}` expansions inside `run:` scripts, secrets only on pushes (never forks).
+7. **Leftovers:** finished experiments, compatibility with builds nobody runs any more (no
+   backward compatibility before the first release), unused code (CodeQL's "unused" findings),
+   stale comments and docs (`CLAUDE.md`, `docs/development.md`, README troubleshooting).
+8. **Record it:** a dated section below, and changelog lines for anything users notice.
 
 ## 2026-11-01: review after the test-install experiments
 
@@ -32,6 +65,11 @@ release; record what changed.
   it and its token (`repairs.py`; `repair-issues` is now done).
 - **Workflows:** top-level `contents: read`, write only where a job needs it, every
   action pinned to a commit, no `${{ }}` expansions inside `run:` scripts.
+- **Dependabot pull requests** (reviewed the next morning; missed in the first pass):
+  #2 `actions/setup-python` 7.0.0 → 7.1.0 (pin matches the v7.1.0 tag), #3 hassfest
+  pinned to a newer `home-assistant/actions` master commit (the only change there is in
+  `helpers/version-push`, which we don't use), #4 `pytest-homeassistant-custom-component`
+  0.13.373 → 0.13.375 (test harness). CI green on each; all three merged into `dev`.
 
 ## 2026-10-31: the phone side became a relay
 
