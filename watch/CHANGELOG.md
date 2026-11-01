@@ -20,7 +20,7 @@ trigger it, through Home Assistant. It needs the Kestrel Home Assistant integrat
 - **Rooms:** calibrate each Home Assistant area by Bluetooth (or use a room sensor such as Bermuda), and Point only picks devices in the room you're in.
 - **Learning from use:** clear triggers you didn't correct slowly refine where each device is.
 - **Home Assistant holds your setup:** paints, rooms and settings are kept there and synced, so a reset or a new watch gets them back. Settings can be changed on the watch, in Home Assistant, or on the Zepp app's settings page.
-- **Screen and battery:** Kestrel's screens stay on 30 s without a touch (adjustable), Point keeps the screen on only while your arm is held out, and Point can reopen when you raise your wrist. Open on Point makes Kestrel's shortcut go straight to pointing.
+- **Screen and battery:** Kestrel's screens stay on 30 s without a touch (adjustable), Point keeps the screen on only while your arm is held out (turning the watch face away to point no longer switches the screen off), and Point can reopen when you raise your wrist. Open on Point makes Kestrel's shortcut go straight to pointing.
 - **Diagnostics for tuning:** with Detailed diagnostics on in Home Assistant (it turns itself off after a week), the watch sends aim traces and room scans to your own Home Assistant to help improve pointing. Nothing extra is measured or sent with it off.
 - **Probes:** measurements of the watch's sensors, gestures, compass, Bluetooth and latency, for checking a new watch model.
 - Supported watches: Zepp OS 4 watches with a compass, round and square (the README lists the models). Watches still on Zepp OS 3.x firmware crash running the app and aren't supported.

@@ -28,10 +28,10 @@
 // results), so the classifier can be tuned on real data.
 
 import { BasePage } from '@zeppos/zml/base-page'
-import { tracked, note } from './trail.js'
+import { tracked, note, noteOnce } from './trail.js'
 import { batteryLevel, stepCount } from './sensors.js'
 import { screenMs } from './screen.js'
-import { setWakeUpRelaunch, setPageBrightTime, resetPageBrightTime } from '@zos/display'
+import { setWakeUpRelaunch, setPageBrightTime, resetPageBrightTime, pauseDropWristScreenOff, resetDropWristScreenOff } from '@zos/display'
 import { event as uiEvent } from '@zos/ui'
 import { text, setText, button, clear, rect, setColor, setTextColor, fit, ask, listenKeys, tickRing, COLOR, SIZE } from './ui.js'
 import { Circling } from '../lib/circling.js'
@@ -130,15 +130,33 @@ Page(
         this.keepAwake()
       },
 
-      /** Give the screen another screen time (called while aiming and on triggers). */
+      /**
+       * Give the screen another screen time (called while the arm is out and on triggers).
+       * Pointing palm down turns the watch's face away from you, which the watch also takes
+       * as "wrist turned away, screen off": pause that for the same time. Both lapse on their
+       * own once renewing stops, so lowering the wrist still lets the screen go off.
+       */
       keepAwake() {
         const now = Date.now()
         if (now - this.awakeAt < AWAKE_EVERY_MS) return
         this.awakeAt = now
+        const ms = screenMs()
+        let bright = null
+        let wrist = null
         try {
-          setPageBrightTime({ brightTime: screenMs() })
+          bright = setPageBrightTime({ brightTime: ms })
         } catch (e) {
-          // not critical
+          bright = String((e && e.message) || e)
+        }
+        try {
+          wrist = pauseDropWristScreenOff({ duration: ms })
+          this.wristPaused = true
+        } catch (e) {
+          wrist = String((e && e.message) || e)
+        }
+        // either call refused (0 means done): say so once, for the diagnostics
+        if ((bright !== 0 && bright !== undefined) || (wrist !== 0 && wrist !== undefined)) {
+          noteOnce('screen-hold', 'error', { where: 'point', error: 'screen hold refused', bright, wrist, ms })
         }
       },
 
@@ -250,7 +268,9 @@ Page(
           if (!this.twistLock || this.twistLock.id !== r.best.id) this.twistLock = { id: r.best.id, roll: a.roll, pitch: a.pitch }
           this.twistLock.t = a.t
         }
-        if (r.state !== STATE.RESTING) this.keepAwake()
+        this.lastState = r.state
+        // the arm is out (aiming, or held roughly level even if not still yet): keep the screen on
+        if (r.state !== STATE.RESTING || Math.abs(a.pitch) < 50) this.keepAwake()
         this.history.push({
           t: a.t,
           heading: a.heading,
@@ -737,9 +757,21 @@ Page(
         try {
           setWakeUpRelaunch({ relaunch: false })
           resetPageBrightTime()
+          if (this.wristPaused) resetDropWristScreenOff()
         } catch (e) {
           // older firmware
         }
+      },
+
+      // The screen went off (or came back): noted with what Point was doing, so the
+      // diagnostics show why (the screen time ran out, or the watch saw the wrist turn away).
+      onPause() {
+        note('screen', { page: 'point', at: 'off', sinceHold: Date.now() - this.awakeAt, state: this.lastState || null })
+      },
+      onResume() {
+        note('screen', { page: 'point', at: 'on' })
+        this.awakeAt = 0
+        this.keepAwake()
       },
     }),
   ),
