@@ -19,7 +19,9 @@ This is the canonical guide for the repository. Read it before changing anything
 | `ha/` | The component's tests (`ha/tests/`, pytest against a real HA core), `CHANGELOG.md`, `requirements_test.txt` and `DRAFT`. |
 | `hacs.json` | HACS metadata for installing the component as a custom repository. |
 | `tools/` | Packaging, release and site helpers, the preview upload (`zeus_preview.sh`), diagnostics replay (`replay.mjs`), `emu/` (the emulator) and `compat/` (a sweep over watch models' emulator images). |
-| `docs/` | This guide, `design.md`, `audits.md` and `backlog.md`. |
+| `docs/` | This guide, `design.md`, `audits.md`, `backlog.md` and `store.md` (Zepp store submission). |
+| `PRIVACY.md` | The privacy statement (README and the Zepp store). |
+| `watch/docs/store/` | The Zepp store listing (`listing.md`), icon and screenshots (`tools/store/`). |
 
 ## One-time setup
 
@@ -144,10 +146,14 @@ Day to day:
 
 Releasing (only when the owner asks):
 
-1. On `dev`, for each component being released: rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` (with a fresh empty `## [Unreleased]` above it) and set the version (`watch/app.json`: `version.name` = `X.Y.Z`, `version.code` + 1; and `watch/lib/version.js` to the same `X.Y.Z`, which `npm test` checks). For the first watch release, also delete `watch/DRAFT`.
+1. On `dev`, for each component being released: rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` (with a fresh empty `## [Unreleased]` above it) and set the version (`watch/app.json`: `version.name` = `X.Y.Z`, `version.code` + 1; and `watch/lib/version.js` to the same `X.Y.Z`, which `npm test` checks; `custom_components/kestrel/manifest.json`: `version`). For the first release, also delete `watch/DRAFT` and `ha/DRAFT`; both changelogs' `[Unreleased]` sections are already written as first-release notes. Check the notes as they'll appear: `python3 tools/release_notes.py watch X.Y.Z` (and `ha`).
 2. Open a pull request from `dev` into `main`, titled with what it releases ("Kestrel 0.2.0"). The description is the new changelog sections.
 3. The owner squash-merges it, keeping the title as the commit message and the changelog sections as its body.
-4. CI on `main` creates each release (tag `watch-vX.Y.Z`, with the `.zpk` and `.zab` attached), then resets `dev` to `main` (the `sync-dev` job) if `dev` has no newer work. If it does, reset by hand once that work is released: `git checkout dev && git reset --hard origin/main && git push --force-with-lease`.
+4. CI on `main` creates each release (tag `watch-vX.Y.Z` with the `.zpk`, `.zab` and per-watch packages attached; `ha-vX.Y.Z` for the integration, which HACS offers), then resets `dev` to `main` (the `sync-dev` job) if `dev` has no newer work. If it does, reset by hand once that work is released: `git checkout dev && git reset --hard origin/main && git push --force-with-lease`.
+
+5. Submit the watch release's `.zab` to the Zepp store: [docs/store.md](store.md) (the listing text, images, permissions and privacy statement are ready in `watch/docs/store/`).
+
+Where the changelogs show up: each GitHub release's notes are its changelog section plus install steps (`tools/release_notes.py`), and HACS shows those for the integration; the install page shows the latest watch release's section ("What's new"); the test-build page and the integration's dev pre-releases show the `[Unreleased]` sections; the store's update notes are copied from the release notes by hand.
 
 Versions follow [Semantic Versioning](https://semver.org/).
 
@@ -172,7 +178,7 @@ Repository settings (owner, one time):
 `.github/workflows/build.yml`:
 
 - **Every push and pull request:** `tools/release_plan.py` (fails if a non-draft component's version has no changelog section), `npm test`, a Zeus build of the watch app, the HA component's tests with at least 95% coverage (`ha-tests`, Python 3.14), and `validate`: Home Assistant's hassfest and the HACS repository checks.
-- **On `main`, for each component whose `<component>-vX.Y.Z` tag doesn't exist yet:** creates the tag and a GitHub release, with notes from the changelog plus install instructions.
+- **On `main`, for each component whose `<component>-vX.Y.Z` tag doesn't exist yet:** creates the tag and a GitHub release, with notes from the changelog plus install instructions (`tools/release_notes.py`). The integration's dev pre-releases (each push to `dev`) carry the changelog's `[Unreleased]` section.
 - **Every push to `main` or `dev`:** builds the DEV test build from the tip of `dev` and redeploys the Pages site. The public install page only ever offers released versions.
 
 ### Test builds

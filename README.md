@@ -7,7 +7,7 @@ Point your Amazfit watch at a smart-home device and trigger it. Hold your arm st
 > **Status: feature-complete test builds, before release polish.** Pair the watch with Home Assistant, paint devices, point, and trigger with the select button, a tap or a gesture (wrist flick, finger snap or finger tap). Twist to dim lights. Rooms are recognised by Bluetooth (or a Home Assistant sensor). Paints, rooms, settings and which devices watches can use are managed in Home Assistant. It works on your home network (or a VPN into it), never through Home Assistant Cloud. There is no release yet.
 
 <p align="center">
-  <img src="watch/docs/screenshot-menu.png" width="240" alt="Kestrel probe menu on the watch">
+  <img src="watch/docs/screenshot-home.png" width="240" alt="Kestrel's home screen on the watch">
 </p>
 
 ## How it will work
@@ -26,8 +26,8 @@ Test builds are for development and change often.
 
 **2. Install the watch app.**
 1. In the Zepp app, turn on Developer Mode: Profile → Settings → About, tap the Zepp logo 7 times.
-2. Open the [test-build page](https://raetha.github.io/zepp-kestrel/dev/) on another screen and pick your watch (each screen size needs its own package; see [Supported devices](#supported-devices)).
-3. In the Zepp app: Profile → your watch → Developer Mode → scan icon (top right). Scan the QR code and confirm. It never changes and always installs the newest build; the home screen shows the build number at the bottom.
+2. Open the [test-build page](https://raetha.github.io/zepp-kestrel/dev/) on another screen. Test builds are made for the Balance 3 and Balance 3 Ti.
+3. In the Zepp app: Profile → your watch → Developer Mode → + → Scan. Scan the QR code and confirm. Each push to `dev` makes a new code (valid for 7 days); the home screen shows the build number at the bottom. On an iPhone, the Zepp app keeps the phone part of the first build it installed: if Home Assistant's Phone app version sensor shows an older build than the watch, reinstall the Zepp app, then Kestrel.
 
 **3. Pair.** With your phone on the home Wi-Fi, open Kestrel DEV on the watch → Pair with HA. Pick your Home Assistant, then type the 6-digit code from the notification Home Assistant shows. The watch then fetches your devices. The same watch paired again (after a reinstall or reset) gets its own record back, with everything on it: the watch sends its unique id, of which Home Assistant keeps only a hash (Zepp OS 4.2 and later). Otherwise, pairing a new watch offers the setups Home Assistant already has: another paired watch's, or one removed in the last 30 days. Pick one and the watch takes over its paints, rooms and settings (taking over a paired watch keeps its Home Assistant device and entities); or start fresh. (If the Zepp app asks for Local Network access, allow it: that's how the phone finds `homeassistant.local`.)
 
@@ -237,6 +237,8 @@ Nothing is polled. The watch talks to Home Assistant when it opens (a quick sync
 - **Something else**: turn on **Detailed diagnostics** on your watch's device page, use Kestrel until the problem shows, then Settings → Devices & services → Kestrel → your watch → ⋮ → Download diagnostics, and attach it to an issue.
 
 ### Diagnostics and privacy
+
+Kestrel sends nothing to its developer or anyone else: the watch talks only to your own Home Assistant, on your home network. The full statement, also used for the Zepp store, is in [PRIVACY.md](PRIVACY.md).
 
 By default Kestrel keeps little: probes you run on purpose (More → Probes) and, when something goes wrong on the watch, the record of screens, buttons and errors leading up to it. Nothing about where you point, your rooms' Bluetooth surroundings or your battery is kept.
 

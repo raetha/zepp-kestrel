@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from changelog import section, to_html  # noqa: E402
 from components import GITHUB, PAGES, REPO, WATCH_ZPK, watch_meta  # noqa: E402
 from model_picker import picker  # noqa: E402
 
@@ -22,7 +23,7 @@ watch = site / "watch"
 if (watch / WATCH_ZPK).exists():
     version = (watch / "version.txt").read_text().strip()
     shutil.copy(REPO / "watch" / "docs" / "install-qr.png", watch / "install-qr.png")
-    shutil.copy(REPO / "watch" / "docs" / "screenshot-menu.png", watch / "preview.png")
+    shutil.copy(REPO / "watch" / "docs" / "screenshot-home.png", watch / "preview.png")
     body = f'''
   <section>
     <h2>{html.escape(meta["appName"])}</h2>
@@ -31,6 +32,13 @@ if (watch / WATCH_ZPK).exists():
       <img class="face" src="watch/preview.png" alt="{html.escape(meta["appName"])} on the watch">
       <div>{picker(watch, f"{PAGES}/watch") if (watch / "packages.json").exists() else f'<img class="qr" src="watch/install-qr.png" alt="Install QR code"><p><a href="watch/{WATCH_ZPK}">Download {WATCH_ZPK}</a></p>'}</div>
     </div>
+  </section>'''
+    notes = section("watch", version)
+    if notes:
+        body += f'''
+  <section class="notes">
+    <h3>What's new in v{html.escape(version)}</h3>
+    {to_html(notes)}
   </section>'''
 else:
     body = '<section><p>No release yet. Follow the project on GitHub to hear about the first one.</p></section>'
@@ -55,6 +63,9 @@ else:
   ol {{ text-align: left; display: inline-block; line-height: 1.6; }}
   a {{ color: #9fd4ff; }}
   select {{ font-size: 1rem; padding: 6px; margin: 8px; max-width: 90vw; }}
+  .notes {{ text-align: left; line-height: 1.5; }}
+  .notes h3, .notes h4 {{ color: #a995ff; }}
+  code {{ background: #241d3a; padding: 1px 4px; border-radius: 4px; }}
 </style>
 </head>
 <body>
@@ -63,7 +74,7 @@ else:
   <p>Point your Amazfit watch at a smart-home device and trigger it, with Home Assistant.</p>
   <ol>
     <li>In the Zepp app, turn on Developer Mode: Profile → Settings → About, tap the Zepp logo 7 times.</li>
-    <li>Profile → your watch → Developer Mode → tap the scan icon (top right).</li>
+    <li>Profile → your watch → Developer Mode → tap the scan icon (top right). (Once Kestrel is in the Zepp store, install it from there instead.)</li>
     <li>Pick your watch below, scan its QR code and confirm the install.</li>
     <li>Install the Kestrel integration in Home Assistant (HACS), then on the watch choose Pair with HA and type the code Home Assistant shows.</li>
   </ol>

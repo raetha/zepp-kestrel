@@ -35,7 +35,7 @@ The emulator sweep (docs/development.md → "Checking other watch models"; resul
 - **Cheetah 2 Ultra** (Zepp OS 5): Zeus builds no package for the device IDs Zepp's docs give it (9961728, 9961729). The Balance 3's package (round 480, ZPS) also carries IDs no listed model claims (9978112, 9978113, 10486016–10486019, 11092224, 11092225); one may be the Ultra. Needs an emulator image or an owner to confirm.
 - **Not yet run in the emulator** (no usable image): Balance Ultra, Cheetah 2 Pro, T-Rex 3 Pro 48 mm. Each shares a package with a model that ran; rerun the sweep when Zepp publishes images.
 - **Sensors** marked "not confirmed" in the table: check the manufacturer's specifications.
-- **Store submission**: pick only the supported models when uploading the `.zab`.
+- **Store submission**: pick only the supported models when uploading the `.zab` (`docs/store.md`).
 
 ## The phone side on an iPhone
 

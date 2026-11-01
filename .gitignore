@@ -16,3 +16,4 @@ tools/.emu*/
 .pytest_cache/
 .coverage
 tools/compat/out/
+watch-store/

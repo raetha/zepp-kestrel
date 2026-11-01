@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from changelog import section, to_html  # noqa: E402
 from components import PAGES, WATCH_ZPK, watch_meta  # noqa: E402
 from make_qr import make  # noqa: E402
 from model_picker import picker  # noqa: E402
@@ -57,6 +58,11 @@ watch app, but the Zepp app gives them no Settings page and may keep an older ph
 <p>based on {html.escape(meta["version"]["name"])} · build {html.escape(build)} · {html.escape(sha)}</p>
 {primary}
 <p class="note">All-watch bundle (the .zab format the Zepp store takes; this one carries the DEV app ID): <a href="watch/kestrel-dev.zab">kestrel-dev.zab</a></p></section>''')
+for component, title in (("watch", "Watch app"), ("ha", "Home Assistant component")):
+    notes = section(component, "Unreleased")
+    if notes:
+        cards.append(f'''<section class="notes"><h2>{title}: changes since the last release</h2>
+{to_html(notes)}</section>''')
 stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 dev.mkdir(parents=True, exist_ok=True)
 (dev / "index.html").write_text(f'''<!doctype html>
@@ -67,7 +73,7 @@ dev.mkdir(parents=True, exist_ok=True)
 <style>:root{{color-scheme:dark}}body{{margin:0;font-family:system-ui,sans-serif;background:#0e0b1a;color:#ece9f6;text-align:center}}
 main{{max-width:640px;margin:0 auto;padding:24px 16px}}h2{{color:#a995ff;margin-bottom:4px}}p{{color:#a69fbe}}
 img.qr{{width:220px;max-width:70vw;background:#fff;padding:8px;border-radius:8px}}img.small{{width:150px}}.note{{max-width:420px;margin:8px auto}}a{{color:#9fd4ff}}
-select{{font-size:1rem;padding:6px;margin:8px;max-width:90vw}}section{{border-top:1px solid #241d3a;margin-top:20px;padding-top:12px}}</style></head>
+select{{font-size:1rem;padding:6px;margin:8px;max-width:90vw}}.notes{{text-align:left;line-height:1.5}}.notes h4{{color:#a995ff}}code{{background:#241d3a;padding:1px 4px;border-radius:4px}}section{{border-top:1px solid #241d3a;margin-top:20px;padding-top:12px}}</style></head>
 <body><main><h1>Test builds</h1>
 <p>Tip of dev ({html.escape(sha)}, {stamp}). The test build installs next to the released app as a
 separate "Kestrel DEV" app with its own settings in the Zepp app.
@@ -76,4 +82,4 @@ GitHub Pages can cache files for up to 10 minutes after a push.</p>
 </main></body></html>
 ''')
 (site / "robots.txt").write_text("User-agent: *\nDisallow: /dev/\n")
-print(f"dev page with {len(cards)} build(s)")
+print(f"dev page with {len(cards)} section(s)")

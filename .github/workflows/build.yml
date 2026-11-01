@@ -214,9 +214,11 @@ jobs:
           set -e
           version=$(python3 -c "import json;print(json.load(open('custom_components/kestrel/manifest.json'))['version'])")
           tag="ha-v${version}-dev.${GITHUB_RUN_NUMBER}"
+          # notes: the changelog's Unreleased section (tools/release_notes.py), which HACS shows
+          python3 tools/release_notes.py ha Unreleased --test-build "$GITHUB_RUN_NUMBER" > notes.md
           gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
             --title "Kestrel HA component ${version} test build ${GITHUB_RUN_NUMBER}" \
-            --notes "Test build of the Home Assistant component from dev (${GITHUB_SHA::7}). Install through HACS with beta versions turned on for Kestrel. See ha/CHANGELOG.md → Unreleased."
+            --notes-file notes.md
           gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' |
             grep -E '^ha-v.*-dev\.[0-9]+$' | grep -vx "$tag" | while read -r old; do
               gh release delete "$old" --yes --cleanup-tag
