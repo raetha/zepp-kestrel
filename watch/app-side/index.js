@@ -49,6 +49,12 @@ AppSideService(
       // shows in the Zepp app's developer mode log (Profile → Developer Mode → Mini Program → Side Service):
       // which build the phone side really runs (it hasn't always been the one just installed)
       console.log(`Kestrel side service ${BUILD} started`)
+      // the settings page shows which build of this part is really running (it has lagged installs)
+      try {
+        this.settings.setItem('kestrel.sideBuild', BUILD)
+      } catch (e) {
+        // the page then says the build wasn't reported
+      }
       this.ha = new HaClient({ fetch: (req) => this.fetch(req), store: this.settings })
     },
 
