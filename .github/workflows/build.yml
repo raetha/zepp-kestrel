@@ -124,7 +124,7 @@ jobs:
       - name: Upload the test build as a Zepp preview
         id: preview
         if: steps.dev.outcome == 'success'
-        uses: raetha/zepp-devkit/preview@c88629165d2ca0faea15d223ba0cb12888246d91 # dev
+        uses: raetha/zepp-devkit/preview@668426d126e75e32a813bb7fb451c9872c7b3e06 # dev
         env:
           ZEPP_APPTOKEN: ${{ secrets.ZEPP_APPTOKEN }}
           ZEPP_USERID: ${{ secrets.ZEPP_USERID }}
@@ -343,7 +343,7 @@ jobs:
     if: always() && github.event_name == 'schedule'
     runs-on: ubuntu-24.04
     steps:
-      - uses: raetha/zepp-devkit/preview-check@c88629165d2ca0faea15d223ba0cb12888246d91 # dev
+      - uses: raetha/zepp-devkit/preview-check@668426d126e75e32a813bb7fb451c9872c7b3e06 # dev
         with:
           failed: ${{ needs.build.outputs.preview_failed }}
           build-result: ${{ needs.build.result }}
