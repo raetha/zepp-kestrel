@@ -7,29 +7,13 @@
 #   tools/zeus_preview.sh <project dir> <out dir> "<Zeus device names, comma-separated>"
 #
 # Needs ZEPP_APPTOKEN, ZEPP_USERID and ZEPP_CNAME (the developer login, see the guide):
-# they're written into Zeus's own login file (~/.zepp/.zeus), as `zeus login` would.
+# tools/zeus_login.sh puts them in Zeus's own login file while it runs.
 # Writes <out>/preview-qr.png, preview-url.txt, preview-expires.txt, preview-variant.txt.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 proj="$1"; out="$2"; devices="$3"
-dec() { python3 -c 'import sys, urllib.parse; print(urllib.parse.unquote(sys.argv[1]).strip())' "$1"; }
-token="$(dec "${ZEPP_APPTOKEN:?}")"; userid="$(dec "${ZEPP_USERID:?}")"; cname="$(dec "${ZEPP_CNAME:?}")"
-# GitHub masks the secrets as stored; mask the decoded forms too, should anything print them
-if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::add-mask::$token"; echo "::add-mask::$userid"; fi
-login="$HOME/.zepp/.zeus"
-mkdir -p "$HOME/.zepp" "$out"
-touch "$login" && chmod 600 "$login"
-saved="$(mktemp)" && cp "$login" "$saved"
-# the login lives in this file only while zeus runs (the runner is thrown away anyway)
-trap 'cp "$saved" "$login"; rm -f "$saved"' EXIT
-# Zeus writes this file itself (version checks) without a final newline: start on a new line,
-# or the first key is glued to its last line and Zeus asks for a login (seen in CI)
-echo >> "$login"
-{
-  echo "____user_zepp_com__token=\"$token\""
-  echo "____user_zepp_com__userid=\"$userid\""
-  echo "____user_zepp_com__cname=\"$cname\""
-} >> "$login"
+mkdir -p "$out"
+source "$root/tools/zeus_login.sh"
 log="$(mktemp)"
 # no terminal: an expired login would wait for a browser forever, hence the timeout
 (cd "$proj" && NODE_OPTIONS="--require $root/tools/zeus_preview_hook.cjs" timeout ${ZEUS_TIMEOUT:-600} zeus preview -s -t "$devices" </dev/null >"$log" 2>&1) || true

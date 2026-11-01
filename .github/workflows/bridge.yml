@@ -1,0 +1,57 @@
+# Manual: install the latest test build on the owner's watch through Zeus's bridge, an
+# experiment to see whether it replaces the phone side (a preview install doesn't:
+# docs/development.md -> "Preview installs and the Settings page"). Before running it, open
+# the Zepp app: Profile -> your watch -> Developer Mode -> Bridge, and keep it open.
+name: Bridge install (experiment)
+
+on:
+  workflow_dispatch:
+    inputs:
+      watch:
+        description: Zeus device name of the watch
+        default: Amazfit Balance 3 Ti
+
+permissions:
+  contents: read
+  actions: read     # to number the build like the newest dev test build
+
+env:
+  NODE_OPTIONS: --no-deprecation
+
+jobs:
+  bridge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dev
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: |
+          pip install -r tools/requirements.txt
+          npm ci
+          npm install -g @zeppos/zeus-cli@1.9.3
+
+      - name: Install through the bridge
+        env:
+          ZEPP_APPTOKEN: ${{ secrets.ZEPP_APPTOKEN }}
+          ZEPP_USERID: ${{ secrets.ZEPP_USERID }}
+          ZEPP_CNAME: ${{ secrets.ZEPP_CNAME }}
+          GH_TOKEN: ${{ github.token }}
+          WATCH: ${{ inputs.watch }}
+        run: |
+          set -e
+          # the same build number as the newest dev test build, so the version only moves forward
+          build=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build.yml/runs?branch=dev&status=success&per_page=1" --jq '.workflow_runs[0].run_number')
+          echo "Bridge install of test build $build ($(git rev-parse --short HEAD)) on $WATCH"
+          python3 tools/make_dev_variant.py "$build" "$(git rev-parse --short HEAD)"
+          tools/zeus_bridge.sh watch-dev "$WATCH"
