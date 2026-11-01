@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Add the unlisted test-build page to the Pages site.
 
-Expects site/dev/watch/kestrel.zpk (a fresh test build for the Balance 3) and, from
-tools/packages.py, a package per screen and chip with packages.json. Writes the QR codes
-(one per package, chosen by watch model: tools/model_picker.py) and site/dev/index.html. The page is not linked from the main site and is marked noindex;
+Shows the Zepp preview QR code (tools/zeus_preview.sh) when the build has one. Without it
+(no ZEPP_* secrets), falls back to our own packages: site/dev/watch/kestrel.zpk and, from
+tools/packages.py, a package per screen and chip with packages.json (one QR code per package,
+chosen by watch model: tools/model_picker.py). Writes site/dev/index.html. The page is not linked from the main site and is marked noindex;
 its QR code never changes, so you can bookmark the page.
 
   python3 tools/dev_site.py site <short-sha> <build-number>
@@ -37,17 +38,21 @@ Each watch needs the package built for its screen. The codes never change; they 
 The QR code never changes; it always installs the newest build.</p>
 <img class="qr" src="watch/install-qr.png" alt="QR code for the Kestrel test build">'''
     if (w / "preview-qr.png").exists():
-        # Zepp's preview service (tools/zeus_preview.sh, only with the ZEPP_* secrets): an experiment,
-        # to see whether the Zepp app updates the side service for this route
+        # Zepp's preview service (tools/zeus_preview.sh, with the ZEPP_* secrets): the sanctioned way
+        # to install a test build, and the only one that gets the Settings page. Our own .zpk codes
+        # aren't shown then: they never did, and they left the Zepp app running an old phone side.
         expires = (w / "preview-expires.txt").read_text().strip()
-        variant_file = w / "preview-variant.txt"
-        variant = variant_file.read_text().strip() if variant_file.exists() else "our copy of its upload"
-        primary = f'''<h3>Zepp preview install (Balance 3 and 3 Ti)</h3>
-<p class="note">Use this one: through Zepp's own preview service (the real <code>zeus preview</code>). It installs Kestrel DEV
-with its Settings page (Developer Mode → Kestrel DEV → Settings). In the Zepp app: Profile → your watch → Developer Mode → + → Scan. Expires {html.escape(expires)};
-each push to dev makes a new one. Scan it the same way. (Uploaded {html.escape(variant)}.)</p>
-<img class="qr" src="watch/preview-qr.png" alt="QR code for the Kestrel test build through Zepp's preview service">
-<h3>Our own packages</h3>''' + primary
+        primary = f'''<p class="note">Balance 3 and 3 Ti. In the Zepp app: Profile → your watch → Developer Mode → + → Scan.
+Installs Kestrel DEV with its Settings page (Developer Mode → Kestrel DEV → Settings). Expires {html.escape(expires)};
+each push to dev makes a new code.</p>
+<img class="qr" src="watch/preview-qr.png" alt="QR code for the Kestrel test build">
+<p class="note">The iPhone Zepp app keeps running the phone part of the first build it installed, through later
+installs (even after deleting the app): check Home Assistant's "Phone app version", and reinstall the Zepp app
+if the phone part matters for a test.</p>'''
+    else:
+        # no preview upload (a fork without the ZEPP_* secrets, or a failed upload): our own packages
+        primary = '''<p class="note">No Zepp preview this build (it needs the ZEPP_* secrets): these packages install the
+watch app, but the Zepp app gives them no Settings page and may keep an older phone part.</p>''' + primary
     cards.append(f'''<section><h2>{html.escape(meta["appName"])} DEV</h2>
 <p>based on {html.escape(meta["version"]["name"])} · build {html.escape(build)} · {html.escape(sha)}</p>
 {primary}
