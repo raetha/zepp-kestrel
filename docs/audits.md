@@ -6,10 +6,37 @@ watch app (`watch/page`, `watch/lib`), the phone side service (`watch/app-side`,
 Assistant integration (`custom_components/kestrel`) and CI. Repeat before each
 release; record what changed.
 
+## 2026-11-01: review after the test-install experiments
+
+- **GitHub security alerts.** The repository's alerts aren't readable from a session,
+  so CodeQL 2.23.3 ran locally over the tracked files (actions, javascript, python;
+  security-and-quality suites). Fixed: an "incomplete URL substring sanitization" pair
+  in a test (`m1.test.mjs`, now an exact comparison) and an unused import. Left: the
+  emulator tool sends a local file to the local emulator (`tools/emu/emu.mjs`, by
+  design), and the settings page's `Text(...)` calls look like the DOM's `Text` to
+  CodeQL. `npm audit`: no vulnerabilities; `pip-audit` on `tools/requirements.txt`:
+  none. The HA test harness pins an older Pillow and uv inside Home Assistant core
+  (test-only, never shipped).
+- **Leftovers removed:** the watch's fallback to asking an old phone side by name
+  (every phone side since build 79 relays), Home Assistant's "older (not reported)"
+  phone version and the `s=` sync parameter, the bridge-install experiment (its first
+  run published the Zepp app's log, with the pairing token, in a public Actions log;
+  the logs were deleted and the owner re-paired), and our own `.zpk` QR codes on the
+  test page whenever a Zepp preview exists.
+- **Relay:** the phone side's logic moved to `watch/lib/side.js` and is now tested in
+  Node (`watch/test/side.test.mjs`): status and build, relaying with the token and
+  `X-Kestrel-Side`, refusing other paths, methods and bodies over 100 kB (both
+  sides check: `relayable()`), unpairing on 401, the settings page's copies, and
+  storage that fails never failing a request.
+- **Tokens:** a watch not heard from in 30 days gets a Repairs notice whose fix removes
+  it and its token (`repairs.py`; `repair-issues` is now done).
+- **Workflows:** top-level `contents: read`, write only where a job needs it, every
+  action pinned to a commit, no `${{ }}` expansions inside `run:` scripts.
+
 ## 2026-10-31: the phone side became a relay
 
 The watch now builds its Home Assistant requests (`watch/lib/ha-api.js`) and the
-phone side relays them (`METHOD.RELAY` in `watch/app-side/index.js`). Checked: the
+phone side relays them (`METHOD.RELAY` in `watch/lib/side.js`). Checked: the
 relay only sends to the paired Home Assistant's home-network addresses (unchanged
 `component()`), only paths under `/api/kestrel/` with GET or POST, and refuses `..`,
 encoded dots, slashes and backslashes, whitespace and `#` (`relayable()`, tested), so

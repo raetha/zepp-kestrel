@@ -10,7 +10,7 @@ This is the canonical guide for the repository. Read it before changing anything
 | `watch/app.json` | Manifest: app ID 1132466, version, permissions (accelerometer, gyroscope, compass, BLE, device info, step count), API level. |
 | `watch/page/` | Watch screens (`home.js`, `point.js`, `paint.js`, `pair.js`, `rooms.js`, `more.js`, `gesture.js`; `probes.js` and `test.js` host the M0 probes in `probes/`) and their helpers: `ui.js` (widgets, `ask()` to the phone), `store.js` and `kv.js` (storage), `sync.js`, `trail.js`, `sensors.js`. |
 | `watch/lib/` | The app's pure-JS logic, unit-tested in Node: aim maths and the classifier, gestures, rooms from Bluetooth, sync, the watch ↔ phone protocol and the Home Assistant requests (`ha-api.js`), the phone side's transport (`ha-client.js`). No `@zos/*` imports. |
-| `watch/app-side/` | Side service, running in the Zepp phone app: finds Home Assistant, pairs, and relays the watch's requests (`lib/ha-client.js`). Keep it minimal ("The phone side doesn't update on an iPhone"). |
+| `watch/app-side/` | Side service, running in the Zepp phone app: finds Home Assistant, pairs, and relays the watch's requests. Its behaviour is in `lib/side.js` (with `lib/ha-client.js`), tested in Node; `index.js` only hands it to ZML. Keep it minimal ("The phone side doesn't update on an iPhone"). |
 | `watch/setting/` | Settings page in the Zepp phone app (preview and store installs only). |
 | `watch/test/` | `node --test` suites for `watch/lib/`. |
 | `watch/docs/` | Install QR code and emulator screenshots. |

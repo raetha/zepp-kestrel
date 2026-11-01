@@ -15,7 +15,7 @@ import { back } from '@zos/router'
 import { note, noteOnce, noteBuilds, appVersion, safe } from './trail.js'
 import { BUILD } from '../lib/version.js'
 import { METHOD, RELAYED } from '../lib/protocol.js'
-import { HaApi } from '../lib/ha-api.js'
+import { HaApi, relayable } from '../lib/ha-api.js'
 
 let SCREEN = { w: 480, h: 480 }
 try {
@@ -181,7 +181,10 @@ export function ask(page, method, params, timeout = 6000) {
   const fn = RELAYED[method]
   if (!fn) return askPhone(page, method, params, timeout)
   const api = new HaApi(async (path, opts = {}) => {
-    const r = await askPhone(page, METHOD.RELAY, { path, method: opts.method || 'GET', body: opts.body }, timeout)
+    const req = { path, method: opts.method || 'GET', body: opts.body }
+    // the phone side refuses anything else; say so without the Bluetooth round trip
+    if (!relayable(req.path, req.method, req.body)) throw Object.assign(new Error('Request too large for the phone'), { replied: true })
+    const r = await askPhone(page, METHOD.RELAY, req, timeout)
     if (r && r.relayed) return r.body
     const error = phoneMismatch(r) ? PHONE_MISMATCH : (r && r.error) || 'No reply'
     throw Object.assign(new Error(error), { replied: true })

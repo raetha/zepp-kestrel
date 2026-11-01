@@ -10,8 +10,21 @@
 
 /** The paths the phone side will relay: Kestrel's endpoints only. */
 export const RELAY_PREFIX = '/api/kestrel/'
+/** The largest body relayed, as JSON text: Home Assistant takes up to 100 kB (PROBE_MAX_BYTES). */
+export const RELAY_MAX_BODY = 100000
 
-export function relayable(path, method) {
+function bodySize(body) {
+  if (body === undefined) return 0
+  try {
+    const text = JSON.stringify(body)
+    return text === undefined ? 0 : text.length
+  } catch (e) {
+    return Infinity // can't be sent
+  }
+}
+
+/** Whether the phone side relays this request (the watch checks too, to fail fast). */
+export function relayable(path, method, body) {
   return (
     typeof path === 'string' &&
     path.startsWith(RELAY_PREFIX) &&
@@ -19,7 +32,8 @@ export function relayable(path, method) {
     !/[\s#\\]/.test(path) &&
     !/%2e|%2f|%5c/i.test(path) && // no encoded dots or slashes either
     path.length <= 2000 &&
-    (method === 'GET' || method === 'POST')
+    (method === 'GET' || method === 'POST') &&
+    bodySize(body) <= RELAY_MAX_BODY
   )
 }
 
