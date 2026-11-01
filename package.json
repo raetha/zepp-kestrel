@@ -7,7 +7,7 @@
   "scripts": {
     "test": "node --test watch/test/*.test.mjs",
     "build": "cd watch && zeus build",
-    "emu": "node tools/emu/emu.mjs",
+    "emu": "zepp-devkit emu",
     "qr": "python3 tools/make_qr.py"
   },
   "dependencies": {

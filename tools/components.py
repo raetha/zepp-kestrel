@@ -1,4 +1,6 @@
-"""The releasable parts of this repo, each versioned and released on its own.
+"""Project constants for the site and install texts. The releasable components themselves
+(watch app, Home Assistant component) are listed in zepp-devkit.json, for zepp-devkit's
+release-plan, changelog and notes.
 
   watch  Zepp OS mini program (watch app + side service + settings page)
          version: watch/app.json -> app.version.name; tag watch-v<version>
@@ -20,17 +22,3 @@ WATCH_ZPK = "kestrel.zpk"
 
 def watch_meta(app_dir=REPO / "watch"):
     return json.loads((app_dir / "app.json").read_text())["app"]
-
-
-def components():
-    """[(name, version, title, is_draft)] for every component present."""
-    out = []
-    watch = REPO / "watch"
-    if (watch / "app.json").exists():
-        meta = watch_meta(watch)
-        out.append(("watch", meta["version"]["name"], f"{meta['appName']} watch app", (watch / "DRAFT").exists()))
-    manifest = REPO / "custom_components" / "kestrel" / "manifest.json"
-    if manifest.exists():
-        man = json.loads(manifest.read_text())
-        out.append(("ha", man["version"], f"{man['name']} Home Assistant component", (REPO / "ha" / "DRAFT").exists()))
-    return out

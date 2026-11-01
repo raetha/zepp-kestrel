@@ -12,10 +12,18 @@ import shutil
 import sys
 from pathlib import Path
 
+from zepp_devkit.changelog import section as _section, to_html
+from zepp_devkit.project import component as devkit_component
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from changelog import section, to_html  # noqa: E402
 from components import GITHUB, PAGES, REPO, WATCH_ZPK, watch_meta  # noqa: E402
+
 from model_picker import picker  # noqa: E402
+
+
+def section(name, version):
+    """A component's changelog section (zepp-devkit.json lists where each changelog is)."""
+    return _section(devkit_component(name, REPO).changelog, version)
 
 site = Path(sys.argv[1] if len(sys.argv) > 1 else "site")
 meta = watch_meta()

@@ -69,7 +69,7 @@ jobs:
 
       - name: Check changelogs and plan releases
         id: plan
-        run: python3 tools/release_plan.py --github
+        run: zepp-devkit release-plan --github
 
       - name: Unit tests
         run: npm test
@@ -83,10 +83,10 @@ jobs:
           version=$(python3 -c "import json;print(json.load(open('watch/app.json'))['app']['version']['name'])")
           (cd watch && zeus build)
           mkdir -p out/watch
-          python3 tools/extract_zpk.py watch/dist "out/watch/kestrel-$version.zpk"
+          zepp-devkit extract-zpk watch/dist "out/watch/kestrel-$version.zpk"
           # the multi-watch bundle for the Zepp store, and one package per screen for QR installs
           cp watch/dist/*.zab "out/watch/kestrel-$version.zab"
-          python3 tools/packages.py watch/dist out/packages
+          zepp-devkit packages watch/dist out/packages --prefix kestrel
           (cd out/packages && zip -q "../watch/kestrel-$version-packages.zip" ./*)
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -113,8 +113,8 @@ jobs:
           # test builds: the watches being tested only (one package, its own device IDs), as
           # zeus preview builds them; releases build every watch
           (cd watch-dev && zeus build -s -t "$TEST_WATCHES" </dev/null)
-          python3 tools/extract_zpk.py watch-dev/dist "$out/watch/kestrel.zpk"
-          python3 tools/packages.py watch-dev/dist "$out/watch"
+          zepp-devkit extract-zpk watch-dev/dist "$out/watch/kestrel.zpk"
+          zepp-devkit packages watch-dev/dist "$out/watch" --prefix kestrel
           cp watch-dev/dist/*.zab "$out/watch/kestrel-dev.zab"
           echo "project=$PWD/watch-dev" >> "$GITHUB_OUTPUT"
 
@@ -124,17 +124,12 @@ jobs:
       - name: Upload the test build as a Zepp preview
         id: preview
         if: steps.dev.outcome == 'success'
-        uses: raetha/zepp-devkit/preview@668426d126e75e32a813bb7fb451c9872c7b3e06 # dev
         env:
           ZEPP_APPTOKEN: ${{ secrets.ZEPP_APPTOKEN }}
           ZEPP_USERID: ${{ secrets.ZEPP_USERID }}
           ZEPP_CNAME: ${{ secrets.ZEPP_CNAME }}
-        with:
-          project: ${{ steps.dev.outputs.project }}
-          out: out-dev/watch
-          watches: ${{ env.TEST_WATCHES }}
-          label: Kestrel DEV
-          qr-color: "#1E1640"
+          PROJECT: ${{ steps.dev.outputs.project }}
+        run: zepp-devkit preview "$PROJECT" out-dev/watch --watches "$TEST_WATCHES" --label "Kestrel DEV" --color "#1E1640" --github
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
@@ -193,6 +188,13 @@ jobs:
           name: kestrel
           path: out
 
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: pip install -r tools/requirements.txt
+
       - name: Create a GitHub release per changed component
         env:
           GH_TOKEN: ${{ github.token }}
@@ -221,6 +223,13 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: pip install -r tools/requirements.txt
 
       - name: Publish the dev pre-release for HACS
         env:
@@ -343,8 +352,17 @@ jobs:
     if: always() && github.event_name == 'schedule'
     runs-on: ubuntu-24.04
     steps:
-      - uses: raetha/zepp-devkit/preview-check@668426d126e75e32a813bb7fb451c9872c7b3e06 # dev
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          failed: ${{ needs.build.outputs.preview_failed }}
-          build-result: ${{ needs.build.result }}
-          repositories: zepp-kestrel and zepp-watch-faces
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: pip install -r tools/requirements.txt
+
+      - name: Check the preview uploaded
+        env:
+          FAILED: ${{ needs.build.outputs.preview_failed }}
+          BUILD: ${{ needs.build.result }}
+        run: zepp-devkit preview-check --build-result "$BUILD" --failed "$FAILED" --repositories "zepp-kestrel and zepp-watch-faces"

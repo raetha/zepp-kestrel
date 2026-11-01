@@ -45,7 +45,7 @@ release, and whenever asked for a full review; record what changed below.
   so CodeQL 2.23.3 ran locally over the tracked files (actions, javascript, python;
   security-and-quality suites). Fixed: an "incomplete URL substring sanitization" pair
   in a test (`m1.test.mjs`, now an exact comparison) and an unused import. Left: the
-  emulator tool sends a local file to the local emulator (`tools/emu/emu.mjs`, by
+  emulator tool sends a local file to the local emulator (now `zepp-devkit emu`, by
   design), and the settings page's `Text(...)` calls look like the DOM's `Text` to
   CodeQL. `npm audit`: no vulnerabilities; `pip-audit` on `tools/requirements.txt`:
   none. The HA test harness pins an older Pillow and uv inside Home Assistant core
