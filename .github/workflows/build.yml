@@ -42,9 +42,12 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    env:
+      # the watches test builds are made for (Zeus device names); the owner's is a Balance 3 Ti
+      TEST_WATCHES: Amazfit Balance 3,Amazfit Balance 3 Ti
     outputs:
       releases: ${{ steps.plan.outputs.releases }}
-      preview_failed: ${{ steps.dev.outputs.preview_failed }}
+      preview_failed: ${{ steps.preview.outputs.failed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -94,14 +97,6 @@ jobs:
       - name: Build the DEV test build (from the tip of dev)
         id: dev
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-        env:
-          # Optional (docs/development.md -> "Preview uploads from CI"): with all three set, the build
-          # also goes to Zepp's preview service, and the test page shows that QR code only.
-          ZEPP_APPTOKEN: ${{ secrets.ZEPP_APPTOKEN }}
-          ZEPP_USERID: ${{ secrets.ZEPP_USERID }}
-          ZEPP_CNAME: ${{ secrets.ZEPP_CNAME }}
-          # the watches test builds are made for (Zeus device names); the owner's is a Balance 3 Ti
-          TEST_WATCHES: Amazfit Balance 3,Amazfit Balance 3 Ti
         run: |
           set -e
           out="$PWD/out-dev"
@@ -121,18 +116,25 @@ jobs:
           python3 tools/extract_zpk.py watch-dev/dist "$out/watch/kestrel.zpk"
           python3 tools/packages.py watch-dev/dist "$out/watch"
           cp watch-dev/dist/*.zab "$out/watch/kestrel-dev.zab"
-          # Zepp's preview service (like zeus preview), only when the secrets are set; a failed
-          # upload is a warning, not a failed build: the page then falls back to our own QR codes
-          if [ -n "$ZEPP_APPTOKEN" ] && [ -n "$ZEPP_USERID" ] && [ -n "$ZEPP_CNAME" ]; then
-            # the real zeus preview (it builds its own package, in preview mode), not our copy of its upload
-            if ! tools/zeus_preview.sh watch-dev "$out/watch" "$TEST_WATCHES"; then
-              echo "::warning title=Zepp preview::upload failed (see the annotation above); the test page falls back to our own QR codes"
-              echo "preview_failed=the preview upload failed" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "No ZEPP_* secrets: no preview upload (the test page shows our own QR codes)"
-            echo "preview_failed=no ZEPP_* secrets" >> "$GITHUB_OUTPUT"
-          fi
+          echo "project=$PWD/watch-dev" >> "$GITHUB_OUTPUT"
+
+      # Zepp's preview service, with the real zeus preview (zepp-devkit; docs/development.md ->
+      # "Preview uploads from CI"): the test page then shows that QR code only. Without the
+      # secrets, or when the upload fails, it's a warning and the page falls back to our own codes.
+      - name: Upload the test build as a Zepp preview
+        id: preview
+        if: steps.dev.outcome == 'success'
+        uses: raetha/zepp-devkit/preview@c88629165d2ca0faea15d223ba0cb12888246d91 # dev
+        env:
+          ZEPP_APPTOKEN: ${{ secrets.ZEPP_APPTOKEN }}
+          ZEPP_USERID: ${{ secrets.ZEPP_USERID }}
+          ZEPP_CNAME: ${{ secrets.ZEPP_CNAME }}
+        with:
+          project: ${{ steps.dev.outputs.project }}
+          out: out-dev/watch
+          watches: ${{ env.TEST_WATCHES }}
+          label: Kestrel DEV
+          qr-color: "#1E1640"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
@@ -341,16 +343,8 @@ jobs:
     if: always() && github.event_name == 'schedule'
     runs-on: ubuntu-24.04
     steps:
-      - name: Check the preview uploaded
-        env:
-          FAILED: ${{ needs.build.outputs.preview_failed }}
-          BUILD: ${{ needs.build.result }}
-        run: |
-          if [ "$BUILD" != success ]; then
-            echo "::error title=Zepp preview::the build failed, so the test build wasn't refreshed"; exit 1
-          fi
-          if [ -n "$FAILED" ]; then
-            echo "::error title=Zepp preview::$FAILED. If the log says the login expired, get new values and update ZEPP_APPTOKEN, ZEPP_USERID and ZEPP_CNAME here and in zepp-watch-faces (docs/development.md -> \"Preview uploads from CI\")."
-            exit 1
-          fi
-          echo "preview refreshed"
+      - uses: raetha/zepp-devkit/preview-check@c88629165d2ca0faea15d223ba0cb12888246d91 # dev
+        with:
+          failed: ${{ needs.build.outputs.preview_failed }}
+          build-result: ${{ needs.build.result }}
+          repositories: zepp-kestrel and zepp-watch-faces

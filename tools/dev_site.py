@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Add the unlisted test-build page to the Pages site.
 
-Shows the Zepp preview QR code (tools/zeus_preview.sh) when the build has one. Without it
+Shows the Zepp preview QR code (zepp-devkit's preview action) when the build has one. Without it
 (no ZEPP_* secrets), falls back to our own packages: site/dev/watch/kestrel.zpk and, from
 tools/packages.py, a package per screen and chip with packages.json (one QR code per package,
 chosen by watch model: tools/model_picker.py). Writes site/dev/index.html. The page is not linked from the main site and is marked noindex;
@@ -39,7 +39,7 @@ Each watch needs the package built for its screen. The codes never change; they 
 The QR code never changes; it always installs the newest build.</p>
 <img class="qr" src="watch/install-qr.png" alt="QR code for the Kestrel test build">'''
     if (w / "preview-qr.png").exists():
-        # Zepp's preview service (tools/zeus_preview.sh, with the ZEPP_* secrets): the sanctioned way
+        # Zepp's preview service (zepp-devkit's preview action, with the ZEPP_* secrets): the sanctioned way
         # to install a test build, and the only one that gets the Settings page. Our own .zpk codes
         # aren't shown then: they never did, and they left the Zepp app running an old phone side.
         expires = (w / "preview-expires.txt").read_text().strip()

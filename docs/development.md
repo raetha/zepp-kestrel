@@ -18,7 +18,7 @@ This is the canonical guide for the repository. Read it before changing anything
 | `custom_components/kestrel/` | The Home Assistant component (MIT): the watch API (`http.py`), paired watches and their devices (`watches.py`), targets and service mapping (`targets.py`), config flow, diagnostics, and `quality_scale.yaml` (the status of every quality-scale rule). At the repo root because HACS expects it there. |
 | `ha/` | The component's tests (`ha/tests/`, pytest against a real HA core), `CHANGELOG.md`, `requirements_test.txt` and `DRAFT`. |
 | `hacs.json` | HACS metadata for installing the component as a custom repository. |
-| `tools/` | Packaging, release and site helpers, the preview upload (`zeus_preview.sh`), diagnostics replay (`replay.mjs`), `emu/` (the emulator) and `compat/` (a sweep over watch models' emulator images). |
+| `tools/` | Packaging, release and site helpers, diagnostics replay (`replay.mjs`), `emu/` (the emulator) and `compat/` (a sweep over watch models' emulator images). |
 | `docs/` | This guide, `design.md`, `audits.md`, `backlog.md` and `store.md` (Zepp store submission). |
 | `PRIVACY.md` | The privacy statement (README and the Zepp store). |
 | `watch/docs/store/` | The Zepp store listing (`listing.md`), icon and screenshots (`tools/store/`). |
@@ -217,13 +217,7 @@ The Zepp app's `Select` shows no value in its field: put the current choice in i
 
 ### Preview uploads from CI
 
-CI uploads each `dev` build to Zepp's preview service with the real `zeus preview -s -t "<TEST_WATCHES>"` (`tools/zeus_preview.sh`). `tools/zeus_login.sh` puts the developer login into Zeus's own login file (`~/.zepp/.zeus`, keys `____user_zepp_com__token`, `…__userid`, `…__cname`, as `zeus login` writes them) while it runs, and `tools/zeus_preview_hook.cjs` prints the QR code's URL, which Zeus otherwise only draws in the terminal. It runs only when all three repository secrets are set (**Settings → Secrets and variables → Actions**): `ZEPP_APPTOKEN`, `ZEPP_USERID`, `ZEPP_CNAME`; without them the step is skipped, and a failed or expired login is an error annotation on a push's run, not a failed build (a scheduled run fails, so the expiry gets noticed). The same three secrets are set in `raetha/zepp-watch-faces`: when the login expires, update both repositories. To get the secrets, from any browser including a phone:
-
-
-1. Open https://user.zepp.com/universalLogin/index.html#/login?project_name=zeppos_zeus_cli&platform_app=com.huami.webapp&project_redirect_uri=http%3A%2F%2Flocalhost%3A8765%2Flogin%2Fcallback and sign in with the Zepp developer account.
-2. The browser then tries to open `http://localhost:8765/login/callback?apptoken=…&userid=…&cname=…` and fails to connect. That's expected: the address bar holds the values. Copy them into the three secrets (`apptoken` → `ZEPP_APPTOKEN`, `userid` → `ZEPP_USERID`, `cname` → `ZEPP_CNAME`; still URL-encoded is fine).
-
-`cname` is a comma-separated list of the account's regional hosts; uploads go to the `api-mifit` one. When the token expires, the run says so ("Zepp refused the login"): repeat both steps. Treat the token like a password. In CI it's safe enough: the login file exists only on the job's throwaway runner, readable only by its user, and is put back as it was when the step ends (`trap` in `tools/zeus_login.sh`); the decoded values are masked in logs too (`::add-mask::`, since GitHub only knows the stored form); nothing carries the home folder into the artifact; and GitHub never gives secrets to pull requests from forks (the step runs only for pushes to `dev` and `main`). Don't paste the token into a chat or a sandbox.
+CI uploads each `dev` build to Zepp's preview service with the real `zeus preview -s -t "<TEST_WATCHES>"`, through the `preview` action of [raetha/zepp-devkit](https://github.com/raetha/zepp-devkit) (pinned to a commit in `build.yml`; Dependabot proposes updates). The devkit's README explains what it does and why, and how to get the Zepp login: three repository secrets, `ZEPP_APPTOKEN`, `ZEPP_USERID` and `ZEPP_CNAME`, the same in every repository that uses the devkit (when the login expires, update them all). Without them the upload is skipped and the test page shows our own QR codes; a failed or expired login is a warning on a push's run, and fails a scheduled run (`preview-check`), so the expiry gets noticed. Treat the token like a password: never paste it into a chat or a sandbox.
 
 The release QR code (`watch/docs/install-qr.png`) encodes `zpkd1://raetha.github.io/zepp-kestrel/watch/kestrel.zpk`. Regenerate with `npm run qr` if the repo moves.
 
