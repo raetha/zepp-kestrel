@@ -172,8 +172,9 @@ Repository settings (owner, one time):
 
 - **Settings → Pages → Source: GitHub Actions.** Without this the deploy step fails and no test build is published.
 - **Settings → Environments → github-pages → Deployment branches and tags**: add `dev` next to `main`. By default only `main` may deploy, so test builds from `dev` fail with "Branch "dev" is not allowed to deploy to github-pages due to environment protection rules".
-- **Settings → Branches**: add a rule for `main` requiring a pull request before merging.
-- **Settings → General → Pull Requests**: allow only squash merging.
+- **Settings → Rules → Rulesets**: one for `main` (no deletion, no force pushes, a pull request before merging, squash only).
+- **Settings → General → Pull Requests**: allow only squash merging, and **Automatically delete head branches** (merged `try/…` and Dependabot branches go).
+- **Settings → Branches → classic branch protection rule for `dev`**: nothing required (work and Dependabot merges land on it directly), deletions not allowed, so auto-delete never removes it after a release pull request, and **force pushes allowed**, because the `sync-dev` job resets `dev` to `main` with one after each release. Use a classic rule, not a ruleset: a ruleset's "Restrict deletions" has been reported not to stop auto-delete when an admin can bypass it.
 
 ### What CI does
 
