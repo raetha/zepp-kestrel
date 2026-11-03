@@ -5,7 +5,7 @@ name: Build and publish
 # Every push and pull request: changelog check, unit tests, Zeus build of the watch app,
 # and the Home Assistant component's tests.
 # Push to main: when the version (shared by the watch app and the HA integration) has no
-# `v<version>` tag yet, it's released (tag + GitHub release with that version's changelog
+# `<version>` tag yet, it's released (tag + GitHub release with that version's changelog
 # section, the watch packages and kestrel.zip).
 # Push to main or dev (and manual runs): builds a "DEV" test build of the watch app from
 # the tip of `dev` (own app ID, installs next to the release) and redeploys the Pages site:
@@ -257,13 +257,13 @@ jobs:
         run: |
           set -e
           version=$(python3 -c "import json;print(json.load(open('custom_components/kestrel/manifest.json'))['version'])")
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$version" >/dev/null 2>&1; then
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$version" >/dev/null 2>&1; then
             base=$(python3 -c "import sys; a, b, c = sys.argv[1].split('.'); print(f'{a}.{b}.{int(c) + 1}')" "$version")
           else
             base="$version"
           fi
           dev="${base}-dev.${GITHUB_RUN_NUMBER}"
-          tag="v$dev"
+          tag="$dev"  # no leading "v": HACS shows tag names
           python3 tools/package_ha.py out/kestrel.zip --version "$dev"
           # notes: the changelog's Unreleased section (tools/release_notes.py), which HACS shows
           python3 tools/release_notes.py Unreleased --test-build "$GITHUB_RUN_NUMBER" > notes.md
@@ -271,7 +271,7 @@ jobs:
             --title "Kestrel ${dev} (test build)" \
             --notes-file notes.md out/kestrel.zip
           gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' |
-            { grep -E '^(ha-)?v.*-dev\.[0-9]+$' | grep -vx "$tag" || true; } | while read -r old; do
+            { grep -E '^((ha-)?v)?[0-9].*-dev\.[0-9]+$' | grep -vx "$tag" || true; } | while read -r old; do
               gh release delete "$old" --yes --cleanup-tag
             done
 
@@ -309,12 +309,12 @@ jobs:
           set -e
           pip install -r tools/requirements.txt
           mkdir -p site/watch
-          tag=$(gh release list --limit 200 --exclude-pre-releases --json tagName --jq '.[].tagName' | { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sed 's/^v//' | sort -V | tail -1)
+          tag=$(gh release list --limit 200 --exclude-pre-releases --json tagName --jq '.[].tagName' | { grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sort -V | tail -1)
           if [ -n "$tag" ]; then
-            gh release download "v$tag" --pattern "*.zpk" --dir site/watch
+            gh release download "$tag" --pattern "*.zpk" --dir site/watch
             mv "site/watch/kestrel-$tag.zpk" site/watch/kestrel.zpk
             # one package per screen, for the watch picker (releases before it have none)
-            if gh release download "v$tag" --pattern "*-packages.zip" --dir /tmp/pk 2>/dev/null; then
+            if gh release download "$tag" --pattern "*-packages.zip" --dir /tmp/pk 2>/dev/null; then
               unzip -q /tmp/pk/*-packages.zip -d site/watch
             fi
             echo "$tag" > site/watch/version.txt

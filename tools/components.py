@@ -4,7 +4,7 @@ Kestrel is released as one component (zepp-devkit.json, for zepp-devkit's releas
 changelog and notes): the watch app (Zepp OS mini program with side service and settings
 page, watch/) and the Home Assistant integration (custom_components/kestrel/, at the repo
 root where HACS expects it; its tests in ha/) share one version, one CHANGELOG.md and one
-tag, v<version>. While DRAFT exists, CI builds and tests but never releases.
+tag, <version> (no leading "v": HACS shows tag names). While DRAFT exists, CI builds and tests but never releases.
 """
 import json
 from pathlib import Path

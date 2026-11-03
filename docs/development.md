@@ -146,7 +146,7 @@ Day to day:
 2. Anything exploratory or larger starts on `try/<topic>` with a pull request into `dev`, so CI runs first. If it's adopted, Claude squash-merges it into `dev` (one commit with a clear message) once CI is green; a change that needs the owner's decision waits on its branch until they've seen it. If it's dropped, delete the branch and note the idea in `docs/design.md`.
 3. Each adopted change adds a line under `## [Unreleased]` in `CHANGELOG.md`, written for someone installing Kestrel, under **Watch app** or **Home Assistant integration** (a change to both says so).
 
-**One version for both parts.** The watch app and the integration are released together under one version (`watch/app.json`, `watch/lib/version.js` and `custom_components/kestrel/manifest.json` hold the same `X.Y.Z`; CI checks), with one changelog and one tag, `vX.Y.Z`. A release that changes only one part still bumps the shared version; its notes say which part changed. `dev` holds the expected next version: with the first change after a release, set it to what that change calls for under semver, and raise it when a later change calls for more. Changes users don't get (docs, CI, tooling) don't move it.
+**One version for both parts.** The watch app and the integration are released together under one version (`watch/app.json`, `watch/lib/version.js` and `custom_components/kestrel/manifest.json` hold the same `X.Y.Z`; CI checks), with one changelog and one tag, `X.Y.Z`. A release that changes only one part still bumps the shared version; its notes say which part changed. `dev` holds the expected next version: with the first change after a release, set it to what that change calls for under semver, and raise it when a later change calls for more. Changes users don't get (docs, CI, tooling) don't move it.
 4. Test on the watch from the test-build page after each push to `dev`.
 
 Releasing (only when the owner asks):
@@ -154,7 +154,7 @@ Releasing (only when the owner asks):
 1. On `dev`: rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` (with a fresh empty `## [Unreleased]` above it) and check the version is `X.Y.Z` everywhere (`watch/app.json`: `version.name`, with `version.code` + 1; `watch/lib/version.js`; `custom_components/kestrel/manifest.json`). For the first release, also delete `DRAFT`; the `[Unreleased]` section is already written as first-release notes. Check the notes as they'll appear: `python3 tools/release_notes.py X.Y.Z`.
 2. Open a pull request from `dev` into `main`, titled with what it releases ("Kestrel 0.2.0"). The description is the new changelog section.
 3. The owner squash-merges it, keeping the title as the commit message and the changelog section as its body.
-4. CI on `main` creates the release (tag `vX.Y.Z`, with the watch app's `.zpk`, `.zab` and per-watch packages, and `kestrel.zip` for the integration, which HACS offers: see "The integration's releases and HACS"), then resets `dev` to `main` (the `sync-dev` job) if `dev` has no newer work. If it does, reset by hand once that work is released: `git checkout dev && git reset --hard origin/main && git push --force-with-lease`.
+4. CI on `main` creates the release (tag `X.Y.Z`, no leading "v" since HACS shows tag names, with the watch app's `.zpk`, `.zab` and per-watch packages, and `kestrel.zip` for the integration, which HACS offers: see "The integration's releases and HACS"), then resets `dev` to `main` (the `sync-dev` job) if `dev` has no newer work. If it does, reset by hand once that work is released: `git checkout dev && git reset --hard origin/main && git push --force-with-lease`.
 
 5. Submit the release's `.zab` to the Zepp store: [docs/store.md](store.md) (the listing text, images, permissions and privacy statement are ready in `watch/docs/store/`).
 
@@ -184,7 +184,7 @@ Repository settings (owner, one time):
 `.github/workflows/build.yml`:
 
 - **Every push and pull request:** `zepp-devkit release-plan` (fails if the three version files disagree or, once `DRAFT` is gone, if the changelog has no section for the release: `[Unreleased]` is enough on `dev`, `main` and pull requests into it need `## [X.Y.Z]`), `npm test`, a Zeus build of the watch app, the HA component's tests with at least 95% coverage (`ha-tests`, Python 3.14), and `validate`: Home Assistant's hassfest and the HACS repository checks.
-- **On `main`, when the `vX.Y.Z` tag doesn't exist yet:** creates the tag and a GitHub release, with notes from the changelog plus install instructions (`tools/release_notes.py`). The integration's dev pre-releases (each push to `dev`) carry the changelog's `[Unreleased]` section.
+- **On `main`, when the `X.Y.Z` tag doesn't exist yet:** creates the tag and a GitHub release, with notes from the changelog plus install instructions (`tools/release_notes.py`). The integration's dev pre-releases (each push to `dev`) carry the changelog's `[Unreleased]` section.
 - **`CI passed`:** a gate job that passes only when every check above did; it's the one status check the `main` ruleset requires, so jobs can change without touching the ruleset. Every checkout uses `persist-credentials: false` except sync-dev's, the one job that pushes with git.
 - **Every push to `main` or `dev`, and every 5 days (schedule):** builds the DEV test build from the tip of `dev` and redeploys the Pages site. The schedule runs the default branch's copy of the workflow (`dev` here) and exists to keep the preview QR code valid (`preview-check` fails the run if the upload didn't happen). The public install page only ever offers released versions.
 
@@ -193,7 +193,7 @@ Repository settings (owner, one time):
 HACS installs the integration from `kestrel.zip` (`hacs.json`: `zip_release`), which `tools/package_ha.py` builds with the integration's files at the zip's root (HACS extracts it into `custom_components/kestrel/`). HACS's download count is that asset's.
 
 - HACS treats the newest non-pre-release as the integration's latest version; every release carries `kestrel.zip` built from that commit.
-- Each push to `dev` publishes a `v<version>-dev.<run>` pre-release (the next patch once the current version is tagged) with `kestrel.zip`, its `manifest.json` stamped with that version so Home Assistant and diagnostics show it. HACS offers it once Kestrel's **Pre-release** switch entity (created by HACS, disabled by default) is enabled and on.
+- Each push to `dev` publishes a `<version>-dev.<run>` pre-release (the next patch once the current version is tagged) with `kestrel.zip`, its `manifest.json` stamped with that version so Home Assistant and diagnostics show it. HACS offers it once Kestrel's **Pre-release** switch entity (created by HACS, disabled by default) is enabled and on.
 
 ### Test builds
 

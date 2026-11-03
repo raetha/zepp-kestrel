@@ -1,5 +1,5 @@
 {
   "components": [
-    {"name": "kestrel", "app": "watch/app.json", "same_version": ["custom_components/kestrel/manifest.json"], "changelog": "CHANGELOG.md", "draft": "DRAFT", "tag": "v{version}", "title": "{app_name} {version}"}
+    {"name": "kestrel", "app": "watch/app.json", "same_version": ["custom_components/kestrel/manifest.json"], "changelog": "CHANGELOG.md", "draft": "DRAFT", "tag": "{version}", "title": "{app_name} {version}"}
   ]
 }
