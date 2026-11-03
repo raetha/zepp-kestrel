@@ -1,0 +1,290 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Kestrel",
+        "description": "Kestrel lets an Amazfit / Zepp OS watch control things you point at. After adding it, open Kestrel on the watch and choose Pair: Home Assistant will show a pairing code to enter on the watch. Each paired watch appears as a device; delete the device to unpair it."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Kestrel is already set up. Pair more watches from the watch itself."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kestrel",
+        "description": "Kestrel works on your home network (or a VPN into it), never through Home Assistant Cloud.",
+        "menu_options": {
+          "offered": "Devices for watches",
+          "watch": "Manage {watch}",
+          "pick_watch": "Manage a watch"
+        }
+      },
+      "offered": {
+        "title": "Devices for watches",
+        "description": "Choose what watches can paint and trigger: whole devices, or single entities (for example one light of a fixture). Leave both empty to offer everything that a watch can trigger. Configuration and diagnostic entities, and hidden or disabled ones, are never offered. Watches get the new list when they next sync.",
+        "data": {
+          "devices": "Devices",
+          "entities": "Entities"
+        },
+        "data_description": {
+          "devices": "Every light, switch, lock and so on of these devices.",
+          "entities": "Single entities, on top of the devices."
+        }
+      },
+      "watch": {
+        "title": "Manage watch",
+        "description": "What would you like to manage? Changes reach the watch the next time it syncs (Sync on the watch's home screen).",
+        "menu_options": {
+          "paints": "Painted devices",
+          "settings": "Settings",
+          "rooms": "Rooms",
+          "take_over": "Take over another watch's setup"
+        }
+      },
+      "take_over": {
+        "title": "Take over another watch's setup",
+        "description": "Give {watch} the paints, rooms and settings of another watch, for a watch that was paired again as a new one, or a new watch. Picking a paired watch makes {watch} take its place: it keeps that watch's device and entities (so automations keep working), and the device {watch} has now is removed. A removed watch's setup is copied in. The watch picks it up at its next sync.",
+        "data": {
+          "source": "Setup to take over"
+        }
+      },
+      "paints": {
+        "title": "Painted devices",
+        "description": "Remove a paint that went wrong, or make a paint trigger a different entity.",
+        "data": {
+          "device": "Device",
+          "action": "Change"
+        },
+        "data_description": {
+          "action": "\"Remove the newest spot\" undoes the last paint of this device and keeps the others."
+        }
+      },
+      "reassign": {
+        "title": "Trigger a different entity",
+        "description": "The spots painted for {device} will trigger this entity instead.",
+        "data": {
+          "entity": "Entity"
+        }
+      },
+      "rooms": {
+        "title": "Rooms",
+        "description": "Delete a room's Bluetooth calibration, for example after moving furniture or devices. Calibrate it again on the watch under More → Rooms.",
+        "data": {
+          "room": "Room"
+        }
+      },
+      "settings": {
+        "title": "Settings",
+        "description": "Calibrating a gesture on the watch (More → Gesture) sets its thresholds; each gesture keeps its own. The thresholds below are for the current gesture ({kind}): raise them if it triggers too easily, lower them if it's too hard. Leave both empty to forget its calibration.",
+        "data": {
+          "gesture_enabled": "Gesture trigger",
+          "gesture_kind": "Gesture",
+          "gesture_gyro": "Gyro threshold (°/s) for the current gesture",
+          "gesture_jolt": "Jolt threshold for the current gesture",
+          "room_source": "Current room from",
+          "room_sensor": "Room sensor",
+          "dwell_enabled": "Instant toggle",
+          "dwell_seconds": "Instant toggle delay (seconds)",
+          "open_on_point": "Open on Point",
+          "learn": "Learn from use",
+          "volume_max": "Volume limit (%)",
+          "volume_step": "Volume change per twist (%)",
+          "screen_seconds": "Screen on time (s)",
+          "detailed_diagnostics": "Detailed diagnostics (one week)"
+        },
+        "data_description": {
+          "gesture_gyro": "How fast the wrist must turn. Leave empty to not use the gyro.",
+          "gesture_jolt": "How sharp a jolt the accelerometer must feel. Leave empty to not use it.",
+          "room_source": "The watch's own Bluetooth room calibration, or a sensor whose state is an area name (for example from Bermuda).",
+          "room_sensor": "A sensor whose state is the name of the area the watch (or you) is in.",
+          "gesture_kind": "Switches at once to that gesture's own calibration. Snaps and taps need calibrating on the watch first.",
+          "dwell_enabled": "Trigger a device just by holding the aim on it, with no button or gesture. Locks still need a press.",
+          "dwell_seconds": "How long to hold the aim before it triggers. Longer means fewer accidents.",
+          "open_on_point": "Start the app on Point instead of the home screen, for launching it from the watch's shortcut key. Back goes to the home screen.",
+          "learn": "Each trigger that wasn't corrected sharpens that device's paint a little, and confident room checks keep room calibrations up to date.",
+          "volume_max": "Twisting at a media player never raises its volume above this. Turning it down always works.",
+          "volume_step": "The most one twist can change the volume by, however far the wrist turns. Twists are also at least a second apart.",
+          "screen_seconds": "How long Kestrel's screens stay on without a touch, whatever the watch's own screen timeout. Point also keeps it on while you aim.",
+          "detailed_diagnostics": "The watch also sends its aim traces, screen and button trail and room scans, for the diagnostics download. Turns itself off after a week. Errors are always kept."
+        }
+      },
+      "pick_watch": {
+        "title": "Choose a watch",
+        "data": {
+          "watch": "Watch"
+        }
+      }
+    },
+    "abort": {
+      "no_paints": "This watch hasn't painted any devices yet.",
+      "no_rooms": "This watch hasn't calibrated any rooms yet. Calibrate them on the watch under More → Rooms."
+    },
+    "error": {
+      "sensor_needed": "Choose the sensor that says which room you're in."
+    }
+  },
+  "selector": {
+    "paint_action": {
+      "options": {
+        "remove_last": "Remove the newest spot (a bad paint)",
+        "remove_all": "Forget this device's paints",
+        "reassign": "Trigger a different entity"
+      }
+    },
+    "gesture_kind": {
+      "options": {
+        "flick": "Wrist flick",
+        "snap": "Finger snap",
+        "tap": "Finger tap"
+      }
+    },
+    "room_source": {
+      "options": {
+        "watch": "The watch's Bluetooth calibration",
+        "sensor": "A Home Assistant sensor"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_triggered": {
+        "name": "Last triggered",
+        "state_attributes": {
+          "entity_id": {
+            "name": "Entity"
+          },
+          "action": {
+            "name": "Action"
+          },
+          "via": {
+            "name": "Triggered by"
+          },
+          "room": {
+            "name": "Room"
+          },
+          "at": {
+            "name": "Time"
+          }
+        }
+      },
+      "room": {
+        "name": "Room",
+        "state_attributes": {
+          "area_id": {
+            "name": "Area ID"
+          }
+        }
+      },
+      "last_seen": {
+        "name": "Last seen"
+      },
+      "address": {
+        "name": "Home Assistant address"
+      },
+      "phone_version": {
+        "name": "Phone app version",
+        "state_attributes": {
+          "watch_version": {
+            "name": "Watch app version"
+          },
+          "matches_watch": {
+            "name": "Matches the watch"
+          }
+        }
+      },
+      "painted_devices": {
+        "name": "Painted devices"
+      },
+      "calibrated_rooms": {
+        "name": "Calibrated rooms"
+      }
+    },
+    "switch": {
+      "gesture": {
+        "name": "Gesture trigger"
+      },
+      "instant_toggle": {
+        "name": "Instant toggle"
+      },
+      "open_on_point": {
+        "name": "Open on Point"
+      },
+      "learn": {
+        "name": "Learn from use"
+      },
+      "detailed_diagnostics": {
+        "name": "Detailed diagnostics",
+        "state_attributes": {
+          "until": {
+            "name": "Turns off at"
+          }
+        }
+      }
+    },
+    "select": {
+      "gesture": {
+        "name": "Gesture",
+        "state": {
+          "flick": "Wrist flick",
+          "snap": "Finger snap",
+          "tap": "Finger tap"
+        }
+      },
+      "room_source": {
+        "name": "Room from",
+        "state": {
+          "watch": "Watch (Bluetooth)",
+          "sensor": "Home Assistant sensor"
+        }
+      }
+    },
+    "number": {
+      "instant_toggle_delay": {
+        "name": "Instant toggle delay"
+      },
+      "gesture_gyro": {
+        "name": "Gesture gyro threshold"
+      },
+      "gesture_jolt": {
+        "name": "Gesture jolt threshold"
+      },
+      "volume_limit": {
+        "name": "Volume limit"
+      },
+      "volume_step_limit": {
+        "name": "Volume change per twist"
+      },
+      "screen_time": {
+        "name": "Screen on time"
+      }
+    },
+    "image": {
+      "paint_map": {
+        "name": "Paint map"
+      }
+    }
+  },
+  "exceptions": {
+    "watch_unpaired": {
+      "message": "This watch is no longer paired with Kestrel. Pair it again from the watch."
+    }
+  },
+  "issues": {
+    "quiet_watch": {
+      "title": "{watch} hasn't been heard from in {days} days",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Remove {watch}?",
+            "description": "Kestrel hasn't heard from {watch} in over {limit} days. A paired watch keeps a working key to Home Assistant until it's removed, so remove watches you no longer use: an old watch, or a duplicate left from pairing again.\n\nRemoving it works like deleting its device: its key stops working, and its paints, rooms and settings are kept 30 days in case a watch paired later takes them over. If you still use it, ignore this notice: it goes away when the watch is next used."
+          }
+        },
+        "abort": {
+          "gone": "That watch has already been removed."
+        }
+      }
+    }
+  }
+}

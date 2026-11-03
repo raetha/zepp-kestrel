@@ -1,0 +1,241 @@
+// Pair with Home Assistant: the phone looks for HA on the local network, HA shows
+// a 6-digit code as a notification, and the code is typed in here.
+
+import { BasePage } from '@zeppos/zml/base-page'
+import { tracked, deviceId } from './trail.js'
+import { replace } from '@zos/router'
+import { getDeviceInfo } from '@zos/device'
+import { text, setText, button, clear, fit, ask, phoneMismatch, PHONE_MISMATCH, COLOR, SIZE } from './ui.js'
+import { METHOD } from '../lib/protocol.js'
+import { saveTargets } from './store.js'
+import * as haptics from './haptics.js'
+
+const BALANCE_3 = [11141376, 11141377, 11141379]
+
+function watchName() {
+  try {
+    const { deviceSource } = getDeviceInfo()
+    if (BALANCE_3.includes(deviceSource)) return 'Amazfit Balance 3'
+  } catch (e) {
+    // fall through
+  }
+  return 'Amazfit watch'
+}
+
+Page(
+  BasePage(
+    tracked('pair', {
+      onInit() {
+        this.widgets = []
+        this.code = ''
+      },
+
+      build() {
+        this.titleW = text({ y: 32, h: 44, size: SIZE.title, value: 'Pair' })
+        this.msgW = text({ x: 56, y: 80, w: 368, h: 210, value: '' })
+        this.discover()
+      },
+
+      add(w) {
+        this.widgets.push(w)
+        return w
+      },
+
+      // ------------------------------------------------------------ step 1: find HA
+      discover(address) {
+        clear(this.widgets)
+        setText(this.titleW, 'Pair')
+        setText(this.msgW, address ? `Looking for Home Assistant at ${address}…` : 'Looking for Home Assistant on your network…')
+        ask(this, METHOD.DISCOVER, address ? { address } : undefined, 15000)
+          .then((r) => {
+            const found = (r && r.found) || []
+            if (phoneMismatch(r)) return this.nothing(PHONE_MISMATCH)
+            if (r && r.error) return this.nothing(r.error)
+            if (!found.length) return this.nothing()
+            clear(this.widgets)
+            setText(this.msgW, found.length === 1 ? 'Found:' : 'Choose your Home Assistant:')
+            found.slice(0, 3).forEach((ha, i) =>
+              this.add(button({ x: 90, w: 300, y: 150 + i * 70, h: 58, label: fit(ha.haName, 20), primary: true, onClick: () => this.start(ha) })),
+            )
+            this.add(button({ x: 64, w: 172, y: 366, h: 54, size: SIZE.small, label: 'Search again', onClick: () => this.discover() }))
+            this.add(button({ x: 244, w: 172, y: 366, h: 54, size: SIZE.small, label: 'Type address', onClick: () => this.addressPad() }))
+          })
+          .catch(() => this.nothing('Phone not reachable. Is the Zepp app open and connected?'))
+      },
+
+      nothing(error) {
+        clear(this.widgets)
+        setText(
+          this.msgW,
+          error ||
+            'No Home Assistant with Kestrel found. Is the phone on the home Wi-Fi, and the integration added in HA? Or type its address.',
+        )
+        this.add(button({ x: 110, w: 260, y: 300, h: 58, label: 'Try again', primary: true, onClick: () => this.discover() }))
+        this.add(button({ x: 120, w: 240, y: 368, h: 54, size: SIZE.body, label: 'Type address', onClick: () => this.addressPad() }))
+      },
+
+      // ------------------------------------------------------------ typed address, e.g. 192.168.1.20:8123
+      addressPad() {
+        clear(this.widgets)
+        this.address = this.address || ''
+        setText(this.titleW, 'HA address')
+        setText(this.msgW, '')
+        this.add(text({ y: 74, h: 30, size: SIZE.small, color: COLOR.quiet, value: 'IP, and :port if unusual' }))
+        this.addrW = this.add(text({ x: 50, y: 100, w: 380, h: 40, size: 28, value: this.address || '_' }))
+        const keys = ['1', '2', '3', '.', '4', '5', '6', ':', '7', '8', '9', 'Del', '0', 'OK']
+        keys.forEach((k, i) => {
+          const col = i % 4
+          const row = Math.floor(i / 4)
+          const wide = k === 'OK'
+          this.add(
+            button({
+              x: 72 + col * 86,
+              y: 148 + row * 62,
+              w: wide ? 164 : 78,
+              h: 54,
+              size: k.length > 1 ? SIZE.body : 30,
+              label: k,
+              primary: wide,
+              onClick: () => this.addrKey(k),
+            }),
+          )
+        })
+      },
+
+      addrKey(k) {
+        if (k === 'Del') this.address = this.address.slice(0, -1)
+        else if (k === 'OK') return this.address && this.discover(this.address)
+        else if (this.address.length < 21) this.address += k
+        setText(this.addrW, this.address || '_')
+      },
+
+      // ------------------------------------------------------------ step 2: code
+      start(ha) {
+        clear(this.widgets)
+        setText(this.msgW, `Asking ${ha.haName} for a code…`)
+        ask(this, METHOD.PAIR_START, { url: ha.url, watchName: watchName(), deviceId: deviceId() }, 15000)
+          .then((r) => {
+            if (!r || r.error || !r.pairingId) return this.nothing((r && r.error) || 'Home Assistant did not answer')
+            this.ha = ha
+            this.pairingId = r.pairingId
+            this.keypad()
+          })
+          .catch(() => this.nothing('Phone not reachable'))
+      },
+
+      keypad() {
+        clear(this.widgets)
+        this.code = ''
+        setText(this.titleW, 'Enter the code')
+        setText(this.msgW, '')
+        this.add(text({ y: 74, h: 30, size: SIZE.small, color: COLOR.quiet, value: 'shown in Home Assistant' }))
+        this.codeW = this.add(text({ y: 98, h: 40, size: 34, value: this.codeText() }))
+        const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'Del', '0', 'OK']
+        keys.forEach((k, i) => {
+          const col = i % 3
+          const row = Math.floor(i / 3)
+          this.add(
+            button({
+              x: 86 + col * 106,
+              y: 146 + row * 70,
+              w: 96,
+              h: 60,
+              size: 30,
+              label: k,
+              primary: k === 'OK',
+              onClick: () => this.key(k),
+            }),
+          )
+        })
+      },
+
+      codeText() {
+        return (this.code + '______').slice(0, 6).split('').join(' ')
+      },
+
+      key(k) {
+        if (k === 'Del') this.code = this.code.slice(0, -1)
+        else if (k === 'OK') return this.confirm()
+        else if (this.code.length < 6) this.code += k
+        setText(this.codeW, this.codeText())
+      },
+
+      confirm() {
+        if (this.code.length !== 6) return
+        setText(this.codeW, 'Checking…')
+        ask(this, METHOD.PAIR_CONFIRM, { url: this.ha.url, pairingId: this.pairingId, code: this.code }, 15000)
+          .then((r) => {
+            if (r && r.ok) return r.setups && r.setups.length ? this.offerSetups(r.haName, r.setups) : this.paired(r.haName)
+            haptics.failed()
+            const err = (r && r.error) || 'Failed'
+            if (/expired|start again/i.test(err)) return this.nothing(`${err}.`)
+            this.code = ''
+            setText(this.codeW, 'Wrong code')
+            setTimeout(() => this.codeW && setText(this.codeW, this.codeText()), 1200)
+          })
+          .catch(() => setText(this.codeW, 'Phone not reachable'))
+      },
+
+      // ------------------------------------------------------------ step 3: an earlier setup?
+      // Paired again (or a new watch): offer the paints, rooms and settings Home Assistant
+      // already has, from a paired watch or one removed in the last 30 days.
+      offerSetups(haName, setups) {
+        haptics.done()
+        clear(this.widgets)
+        setText(this.titleW, 'Paired')
+        setText(this.msgW, 'Use an earlier setup?\n(devices painted)')
+        setups.slice(0, 3).forEach((s, i) => {
+          // a removed watch's setup is marked; the number is its painted devices
+          const name = s.removed ? `Removed: ${fit(s.name, 10)}` : fit(s.name, 16)
+          this.add(
+            button({
+              x: 60,
+              w: 360,
+              y: 160 + i * 66,
+              h: 58,
+              size: SIZE.small,
+              label: `${name} (${s.paints})`,
+              primary: i === 0,
+              onClick: () => this.takeOver(haName, s),
+            }),
+          )
+        })
+        this.add(button({ x: 120, w: 240, y: 160 + Math.min(3, setups.length) * 66, h: 54, size: SIZE.small, label: 'Start fresh', onClick: () => this.paired(haName, true) }))
+      },
+
+      takeOver(haName, s) {
+        clear(this.widgets)
+        setText(this.msgW, `Taking over ${s.name}…`)
+        ask(this, METHOD.TAKE_OVER, { from: s.id }, 15000)
+          .then((r) => {
+            if (r && r.ok) return this.paired(haName, true)
+            this.nothingAfterPairing(haName, (r && r.error) || 'Home Assistant did not answer')
+          })
+          .catch(() => this.nothingAfterPairing(haName, 'Phone not reachable'))
+      },
+
+      nothingAfterPairing(haName, error) {
+        clear(this.widgets)
+        setText(this.msgW, `Paired, but the setup wasn't taken over: ${error}.`)
+        this.add(button({ x: 120, w: 240, y: 320, h: 56, label: 'Continue', primary: true, onClick: () => this.paired(haName) }))
+      },
+
+      // ------------------------------------------------------------ step 4: done
+      paired(haName, tookOver = false) {
+        if (!tookOver) haptics.done()
+        clear(this.widgets)
+        setText(this.titleW, 'Paired')
+        setText(this.msgW, `Connected to ${haName}. Getting your devices…`)
+        ask(this, METHOD.SYNC, undefined, 15000)
+          .then((r) => {
+            if (r && r.targets) saveTargets(r.targets)
+            setText(this.msgW, `Connected to ${haName}. ${r && r.targets ? r.targets.length : 0} devices ready to paint.`)
+          })
+          .catch(() => setText(this.msgW, `Connected to ${haName}. Sync devices from the home screen.`))
+          .finally(() =>
+            this.add(button({ x: 120, w: 240, y: 320, h: 56, label: 'Done', primary: true, onClick: () => replace({ url: 'page/home' }) })),
+          )
+      },
+    }),
+  ),
+)

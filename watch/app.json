@@ -1,0 +1,76 @@
+{
+  "configVersion": "v3",
+  "app": {
+    "appId": 1132466,
+    "appName": "Kestrel",
+    "appType": "app",
+    "version": {
+      "code": 1,
+      "name": "0.1.0"
+    },
+    "icon": "icon.png",
+    "vender": "kestrel",
+    "description": "Point your watch at a smart-home device and trigger it, with Home Assistant."
+  },
+  "setting": {
+    "path": "setting/index"
+  },
+  "permissions": [
+    "device:os.accelerometer",
+    "device:os.ble",
+    "device:os.compass",
+    "data:os.device.info",
+    "device:os.gyroscope",
+    "data:user.hd.step"
+  ],
+  "runtime": {
+    "apiVersion": {
+      "compatible": "3.6",
+      "target": "4.0",
+      "minVersion": "3.6"
+    }
+  },
+  "targets": {
+    "default": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/home",
+            "page/pair",
+            "page/paint",
+            "page/point",
+            "page/probes",
+            "page/test",
+            "page/more",
+            "page/gesture",
+            "page/rooms"
+          ]
+        },
+        "app-side": {
+          "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
+        }
+      },
+      "platforms": [
+        {
+          "st": "r",
+          "dw": 480
+        },
+        {
+          "st": "s",
+          "dw": 480
+        }
+      ],
+      "designWidth": 480
+    }
+  },
+  "i18n": {
+    "en-US": {
+      "appName": "Kestrel"
+    }
+  },
+  "defaultLanguage": "en-US",
+  "debug": false
+}
