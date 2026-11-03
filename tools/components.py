@@ -1,13 +1,10 @@
-"""Project constants for the site and install texts. The releasable components themselves
-(watch app, Home Assistant component) are listed in zepp-devkit.json, for zepp-devkit's
-release-plan, changelog and notes.
+"""Project constants for the site and install texts.
 
-  watch  Zepp OS mini program (watch app + side service + settings page)
-         version: watch/app.json -> app.version.name; tag watch-v<version>
-  ha     Home Assistant component: custom_components/kestrel/ (at the repo root, where
-         HACS expects it); version in its manifest.json; changelog, tests and DRAFT in ha/
-
-A component containing a DRAFT file is built and tested but never released.
+Kestrel is released as one component (zepp-devkit.json, for zepp-devkit's release-plan,
+changelog and notes): the watch app (Zepp OS mini program with side service and settings
+page, watch/) and the Home Assistant integration (custom_components/kestrel/, at the repo
+root where HACS expects it; its tests in ha/) share one version, one CHANGELOG.md and one
+tag, v<version>. While DRAFT exists, CI builds and tests but never releases.
 """
 import json
 from pathlib import Path

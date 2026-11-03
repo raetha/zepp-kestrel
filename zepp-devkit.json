@@ -1,6 +1,5 @@
 {
   "components": [
-    {"name": "watch", "app": "watch/app.json", "changelog": "watch/CHANGELOG.md", "draft": "watch/DRAFT", "title": "{app_name} watch app"},
-    {"name": "ha", "manifest": "custom_components/kestrel/manifest.json", "changelog": "ha/CHANGELOG.md", "draft": "ha/DRAFT", "title": "{app_name} Home Assistant component"}
+    {"name": "kestrel", "app": "watch/app.json", "same_version": ["custom_components/kestrel/manifest.json"], "changelog": "CHANGELOG.md", "draft": "DRAFT", "tag": "v{version}", "title": "{app_name} {version}"}
   ]
 }

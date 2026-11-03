@@ -14,9 +14,10 @@ This is the canonical guide for the repository. Read it before changing anything
 | `watch/setting/` | Settings page in the Zepp phone app (preview and store installs only). |
 | `watch/test/` | `node --test` suites for `watch/lib/`. |
 | `watch/docs/` | Install QR code and emulator screenshots. |
-| `watch/CHANGELOG.md` | The watch app's version history; its sections become release notes. |
 | `custom_components/kestrel/` | The Home Assistant component (MIT): the watch API (`http.py`), paired watches and their devices (`watches.py`), targets and service mapping (`targets.py`), config flow, diagnostics, and `quality_scale.yaml` (the status of every quality-scale rule). At the repo root because HACS expects it there. |
-| `ha/` | The component's tests (`ha/tests/`, pytest against a real HA core), `CHANGELOG.md`, `requirements_test.txt` and `DRAFT`. |
+| `ha/` | The component's tests (`ha/tests/`, pytest against a real HA core) and `requirements_test.txt`. |
+| `CHANGELOG.md` | Kestrel's version history (watch app and integration, one version); its sections become release notes. |
+| `DRAFT` | Keeps Kestrel from being released until the owner says the first release is ready. |
 | `hacs.json` | HACS metadata for installing the component as a custom repository. |
 | `tools/` | Packaging, release and site helpers, diagnostics replay (`replay.mjs`), `emu/` (the emulator) and `compat/` (a sweep over watch models' emulator images). |
 | `docs/` | This guide, `design.md`, `audits.md`, `backlog.md` and `store.md` (Zepp store submission). |
@@ -61,7 +62,7 @@ A QR install sends one `.zpk`, and the Zepp app can't install a `.zab`, so CI sp
 
 ## Dependencies
 
-**Shared Zepp tooling** (DEV variants, Zepp previews, releases from changelogs, packages and QR codes, store images, the emulator) comes from [raetha/zepp-devkit](https://github.com/raetha/zepp-devkit), pinned once, in `tools/requirements.txt`, so CI and sessions run the same commit (`pip install -r tools/requirements.txt` gives the `zepp-devkit` command). Change shared behaviour there, not here; to try a devkit change, point the pin at its `dev` commit on a branch here, and once a devkit release is tagged, pin the tag. Kestrel keeps only its own settings and texts: `zepp-devkit.json` (the components), `tools/make_dev_variant.py` (the DEV app ID), `tools/release_notes.py` (install texts), the pages (`dev_site.py`, `build_site.py`).
+**Shared Zepp tooling** (DEV variants, Zepp previews, releases from changelogs, packages and QR codes, store images, the emulator) comes from [raetha/zepp-devkit](https://github.com/raetha/zepp-devkit), pinned once, in `tools/requirements.txt`, so CI and sessions run the same commit (`pip install -r tools/requirements.txt` gives the `zepp-devkit` command). Change shared behaviour there, not here; to try a devkit change, point the pin at its `dev` commit on a branch here, and once a devkit release is tagged, pin the tag. Kestrel keeps only its own settings and texts: `zepp-devkit.json` (one component, both version files), `tools/make_dev_variant.py` (the DEV app ID), `tools/release_notes.py` (install texts), the pages (`dev_site.py`, `build_site.py`).
 
 Prefer a maintained library over our own code; write our own when nothing maintained fits. Pin exact versions (Dependabot proposes updates weekly). Everything bundled into the watch app runs in Zepp's QuickJS and counts against the package size, so check the bundled size too.
 
@@ -135,7 +136,7 @@ cd "$(npm root -g)/@zeppos/zeus-cli" && npm i axios@latest --no-save
 
 | Branch | What goes there | What a push does |
 | --- | --- | --- |
-| `main` | One squash-merged commit per release. Never pushed to directly. | Releases every component whose version has no tag yet, and rebuilds the install site. |
+| `main` | One squash-merged commit per release. Never pushed to directly. | Releases the version if it has no tag yet, and rebuilds the install site. |
 | `dev` | Work that's been adopted, ready for the next release. The changelogs' `## [Unreleased]` sections are kept up to date here. | Publishes the DEV test build on the [test-build page](https://raetha.github.io/zepp-kestrel/dev/). |
 | `try/<topic>` | Experiments that may be dropped. Branched from `dev`. | CI checks only (tests and Zeus build). |
 
@@ -143,19 +144,21 @@ Day to day:
 
 1. Claude runs `dev`: small, settled changes go straight onto it, and `dev` must stay releasable.
 2. Anything exploratory or larger starts on `try/<topic>` with a pull request into `dev`, so CI runs first. If it's adopted, Claude squash-merges it into `dev` (one commit with a clear message) once CI is green; a change that needs the owner's decision waits on its branch until they've seen it. If it's dropped, delete the branch and note the idea in `docs/design.md`.
-3. Each adopted change adds a line under `## [Unreleased]` in the affected component's `CHANGELOG.md`, written for someone installing it.
+3. Each adopted change adds a line under `## [Unreleased]` in `CHANGELOG.md`, written for someone installing Kestrel, under **Watch app** or **Home Assistant integration** (a change to both says so).
+
+**One version for both parts.** The watch app and the integration are released together under one version (`watch/app.json`, `watch/lib/version.js` and `custom_components/kestrel/manifest.json` hold the same `X.Y.Z`; CI checks), with one changelog and one tag, `vX.Y.Z`. A release that changes only one part still bumps the shared version; its notes say which part changed. `dev` holds the expected next version: with the first change after a release, set it to what that change calls for under semver, and raise it when a later change calls for more. Changes users don't get (docs, CI, tooling) don't move it.
 4. Test on the watch from the test-build page after each push to `dev`.
 
 Releasing (only when the owner asks):
 
-1. On `dev`, for each component being released: rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` (with a fresh empty `## [Unreleased]` above it) and set the version (`watch/app.json`: `version.name` = `X.Y.Z`, `version.code` + 1; and `watch/lib/version.js` to the same `X.Y.Z`, which `npm test` checks; `custom_components/kestrel/manifest.json`: `version`). For the first release, also delete `watch/DRAFT` and `ha/DRAFT`; both changelogs' `[Unreleased]` sections are already written as first-release notes. Check the notes as they'll appear: `python3 tools/release_notes.py watch X.Y.Z` (and `ha`).
-2. Open a pull request from `dev` into `main`, titled with what it releases ("Kestrel 0.2.0"). The description is the new changelog sections.
-3. The owner squash-merges it, keeping the title as the commit message and the changelog sections as its body.
-4. CI on `main` creates each release (tag `watch-vX.Y.Z` with the `.zpk`, `.zab` and per-watch packages attached; `ha-vX.Y.Z` for the integration, which HACS offers; every release also carries `kestrel.zip`, see "The integration's releases and HACS"), then resets `dev` to `main` (the `sync-dev` job) if `dev` has no newer work. If it does, reset by hand once that work is released: `git checkout dev && git reset --hard origin/main && git push --force-with-lease`.
+1. On `dev`: rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` (with a fresh empty `## [Unreleased]` above it) and check the version is `X.Y.Z` everywhere (`watch/app.json`: `version.name`, with `version.code` + 1; `watch/lib/version.js`; `custom_components/kestrel/manifest.json`). For the first release, also delete `DRAFT`; the `[Unreleased]` section is already written as first-release notes. Check the notes as they'll appear: `python3 tools/release_notes.py X.Y.Z`.
+2. Open a pull request from `dev` into `main`, titled with what it releases ("Kestrel 0.2.0"). The description is the new changelog section.
+3. The owner squash-merges it, keeping the title as the commit message and the changelog section as its body.
+4. CI on `main` creates the release (tag `vX.Y.Z`, with the watch app's `.zpk`, `.zab` and per-watch packages, and `kestrel.zip` for the integration, which HACS offers: see "The integration's releases and HACS"), then resets `dev` to `main` (the `sync-dev` job) if `dev` has no newer work. If it does, reset by hand once that work is released: `git checkout dev && git reset --hard origin/main && git push --force-with-lease`.
 
-5. Submit the watch release's `.zab` to the Zepp store: [docs/store.md](store.md) (the listing text, images, permissions and privacy statement are ready in `watch/docs/store/`).
+5. Submit the release's `.zab` to the Zepp store: [docs/store.md](store.md) (the listing text, images, permissions and privacy statement are ready in `watch/docs/store/`).
 
-Where the changelogs show up: each GitHub release's notes are its changelog section plus install steps (`tools/release_notes.py`), and HACS shows those for the integration; the install page shows the latest watch release's section ("What's new"); the test-build page and the integration's dev pre-releases show the `[Unreleased]` sections; the store's update notes are copied from the release notes by hand.
+Where the changelog shows up: each GitHub release's notes are its changelog section plus install steps for both parts (`tools/release_notes.py`), and HACS shows those for the integration; the install page shows the latest release's section ("What's new"); the test-build page and the integration's dev pre-releases show the `[Unreleased]` section; the store's update notes are copied from the release notes by hand.
 
 Versions follow [Semantic Versioning](https://semver.org/).
 
@@ -164,7 +167,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - Every reader ignores fields it doesn't know (Home Assistant's `clean_*` in `watchdata.py` already does) and copes with missing ones (a default).
 - A watch method the phone side doesn't know comes back as "unknown method" (the watch reads it as "phone runs another build"); an endpoint Home Assistant doesn't have comes back as 404: treat both as "not supported here" where a feature is optional.
 - Both halves report their build (Phone app version sensor; `watch/lib/version.js`), and `InfoView` reports the integration's version: when a feature needs a minimum version on the other side, check it rather than guess.
-- Test it: before a release, install the previous two releases of each side against the new one (the emulator for the watch; an older `ha-v…` HACS release for Home Assistant).
+- Test it: before a release, install the previous two releases of each side against the new one (the emulator for the watch; an older HACS release for Home Assistant).
 
 (A test build of the watch app with an older test build of the integration happened to work in October 2026; there's no guarantee of that before the first release.)
 
@@ -180,8 +183,8 @@ Repository settings (owner, one time):
 
 `.github/workflows/build.yml`:
 
-- **Every push and pull request:** `zepp-devkit release-plan` (fails if a non-draft component's version has no changelog section), `npm test`, a Zeus build of the watch app, the HA component's tests with at least 95% coverage (`ha-tests`, Python 3.14), and `validate`: Home Assistant's hassfest and the HACS repository checks.
-- **On `main`, for each component whose `<component>-vX.Y.Z` tag doesn't exist yet:** creates the tag and a GitHub release, with notes from the changelog plus install instructions (`tools/release_notes.py`). The integration's dev pre-releases (each push to `dev`) carry the changelog's `[Unreleased]` section.
+- **Every push and pull request:** `zepp-devkit release-plan` (fails if the three version files disagree or, once `DRAFT` is gone, if the changelog has no section for the release: `[Unreleased]` is enough on `dev`, `main` and pull requests into it need `## [X.Y.Z]`), `npm test`, a Zeus build of the watch app, the HA component's tests with at least 95% coverage (`ha-tests`, Python 3.14), and `validate`: Home Assistant's hassfest and the HACS repository checks.
+- **On `main`, when the `vX.Y.Z` tag doesn't exist yet:** creates the tag and a GitHub release, with notes from the changelog plus install instructions (`tools/release_notes.py`). The integration's dev pre-releases (each push to `dev`) carry the changelog's `[Unreleased]` section.
 - **`CI passed`:** a gate job that passes only when every check above did; it's the one status check the `main` ruleset requires, so jobs can change without touching the ruleset. Every checkout uses `persist-credentials: false` except sync-dev's, the one job that pushes with git.
 - **Every push to `main` or `dev`, and every 5 days (schedule):** builds the DEV test build from the tip of `dev` and redeploys the Pages site. The schedule runs the default branch's copy of the workflow (`dev` here) and exists to keep the preview QR code valid (`preview-check` fails the run if the upload didn't happen). The public install page only ever offers released versions.
 
@@ -189,8 +192,8 @@ Repository settings (owner, one time):
 
 HACS installs the integration from `kestrel.zip` (`hacs.json`: `zip_release`), which `tools/package_ha.py` builds with the integration's files at the zip's root (HACS extracts it into `custom_components/kestrel/`). HACS's download count is that asset's.
 
-- HACS treats the newest non-pre-release as the integration's latest version, whatever its tag prefix, so **every** release CI makes carries `kestrel.zip` built from that commit, `watch-v…` releases included.
-- Each push to `dev` publishes an `ha-v<version>-dev.<run>` pre-release (the next patch once the current version is tagged) with `kestrel.zip`, its `manifest.json` stamped with that version so Home Assistant and diagnostics show it. HACS offers it once Kestrel's **Pre-release** switch entity (created by HACS, disabled by default) is enabled and on.
+- HACS treats the newest non-pre-release as the integration's latest version; every release carries `kestrel.zip` built from that commit.
+- Each push to `dev` publishes a `v<version>-dev.<run>` pre-release (the next patch once the current version is tagged) with `kestrel.zip`, its `manifest.json` stamped with that version so Home Assistant and diagnostics show it. HACS offers it once Kestrel's **Pre-release** switch entity (created by HACS, disabled by default) is enabled and on.
 
 ### Test builds
 
