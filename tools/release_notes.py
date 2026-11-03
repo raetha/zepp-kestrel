@@ -34,9 +34,9 @@ if args.component == "watch":
 More: [README]({GITHUB}#readme)"""
     intro = f"**Test build {args.test_build}** of the Kestrel watch app from `dev`, for trying what's coming. Install it from the [test-build page](https://{PAGES}/dev/)."
 else:
-    install = f"""**Install** with HACS (⋮ → Custom repositories → `{GITHUB}`, type Integration), or copy `custom_components/kestrel` into your Home Assistant config folder, then restart and add the Kestrel integration (Settings → Devices & services). Then install the Kestrel watch app and pair: {PAIR[0].lower()}{PAIR[1:]}
+    install = f"""**Install** with HACS (⋮ → Custom repositories → `{GITHUB}`, type Integration), or extract `kestrel.zip` from the release into `custom_components/kestrel/` in your Home Assistant config folder, then restart and add the Kestrel integration (Settings → Devices & services). Then install the Kestrel watch app and pair: {PAIR[0].lower()}{PAIR[1:]}
 
 More: [README]({GITHUB}#readme)"""
-    intro = f"**Test build {args.test_build}** of the Kestrel Home Assistant component from `dev`, for trying what's coming. Install it through HACS with beta versions turned on for Kestrel."
+    intro = f"**Test build {args.test_build}** of the Kestrel Home Assistant component from `dev`, for trying what's coming. In HACS, enable and turn on Kestrel's **Pre-release** switch (disabled by default); HACS then offers it as an update. Home Assistant shows this build's version."
 
 print(notes(component(args.component, REPO).changelog, args.version, install, args.test_build, intro))

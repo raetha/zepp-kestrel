@@ -141,8 +141,8 @@ cd "$(npm root -g)/@zeppos/zeus-cli" && npm i axios@latest --no-save
 
 Day to day:
 
-1. Small, settled changes go straight onto `dev`.
-2. Anything exploratory starts on `try/<topic>`. If it's adopted, squash-merge it into `dev` (one commit with a clear message) and delete the branch. If not, delete the branch and note the idea in `docs/design.md`.
+1. Claude runs `dev`: small, settled changes go straight onto it, and `dev` must stay releasable.
+2. Anything exploratory or larger starts on `try/<topic>` with a pull request into `dev`, so CI runs first. If it's adopted, Claude squash-merges it into `dev` (one commit with a clear message) once CI is green; a change that needs the owner's decision waits on its branch until they've seen it. If it's dropped, delete the branch and note the idea in `docs/design.md`.
 3. Each adopted change adds a line under `## [Unreleased]` in the affected component's `CHANGELOG.md`, written for someone installing it.
 4. Test on the watch from the test-build page after each push to `dev`.
 
@@ -151,7 +151,7 @@ Releasing (only when the owner asks):
 1. On `dev`, for each component being released: rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` (with a fresh empty `## [Unreleased]` above it) and set the version (`watch/app.json`: `version.name` = `X.Y.Z`, `version.code` + 1; and `watch/lib/version.js` to the same `X.Y.Z`, which `npm test` checks; `custom_components/kestrel/manifest.json`: `version`). For the first release, also delete `watch/DRAFT` and `ha/DRAFT`; both changelogs' `[Unreleased]` sections are already written as first-release notes. Check the notes as they'll appear: `python3 tools/release_notes.py watch X.Y.Z` (and `ha`).
 2. Open a pull request from `dev` into `main`, titled with what it releases ("Kestrel 0.2.0"). The description is the new changelog sections.
 3. The owner squash-merges it, keeping the title as the commit message and the changelog sections as its body.
-4. CI on `main` creates each release (tag `watch-vX.Y.Z` with the `.zpk`, `.zab` and per-watch packages attached; `ha-vX.Y.Z` for the integration, which HACS offers), then resets `dev` to `main` (the `sync-dev` job) if `dev` has no newer work. If it does, reset by hand once that work is released: `git checkout dev && git reset --hard origin/main && git push --force-with-lease`.
+4. CI on `main` creates each release (tag `watch-vX.Y.Z` with the `.zpk`, `.zab` and per-watch packages attached; `ha-vX.Y.Z` for the integration, which HACS offers; every release also carries `kestrel.zip`, see "The integration's releases and HACS"), then resets `dev` to `main` (the `sync-dev` job) if `dev` has no newer work. If it does, reset by hand once that work is released: `git checkout dev && git reset --hard origin/main && git push --force-with-lease`.
 
 5. Submit the watch release's `.zab` to the Zepp store: [docs/store.md](store.md) (the listing text, images, permissions and privacy statement are ready in `watch/docs/store/`).
 
@@ -172,7 +172,7 @@ Repository settings (owner, one time):
 
 - **Settings → Pages → Source: GitHub Actions.** Without this the deploy step fails and no test build is published.
 - **Settings → Environments → github-pages → Deployment branches and tags**: add `dev` next to `main`. By default only `main` may deploy, so test builds from `dev` fail with "Branch "dev" is not allowed to deploy to github-pages due to environment protection rules".
-- **Settings → Rules → Rulesets**: one for `main` (no deletion, no force pushes, a pull request before merging, squash only).
+- **Settings → Rules → Rulesets**: one for `main` (no deletion, no force pushes, a pull request before merging, squash only). **Require status checks:** `CI passed`. **Require code scanning results:** CodeQL.
 - **Settings → General → Pull Requests**: allow only squash merging, and **Automatically delete head branches** (merged `try/…` and Dependabot branches go).
 - **Settings → Branches → classic branch protection rule for `dev`**: nothing required (work and Dependabot merges land on it directly), deletions not allowed, so auto-delete never removes it after a release pull request, and **force pushes allowed**, because the `sync-dev` job resets `dev` to `main` with one after each release. Use a classic rule, not a ruleset: a ruleset's "Restrict deletions" has been reported not to stop auto-delete when an admin can bypass it.
 
@@ -182,7 +182,15 @@ Repository settings (owner, one time):
 
 - **Every push and pull request:** `zepp-devkit release-plan` (fails if a non-draft component's version has no changelog section), `npm test`, a Zeus build of the watch app, the HA component's tests with at least 95% coverage (`ha-tests`, Python 3.14), and `validate`: Home Assistant's hassfest and the HACS repository checks.
 - **On `main`, for each component whose `<component>-vX.Y.Z` tag doesn't exist yet:** creates the tag and a GitHub release, with notes from the changelog plus install instructions (`tools/release_notes.py`). The integration's dev pre-releases (each push to `dev`) carry the changelog's `[Unreleased]` section.
+- **`CI passed`:** a gate job that passes only when every check above did; it's the one status check the `main` ruleset requires, so jobs can change without touching the ruleset. Every checkout uses `persist-credentials: false` except sync-dev's, the one job that pushes with git.
 - **Every push to `main` or `dev`, and every 5 days (schedule):** builds the DEV test build from the tip of `dev` and redeploys the Pages site. The schedule runs the default branch's copy of the workflow (`dev` here) and exists to keep the preview QR code valid (`preview-check` fails the run if the upload didn't happen). The public install page only ever offers released versions.
+
+### The integration's releases and HACS
+
+HACS installs the integration from `kestrel.zip` (`hacs.json`: `zip_release`), which `tools/package_ha.py` builds with the integration's files at the zip's root (HACS extracts it into `custom_components/kestrel/`). HACS's download count is that asset's.
+
+- HACS treats the newest non-pre-release as the integration's latest version, whatever its tag prefix, so **every** release CI makes carries `kestrel.zip` built from that commit, `watch-v…` releases included.
+- Each push to `dev` publishes an `ha-v<version>-dev.<run>` pre-release (the next patch once the current version is tagged) with `kestrel.zip`, its `manifest.json` stamped with that version so Home Assistant and diagnostics show it. HACS offers it once Kestrel's **Pre-release** switch entity (created by HACS, disabled by default) is enabled and on.
 
 ### Test builds
 
@@ -231,11 +239,3 @@ Quality scale, performance and security reviews are in [audits.md](audits.md), w
 ## Licensing
 
 MIT for everything (`LICENSE`), like Home Assistant and most of its ecosystem: anyone may use, change and share the code, commercially too. Forks are asked (README) to use another name and icon. Until 2026-10 the watch app was CC BY-NC-SA 4.0, with generic helpers in a separate MIT `lib/`; that split is gone and the helpers live in `watch/lib/`.
-
-## Packaging for delivery
-
-Sessions normally commit and push. When a session has only read access, deliver the repo as a zip instead:
-
-```bash
-zip -r zepp-kestrel.zip . -x ".git/*" "node_modules/*" "*/dist/*" "tools/.emu*/*" "*/__pycache__/*" "site/*" "out/*" "out-dev/*" "watch-dev/*"
-```
