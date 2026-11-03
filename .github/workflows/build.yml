@@ -4,8 +4,9 @@ name: Build and publish
 # each release is one squash-merged pull request from `dev` into `main`.
 # Every push and pull request: changelog check, unit tests, Zeus build of the watch app,
 # and the Home Assistant component's tests.
-# Push to main: any component whose version has no `<component>-v<version>` tag yet is
-# released (tag + GitHub release with that version's changelog section).
+# Push to main: when the version (shared by the watch app and the HA integration) has no
+# `v<version>` tag yet, it's released (tag + GitHub release with that version's changelog
+# section, the watch packages and kestrel.zip).
 # Push to main or dev (and manual runs): builds a "DEV" test build of the watch app from
 # the tip of `dev` (own app ID, installs next to the release) and redeploys the Pages site:
 # the install site from the latest release, plus the unlisted test-build page
@@ -68,9 +69,18 @@ jobs:
           npm ci
           npm install -g @zeppos/zeus-cli@1.9.3
 
-      - name: Check changelogs and plan releases
+      - name: Check the changelog and versions, and plan the release
         id: plan
-        run: zepp-devkit release-plan --github
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        # dev holds the expected next version under [Unreleased]; a release (main, or a pull
+        # request into it) needs the version's own section
+        run: |
+          if [ "$GITHUB_REF" = refs/heads/main ] || [ "$BASE_REF" = main ]; then
+            zepp-devkit release-plan --github
+          else
+            zepp-devkit release-plan --dev --github
+          fi
 
       - name: Unit tests
         run: npm test
@@ -202,24 +212,20 @@ jobs:
       - name: Install tooling
         run: pip install -r tools/requirements.txt
 
-      - name: Create a GitHub release per changed component
+      - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASES: ${{ needs.build.outputs.releases }}
         run: |
           set -e
-          # Every release carries kestrel.zip: HACS installs the newest release whatever its
-          # component, and with zip_release (hacs.json) it installs from that asset.
+          # one component (zepp-devkit.json): the watch packages and kestrel.zip, which HACS
+          # installs from (hacs.json: zip_release)
           python3 tools/package_ha.py out/kestrel.zip
-          echo "$RELEASES" | python3 -c "import json,sys; [print(r['component'], r['version'], r['tag'], r['title'], sep='\t') for r in json.load(sys.stdin)]" |
-          while IFS=$'\t' read -r component version tag title; do
-            python3 tools/release_notes.py "$component" "$version" > notes.md
-            if [ "$component" = watch ]; then
-              assets="out/watch/kestrel-$version.zpk out/watch/kestrel-$version.zab out/watch/kestrel-$version-packages.zip"
-            else
-              assets=""
-            fi
-            gh release create "$tag" --target "$GITHUB_SHA" --title "$title" --notes-file notes.md $assets out/kestrel.zip
+          echo "$RELEASES" | python3 -c "import json,sys; [print(r['version'], r['tag'], r['title'], sep='\t') for r in json.load(sys.stdin)]" |
+          while IFS=$'\t' read -r version tag title; do
+            python3 tools/release_notes.py "$version" > notes.md
+            gh release create "$tag" --target "$GITHUB_SHA" --title "$title" --notes-file notes.md \
+              "out/watch/kestrel-$version.zpk" "out/watch/kestrel-$version.zab" "out/watch/kestrel-$version-packages.zip" out/kestrel.zip
           done
 
   # Each push to dev publishes the HA component as a GitHub pre-release with kestrel.zip, so
@@ -251,21 +257,21 @@ jobs:
         run: |
           set -e
           version=$(python3 -c "import json;print(json.load(open('custom_components/kestrel/manifest.json'))['version'])")
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/ha-v$version" >/dev/null 2>&1; then
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$version" >/dev/null 2>&1; then
             base=$(python3 -c "import sys; a, b, c = sys.argv[1].split('.'); print(f'{a}.{b}.{int(c) + 1}')" "$version")
           else
             base="$version"
           fi
           dev="${base}-dev.${GITHUB_RUN_NUMBER}"
-          tag="ha-v$dev"
+          tag="v$dev"
           python3 tools/package_ha.py out/kestrel.zip --version "$dev"
           # notes: the changelog's Unreleased section (tools/release_notes.py), which HACS shows
-          python3 tools/release_notes.py ha Unreleased --test-build "$GITHUB_RUN_NUMBER" > notes.md
+          python3 tools/release_notes.py Unreleased --test-build "$GITHUB_RUN_NUMBER" > notes.md
           gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
-            --title "Kestrel HA component ${dev} (test build)" \
+            --title "Kestrel ${dev} (test build)" \
             --notes-file notes.md out/kestrel.zip
           gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' |
-            { grep -E '^ha-v.*-dev\.[0-9]+$' | grep -vx "$tag" || true; } | while read -r old; do
+            { grep -E '^(ha-)?v.*-dev\.[0-9]+$' | grep -vx "$tag" || true; } | while read -r old; do
               gh release delete "$old" --yes --cleanup-tag
             done
 
@@ -303,12 +309,12 @@ jobs:
           set -e
           pip install -r tools/requirements.txt
           mkdir -p site/watch
-          tag=$(gh release list --limit 200 --json tagName --jq '.[].tagName' | grep -E '^watch-v[0-9]' | sed 's/^watch-v//' | sort -V | tail -1 || true)
+          tag=$(gh release list --limit 200 --exclude-pre-releases --json tagName --jq '.[].tagName' | { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sed 's/^v//' | sort -V | tail -1)
           if [ -n "$tag" ]; then
-            gh release download "watch-v$tag" --pattern "*.zpk" --dir site/watch
+            gh release download "v$tag" --pattern "*.zpk" --dir site/watch
             mv "site/watch/kestrel-$tag.zpk" site/watch/kestrel.zpk
             # one package per screen, for the watch picker (releases before it have none)
-            if gh release download "watch-v$tag" --pattern "*-packages.zip" --dir /tmp/pk 2>/dev/null; then
+            if gh release download "v$tag" --pattern "*-packages.zip" --dir /tmp/pk 2>/dev/null; then
               unzip -q /tmp/pk/*-packages.zip -d site/watch
             fi
             echo "$tag" > site/watch/version.txt

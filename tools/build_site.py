@@ -21,9 +21,9 @@ from components import GITHUB, PAGES, REPO, WATCH_ZPK, watch_meta  # noqa: E402
 from model_picker import picker  # noqa: E402
 
 
-def section(name, version):
-    """A component's changelog section (zepp-devkit.json lists where each changelog is)."""
-    return _section(devkit_component(name, REPO).changelog, version)
+def section(version):
+    """A changelog section (zepp-devkit.json says where the changelog is)."""
+    return _section(devkit_component("kestrel", REPO).changelog, version)
 
 site = Path(sys.argv[1] if len(sys.argv) > 1 else "site")
 meta = watch_meta()
@@ -41,7 +41,7 @@ if (watch / WATCH_ZPK).exists():
       <div>{picker(watch, f"{PAGES}/watch") if (watch / "packages.json").exists() else f'<img class="qr" src="watch/install-qr.png" alt="Install QR code"><p><a href="watch/{WATCH_ZPK}">Download {WATCH_ZPK}</a></p>'}</div>
     </div>
   </section>'''
-    notes = section("watch", version)
+    notes = section(version)
     if notes:
         body += f'''
   <section class="notes">

@@ -26,9 +26,9 @@ from make_qr import make  # noqa: E402
 from model_picker import picker  # noqa: E402
 
 
-def section(name, version):
-    """A component's changelog section (zepp-devkit.json lists where each changelog is)."""
-    return _section(devkit_component(name, REPO).changelog, version)
+def section(version):
+    """A changelog section (zepp-devkit.json says where the changelog is)."""
+    return _section(devkit_component("kestrel", REPO).changelog, version)
 
 site, sha, build = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
 dev = site / "dev"
@@ -66,10 +66,9 @@ watch app, but the Zepp app gives them no Settings page and may keep an older ph
 <p>based on {html.escape(meta["version"]["name"])} · build {html.escape(build)} · {html.escape(sha)}</p>
 {primary}
 <p class="note">All-watch bundle (the .zab format the Zepp store takes; this one carries the DEV app ID): <a href="watch/kestrel-dev.zab">kestrel-dev.zab</a></p></section>''')
-for component, title in (("watch", "Watch app"), ("ha", "Home Assistant component")):
-    notes = section(component, "Unreleased")
-    if notes:
-        cards.append(f'''<section class="notes"><h2>{title}: changes since the last release</h2>
+notes = section("Unreleased")
+if notes:
+    cards.append(f'''<section class="notes"><h2>Changes since the last release</h2>
 {to_html(notes)}</section>''')
 stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 dev.mkdir(parents=True, exist_ok=True)
