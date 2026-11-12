@@ -1,0 +1,415 @@
+name: Build and publish
+
+# Branches (docs/development.md -> "Branches and releases"): work lands on `dev`, and
+# each release is one squash-merged pull request from `dev` into `main`.
+# Every push and pull request: changelog check, unit tests, Zeus build of the watch app,
+# and the Home Assistant component's tests.
+# Push to main: when the version (shared by the watch app and the HA integration) has no
+# `<version>` tag yet, it's released (tag + GitHub release with that version's changelog
+# section, the watch packages and kestrel.zip).
+# Push to main or dev (and manual runs): builds a "DEV" test build of the watch app from
+# the tip of `dev` (own app ID, installs next to the release) and redeploys the Pages site:
+# the install site from the latest release, plus the unlisted test-build page
+# https://raetha.github.io/zepp-kestrel/dev/. With the ZEPP_* secrets, the test build is
+# also uploaded with `zeus preview`, so it shows up under the Zepp app's Developer Mode.
+# Every 5 days (schedule, which runs the default branch's copy of this file: dev): rebuilds
+# and re-uploads the test build, so there's always a preview QR code (valid 7 days) to
+# install; a preview that fails to upload then fails the run, which is how an expired
+# Zepp login gets noticed.
+#
+# Adapted from raetha/zepp-watch-faces.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:      # manual run: rebuild the install site and test build
+  schedule:
+    - cron: "17 9 */5 * *"  # refresh the test build's Zepp preview before it expires (7 days)
+
+permissions:
+  contents: read
+
+# Actions are pinned to exact commits (version in the comment); Dependabot
+# (.github/dependabot.yml) proposes updates weekly.
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_OPTIONS: --no-deprecation
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      # the watches test builds are made for (Zeus device names); the owner's is a Balance 3 Ti
+      TEST_WATCHES: Amazfit Balance 3,Amazfit Balance 3 Ti
+    outputs:
+      releases: ${{ steps.plan.outputs.releases }}
+      preview_failed: ${{ steps.preview.outputs.failed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0          # tags are needed to know what is already released
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: |
+          pip install -r tools/requirements.txt
+          npm ci
+          npm install -g @zeppos/zeus-cli@1.9.3
+
+      - name: Check the changelog and versions, and plan the release
+        id: plan
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        # dev holds the expected next version under [Unreleased]; a release (main, or a pull
+        # request into it) needs the version's own section
+        run: |
+          if [ "$GITHUB_REF" = refs/heads/main ] || [ "$BASE_REF" = main ]; then
+            zepp-devkit release-plan --github
+          else
+            zepp-devkit release-plan --dev --github
+          fi
+
+      - name: Unit tests
+        run: npm test
+
+      - name: README watch table matches watch/models.json
+        run: python3 tools/models_table.py --check
+
+      - name: Build the watch app with Zeus
+        run: |
+          set -e
+          version=$(python3 -c "import json;print(json.load(open('watch/app.json'))['app']['version']['name'])")
+          (cd watch && zeus build)
+          mkdir -p out/watch
+          zepp-devkit extract-zpk watch/dist "out/watch/kestrel-$version.zpk"
+          # the multi-watch bundle for the Zepp store, and one package per screen for QR installs
+          cp watch/dist/*.zab "out/watch/kestrel-$version.zab"
+          zepp-devkit packages watch/dist out/packages --prefix kestrel
+          (cd out/packages && zip -q "../watch/kestrel-$version-packages.zip" ./*)
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kestrel
+          path: out/
+
+      - name: Build the DEV test build (from the tip of dev)
+        id: dev
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+        run: |
+          set -e
+          out="$PWD/out-dev"
+          # a push to main still publishes dev's test build, so the page never goes backwards
+          if [ "$GITHUB_REF" != refs/heads/dev ] && git rev-parse -q --verify origin/dev >/dev/null; then
+            git worktree add -q ../dev-tree origin/dev
+            cd ../dev-tree
+            npm ci
+            pip install -r tools/requirements.txt
+          fi
+          short=$(git rev-parse --short HEAD)
+          mkdir -p "$out/watch" && echo "$short" > "$out/SOURCE_SHA"
+          python3 tools/make_dev_variant.py "$GITHUB_RUN_NUMBER" "$short"
+          # test builds: the watches being tested only (one package, its own device IDs), as
+          # zeus preview builds them; releases build every watch
+          (cd watch-dev && zeus build -s -t "$TEST_WATCHES" </dev/null)
+          zepp-devkit extract-zpk watch-dev/dist "$out/watch/kestrel.zpk"
+          zepp-devkit packages watch-dev/dist "$out/watch" --prefix kestrel
+          cp watch-dev/dist/*.zab "$out/watch/kestrel-dev.zab"
+          echo "project=$PWD/watch-dev" >> "$GITHUB_OUTPUT"
+
+      # Zepp's preview service, with the real zeus preview (zepp-devkit; docs/development.md ->
+      # "Preview uploads from CI"): the test page then shows that QR code only. Without the
+      # secrets, or when the upload fails, it's a warning and the page falls back to our own codes.
+      - name: Upload the test build as a Zepp preview
+        id: preview
+        if: steps.dev.outcome == 'success'
+        env:
+          ZEPP_APPTOKEN: ${{ secrets.ZEPP_APPTOKEN }}
+          ZEPP_USERID: ${{ secrets.ZEPP_USERID }}
+          ZEPP_CNAME: ${{ secrets.ZEPP_CNAME }}
+          PROJECT: ${{ steps.dev.outputs.project }}
+        run: zepp-devkit preview "$PROJECT" out-dev/watch --watches "$TEST_WATCHES" --label "Kestrel DEV" --color "#1E1640" --github
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+        with:
+          name: kestrel-dev
+          path: out-dev/
+
+  ha-tests:
+    # The Home Assistant component (custom_components/kestrel), tested against a real HA core.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Install the HA test harness
+        run: pip install -r ha/requirements_test.txt
+
+      - name: Component tests (95% coverage required)
+        working-directory: ha
+        run: pytest -q --cov=custom_components.kestrel --cov-report=term-missing --cov-fail-under=95
+
+      - name: Strict typing (quality scale strict-typing)
+        run: mypy --config-file ha/mypy.ini custom_components/kestrel
+
+  validate:
+    # Home Assistant's own manifest/translation checks and the HACS repository checks.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: hassfest
+        uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361 # master, 2026-10
+
+      - name: HACS validation
+        uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0
+        with:
+          category: integration
+          # brands: the images ship with the integration (custom_components/kestrel/brand/),
+          # which Home Assistant serves itself; HACS still looks in home-assistant/brands.
+          ignore: brands
+
+  release:
+    needs: [build, ha-tests, validate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.releases != '[]'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: kestrel
+          path: out
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: pip install -r tools/requirements.txt
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASES: ${{ needs.build.outputs.releases }}
+        run: |
+          set -e
+          # one component (zepp-devkit.json): the watch packages and kestrel.zip, which HACS
+          # installs from (hacs.json: zip_release)
+          python3 tools/package_ha.py out/kestrel.zip
+          echo "$RELEASES" | python3 -c "import json,sys; [print(r['version'], r['tag'], r['title'], sep='\t') for r in json.load(sys.stdin)]" |
+          while IFS=$'\t' read -r version tag title; do
+            python3 tools/release_notes.py "$version" > notes.md
+            gh release create "$tag" --target "$GITHUB_SHA" --title "$title" --notes-file notes.md \
+              "out/watch/kestrel-$version.zpk" "out/watch/kestrel-$version.zab" "out/watch/kestrel-$version-packages.zip" out/kestrel.zip
+          done
+
+  # Each push to dev publishes the HA component as a GitHub pre-release with kestrel.zip, so
+  # HACS installs test builds once Kestrel's Pre-release switch is on. The version sorts above
+  # the installed release (the next patch once the current version is tagged) and is stamped
+  # into the zip's manifest.json. Older dev pre-releases (and their tags) are deleted; real
+  # releases are never touched.
+  ha-dev-release:
+    needs: [build, ha-tests, validate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: pip install -r tools/requirements.txt
+
+      - name: Publish the dev pre-release for HACS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          version=$(python3 -c "import json;print(json.load(open('custom_components/kestrel/manifest.json'))['version'])")
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$version" >/dev/null 2>&1; then
+            base=$(python3 -c "import sys; a, b, c = sys.argv[1].split('.'); print(f'{a}.{b}.{int(c) + 1}')" "$version")
+          else
+            base="$version"
+          fi
+          dev="${base}-dev.${GITHUB_RUN_NUMBER}"
+          tag="$dev"  # no leading "v": HACS shows tag names
+          python3 tools/package_ha.py out/kestrel.zip --version "$dev"
+          # notes: the changelog's Unreleased section (tools/release_notes.py), which HACS shows
+          python3 tools/release_notes.py Unreleased --test-build "$GITHUB_RUN_NUMBER" > notes.md
+          gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
+            --title "Kestrel ${dev} (test build)" \
+            --notes-file notes.md out/kestrel.zip
+          gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' |
+            { grep -E '^((ha-)?v)?[0-9].*-dev\.[0-9]+$' | grep -vx "$tag" || true; } | while read -r old; do
+              gh release delete "$old" --yes --cleanup-tag
+            done
+
+  pages:
+    needs: [build, ha-tests, validate, release]
+    if: >-
+      always() && github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
+      needs.build.result == 'success' && needs.ha-tests.result == 'success' && needs.validate.result == 'success' &&
+      (needs.release.result == 'success' || needs.release.result == 'skipped')
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: pages          # main and dev both deploy the one site: one at a time
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Collect the latest watch release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          pip install -r tools/requirements.txt
+          mkdir -p site/watch
+          tag=$(gh release list --limit 200 --exclude-pre-releases --json tagName --jq '.[].tagName' | { grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sort -V | tail -1)
+          if [ -n "$tag" ]; then
+            gh release download "$tag" --pattern "*.zpk" --dir site/watch
+            mv "site/watch/kestrel-$tag.zpk" site/watch/kestrel.zpk
+            # one package per screen, for the watch picker (releases before it have none)
+            if gh release download "$tag" --pattern "*-packages.zip" --dir /tmp/pk 2>/dev/null; then
+              unzip -q /tmp/pk/*-packages.zip -d site/watch
+            fi
+            echo "$tag" > site/watch/version.txt
+            echo "watch: publishing $tag"
+          else
+            echo "watch: no release yet"
+          fi
+          python3 tools/build_site.py site
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: kestrel-dev
+          path: site/dev
+
+      - name: Add the unlisted test-build page
+        run: |
+          sha=$(cat site/dev/SOURCE_SHA) && rm site/dev/SOURCE_SHA
+          python3 tools/dev_site.py site "$sha" "$GITHUB_RUN_NUMBER"
+          {
+            echo "### Test build (run $GITHUB_RUN_NUMBER)"
+            echo ""
+            echo "Scan from: https://raetha.github.io/zepp-kestrel/dev/"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  # After a release pull request is merged, dev holds the same files as main but different
+  # commits; reset it to main so the next cycle starts clean. Skipped if dev has new work.
+  sync-dev:
+    needs: [build, ha-tests, validate, release]
+    if: >-
+      always() && github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.build.result == 'success' && needs.ha-tests.result == 'success' && needs.validate.result == 'success' &&
+      (needs.release.result == 'success' || needs.release.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Reset dev to main if they match
+        run: |
+          set -e
+          git rev-parse -q --verify origin/dev >/dev/null || { echo "no dev branch"; exit 0; }
+          if git diff --quiet origin/main origin/dev; then
+            git push --force origin origin/main:refs/heads/dev
+            echo "dev reset to main"
+          else
+            echo "dev has changes that aren't on main: left as it is"
+          fi
+
+  # Scheduled runs exist to keep the test build's preview valid: if it didn't upload (an
+  # expired Zepp login, missing secrets), fail the run so GitHub emails the owner. Pushes
+  # keep treating it as a warning. Runs after the site is deployed with the fallback codes.
+  preview-check:
+    needs: [build, pages]
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: pip install -r tools/requirements.txt
+
+      - name: Check the preview uploaded
+        env:
+          FAILED: ${{ needs.build.outputs.preview_failed }}
+          BUILD: ${{ needs.build.result }}
+        run: zepp-devkit preview-check --build-result "$BUILD" --failed "$FAILED" --repositories "zepp-kestrel and zepp-watch-faces"
+
+  # The one check the main ruleset requires: passes only when every check job above did, so
+  # jobs can be added or renamed without touching the ruleset.
+  ci:
+    name: CI passed
+    if: always()
+    needs: [build, ha-tests, validate]
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Every check job passed
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          if echo "$RESULTS" | grep -qE '"(failure|cancelled)"'; then exit 1; fi
