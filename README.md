@@ -22,7 +22,11 @@ It needs the Kestrel Home Assistant integration: the watch pairs with a code ins
 
 Test builds are for development and change often.
 
-**1. Install the Home Assistant component.** In HACS: ⋮ → Custom repositories → `https://github.com/raetha/zepp-kestrel`, type Integration, then open Kestrel. There's no release yet, so first turn on its test builds: in Settings → Devices & services → Entities, find the Kestrel **Pre-release** switch HACS created (disabled by default), enable it and turn it on; HACS then offers the newest `v…-dev.N` test build as an update. Install it and restart Home Assistant. (Each push to `dev` publishes a new one, and Home Assistant shows its version.) Or download `kestrel.zip` from the newest [release or test build](https://github.com/raetha/zepp-kestrel/releases) and extract it into `custom_components/kestrel/` in your HA config folder. Then Settings → Devices & services → Add integration → Kestrel.
+**1. Install the Home Assistant component.** On Home Assistant 2026.11 or later, this link opens Kestrel in the Marketplace:
+
+[![Open your Home Assistant instance and show Kestrel in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=raetha&repository=zepp-kestrel&category=integration)
+
+Or add it yourself, in the Marketplace (or HACS on older versions): ⋮ → Custom repositories → `https://github.com/raetha/zepp-kestrel`, type Integration, then open Kestrel. There's no release yet, so first turn on its test builds: in Settings → Devices & services → Entities, find the Kestrel **Pre-release** switch HACS created (disabled by default), enable it and turn it on; HACS then offers the newest `v…-dev.N` test build as an update. Install it and restart Home Assistant. (Each push to `dev` publishes a new one, and Home Assistant shows its version.) Or download `kestrel.zip` from the newest [release or test build](https://github.com/raetha/zepp-kestrel/releases) and extract it into `custom_components/kestrel/` in your HA config folder. Then Settings → Devices & services → Add integration → Kestrel.
 
 **2. Install the watch app.**
 1. In the Zepp app, turn on Developer Mode: Profile → Settings → About, tap the Zepp logo 7 times.
