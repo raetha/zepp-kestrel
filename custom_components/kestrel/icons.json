@@ -1,0 +1,68 @@
+{
+  "entity": {
+    "sensor": {
+      "last_triggered": {
+        "default": "mdi:gesture-tap"
+      },
+      "room": {
+        "default": "mdi:floor-plan"
+      },
+      "address": {
+        "default": "mdi:web"
+      },
+      "painted_devices": {
+        "default": "mdi:target"
+      },
+      "calibrated_rooms": {
+        "default": "mdi:bluetooth"
+      }
+    },
+    "switch": {
+      "gesture": {
+        "default": "mdi:gesture"
+      },
+      "instant_toggle": {
+        "default": "mdi:timer-play-outline"
+      },
+      "open_on_point": {
+        "default": "mdi:target-account"
+      },
+      "learn": {
+        "default": "mdi:school-outline"
+      },
+      "detailed_diagnostics": {
+        "default": "mdi:bug-outline"
+      }
+    },
+    "select": {
+      "gesture": {
+        "default": "mdi:hand-back-right"
+      },
+      "room_source": {
+        "default": "mdi:map-marker-radius"
+      }
+    },
+    "number": {
+      "instant_toggle_delay": {
+        "default": "mdi:timer-outline"
+      },
+      "gesture_gyro": {
+        "default": "mdi:rotate-3d-variant"
+      },
+      "gesture_jolt": {
+        "default": "mdi:vibrate"
+      },
+      "volume_limit": {
+        "default": "mdi:volume-high"
+      },
+      "volume_step_limit": {
+        "default": "mdi:volume-plus"
+      }
+    },
+    "image": {
+      "paint_map": {
+        "default": "mdi:compass-rose"
+      }
+    }
+  }
+}

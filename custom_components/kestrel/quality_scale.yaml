@@ -1,0 +1,168 @@
+# Integration quality scale: where Kestrel stands on each rule.
+# https://developers.home-assistant.io/docs/core/integration-quality-scale/
+# status: done | todo | exempt (with a comment saying why). Review before each release;
+# All 54 rules, checked against developers.home-assistant.io/docs/core/integration-quality-scale/rules
+# and audited against the code (2026-10-24). Every rule is done or exempt with a reason.
+rules:
+  # Bronze
+  action-setup:
+    status: exempt
+    comment: No service actions of its own; watches use the HTTP API (registered once in async_setup), entities use the platforms' actions.
+  appropriate-polling:
+    status: exempt
+    comment: No polling: watches push requests, and entities update from them.
+  brands:
+    status: done
+    comment: Brand images ship with the integration (custom_components/kestrel/brand/); HA serves them locally.
+  common-modules:
+    status: done
+  config-flow:
+    status: done
+  config-flow-test-coverage:
+    status: done
+  dependency-transparency:
+    status: exempt
+    comment: No external requirements.
+  docs-actions:
+    status: exempt
+    comment: No service actions.
+  docs-conditions:
+    status: exempt
+    comment: No conditions.
+  docs-high-level-description:
+    status: done
+    comment: README "How it will work".
+  docs-installation-instructions:
+    status: done
+    comment: README "Try the test build"; update for HACS default repositories at release.
+  docs-removal-instructions:
+    status: done
+    comment: README "Removing Kestrel".
+  docs-triggers:
+    status: done
+    comment: README "Events (triggers)": kestrel_fired fields, kestrel_probe.
+  entity-event-setup:
+    status: done
+    comment: Entities subscribe to the watch's dispatcher signal in async_added_to_hass, removed with async_on_remove.
+  entity-unique-id:
+    status: done
+    comment: <watch id>_<key>.
+  has-entity-name:
+    status: done
+  runtime-data:
+    status: done
+  test-before-configure:
+    status: exempt
+    comment: Nothing to connect to when adding the integration; watches pair afterwards.
+  test-before-setup:
+    status: exempt
+    comment: No external connection at setup.
+  unique-config-entry:
+    status: done
+    comment: single_config_entry in manifest.json.
+
+  # Silver
+  action-exceptions:
+    status: done
+    comment: Entity actions on a watch that was unpaired raise HomeAssistantError (translated). The watch API returns JSON errors.
+  config-entry-unloading:
+    status: done
+    comment: HTTP views can't be unregistered; they answer 404 while no entry is loaded.
+  docs-configuration-parameters:
+    status: done
+    comment: README "Managing things in Home Assistant" and the entity table cover every setting; strings carry data_description.
+  docs-installation-parameters:
+    status: exempt
+    comment: The config flow has no fields.
+  entity-unavailable:
+    status: done
+    comment: Unavailable once the watch is unpaired. A watch that's away isn't unavailable: Last seen shows when it last talked.
+  integration-owner:
+    status: done
+  log-when-unavailable:
+    status: exempt
+    comment: Nothing is polled or connected to; a watch that's away isn't unavailable (Last seen shows when it last talked).
+  parallel-updates:
+    status: done
+    comment: PARALLEL_UPDATES = 0 on every platform: entities are pushed, and actions only change stored settings.
+  reauthentication-flow:
+    status: exempt
+    comment: No credentials; a removed watch pairs again from the watch.
+  test-coverage:
+    status: done
+    comment: CI requires 95%.
+
+  # Gold
+  devices:
+    status: done
+    comment: One device per paired watch.
+  diagnostics:
+    status: done
+    comment: Per entry and per watch device, with recent probe results; token hashes and addresses redacted, Bluetooth addresses pseudonymised. Detailed records only with the Detailed diagnostics switch (off after a week).
+  discovery:
+    status: exempt
+    comment: Nothing to discover from Home Assistant's side; watches find Home Assistant.
+  discovery-update-info:
+    status: exempt
+    comment: No discovery.
+  docs-data-update:
+    status: done
+    comment: README "How data updates": pushed by the watch, nothing polled.
+  docs-examples:
+    status: done
+    comment: README "Automation examples".
+  docs-known-limitations:
+    status: done
+    comment: README "Known limitations".
+  docs-supported-devices:
+    status: done
+    comment: README "Supported devices".
+  docs-supported-functions:
+    status: done
+    comment: README "Supported functions" and the entity table.
+  docs-troubleshooting:
+    status: done
+    comment: README "Troubleshooting".
+  docs-use-cases:
+    status: done
+    comment: README "Use cases".
+  dynamic-devices:
+    status: done
+    comment: Devices are added when a watch pairs.
+  entity-category:
+    status: done
+    comment: Last seen, address, counts and the paint map are diagnostic; switches, selects and numbers are configuration.
+  entity-device-class:
+    status: done
+    comment: Last seen: timestamp; Instant toggle delay: duration. The rest (volume limits are percentages) have no fitting device class.
+  entity-disabled-by-default:
+    status: done
+    comment: The gesture threshold numbers (rarely needed) are disabled by default.
+  entity-translations:
+    status: done
+  exception-translations:
+    status: done
+    comment: watch_unpaired in strings.json.
+  icon-translations:
+    status: done
+    comment: icons.json for every entity.
+  reconfiguration-flow:
+    status: exempt
+    comment: Nothing to reconfigure.
+  repair-issues:
+    status: done
+    comment: A watch not heard from in 30 days gets a Repairs notice whose fix removes it (and its token); the notice goes away when the watch is used again (repairs.py).
+  stale-devices:
+    status: done
+    comment: Devices of watches no longer paired are removed at setup; deleting a device unpairs the watch (its paints, rooms and settings are kept 30 days for a watch paired later to take over, then dropped).
+
+  # Platinum
+  async-dependency:
+    status: exempt
+    comment: No external library.
+  inject-websession:
+    status: exempt
+    comment: No HTTP client.
+  strict-typing:
+    status: done
+    comment: mypy --strict passes (ha/mypy.ini); CI runs it. Custom integrations can't join core's .strict-typing list.

@@ -1,0 +1,307 @@
+"""Config flow: one Kestrel entry. Watches pair from the watch afterwards.
+
+The options flow (Configure) chooses which devices watches can use (the entry's
+options; nothing chosen = everything), and manages what each paired watch keeps in sync:
+painted devices (remove a bad paint, point a paint at another entity), room
+calibrations, and settings (gesture trigger, instant toggle, room source). The
+watch picks the changes up on its next Sync.
+"""
+
+from __future__ import annotations
+
+from typing import Any, cast
+
+import voluptuous as vol
+
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.core import callback
+from homeassistant.helpers.selector import (
+    BooleanSelector,
+    DeviceSelector,
+    DeviceSelectorConfig,
+    EntityFilterSelectorConfig,
+    EntitySelector,
+    EntitySelectorConfig,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
+
+from .const import DOMAIN, NAME, SUPPORTED_DOMAINS
+from .watchdata import (
+    DWELL_SECONDS,
+    GESTURE_KINDS,
+    ROOM_SOURCES,
+    SCREEN_SECONDS,
+    VOLUME_MAX,
+    VOLUME_STEP,
+    clean_thresholds,
+    settings_of,
+    thresholds,
+)
+from .watches import Watches
+
+PAINT_ACTIONS = ("remove_last", "remove_all", "reassign")
+
+
+class KestrelConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Add Kestrel. Paired watches show up as devices; delete a device to unpair it."""
+
+    VERSION = 1
+
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Confirm adding the integration."""
+        if user_input is not None:
+            return self.async_create_entry(title=NAME, data={})
+        return self.async_show_form(step_id="user")
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> KestrelOptionsFlow:
+        """Manage paired watches."""
+        return KestrelOptionsFlow()
+
+
+def _schema(fields: dict[Any, Any]) -> Any:
+    """A form schema. Typed loosely: Home Assistant 2026.10+ types forms with probatio, which
+    voluptuous is an alias of there; older versions use voluptuous itself."""
+    return vol.Schema(fields)
+
+
+def _percent(bounds: tuple[int, int]) -> NumberSelector:
+    return NumberSelector(
+        NumberSelectorConfig(min=bounds[0], max=bounds[1], step=5, unit_of_measurement="%", mode=NumberSelectorMode.SLIDER)
+    )
+
+
+def _select(options: list[tuple[str, str]], translation_key: str | None = None) -> SelectSelector:
+    config = SelectSelectorConfig(
+        options=[SelectOptionDict(value=v, label=label) for v, label in options],
+        mode=SelectSelectorMode.DROPDOWN,
+    )
+    if translation_key:
+        config["translation_key"] = translation_key
+    return SelectSelector(config)
+
+
+class KestrelOptionsFlow(OptionsFlow):
+    """Paints, rooms and settings of each paired watch."""
+
+    def __init__(self) -> None:
+        self.watch_id: str | None = None
+        self.paint: str | None = None
+
+    @property
+    def _watches(self) -> Watches:
+        return cast(Watches, self.config_entry.runtime_data)
+
+    def _done(self) -> ConfigFlowResult:
+        # Everything lives in the watches' storage; the entry's options stay as they are.
+        return self.async_create_entry(data=dict(self.config_entry.options))
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Devices for watches, or one watch's paints, rooms and settings."""
+        watches = self._watches.watches
+        menu = ["offered"]
+        if len(watches) == 1:
+            self.watch_id = next(iter(watches))
+            menu.append("watch")
+        elif watches:
+            menu.append("pick_watch")
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=menu,
+            description_placeholders={"watch": self._watches.display_name(self.watch_id) if self.watch_id else ""},
+        )
+
+    async def async_step_offered(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Which devices (or single entities) watches can use; nothing chosen = all of them."""
+        if user_input is not None:
+            options = {
+                **self.config_entry.options,
+                "devices": user_input.get("devices") or [],
+                "entities": user_input.get("entities") or [],
+            }
+            return self.async_create_entry(data=options)  # the integration reloads with the new choice
+        offered = self._watches.offered
+        supported = [EntityFilterSelectorConfig(domain=list(SUPPORTED_DOMAINS))]
+        fields: dict[Any, Any] = {
+            vol.Optional("devices", description={"suggested_value": sorted(offered.devices)}): DeviceSelector(
+                DeviceSelectorConfig(multiple=True, entity=supported)
+            ),
+            vol.Optional("entities", description={"suggested_value": sorted(offered.entities)}): EntitySelector(
+                EntitySelectorConfig(domain=list(SUPPORTED_DOMAINS), multiple=True)
+            ),
+        }
+        return self.async_show_form(step_id="offered", data_schema=_schema(fields))
+
+    async def async_step_pick_watch(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Pick a watch."""
+        watches = self._watches.watches
+        if user_input is not None:
+            self.watch_id = user_input["watch"]
+            return await self.async_step_watch()
+        options = [(wid, self._watches.label(wid)) for wid in watches]
+        return self.async_show_form(step_id="pick_watch", data_schema=_schema({vol.Required("watch"): _select(options)}))
+
+    async def async_step_watch(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """What to manage for this watch."""
+        assert self.watch_id is not None
+        menu = ["paints", "settings", "rooms"]
+        if self._watches.setups_for(self.watch_id):
+            menu.append("take_over")
+        return self.async_show_menu(
+            step_id="watch",
+            menu_options=menu,
+            description_placeholders={"watch": self._watches.display_name(self.watch_id)},
+        )
+
+    # ------------------------------------------------------------ paints
+    async def async_step_paints(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Remove a bad paint, or point a paint at another entity."""
+        assert self.watch_id is not None
+        paints = self._watches.paints(self.watch_id)
+        if not paints:
+            return self.async_abort(reason="no_paints")
+        if user_input is not None:
+            self.paint = user_input["device"]
+            action = user_input["action"]
+            if action == "reassign":
+                return await self.async_step_reassign()
+            await self._watches.async_remove_paint(self.watch_id, self.paint, last_only=action == "remove_last")
+            return self._done()
+
+        def label(entity_id: str) -> str:
+            state = self.hass.states.get(entity_id)
+            name = state.name if state else entity_id
+            n = len(paints[entity_id])
+            return f"{name} ({n} spot{'s' if n != 1 else ''})"
+
+        schema = _schema(
+            {
+                vol.Required("device"): _select([(e, label(e)) for e in sorted(paints, key=label)]),
+                vol.Required("action", default="remove_last"): _select(
+                    [(a, a) for a in PAINT_ACTIONS], translation_key="paint_action"
+                ),
+            }
+        )
+        return self.async_show_form(step_id="paints", data_schema=schema)
+
+    async def async_step_reassign(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """The entity the paint should trigger instead."""
+        assert self.watch_id is not None and self.paint is not None
+        if user_input is not None:
+            await self._watches.async_reassign_paint(self.watch_id, self.paint, user_input["entity"])
+            return self._done()
+        schema = _schema({vol.Required("entity"): EntitySelector(EntitySelectorConfig(domain=list(SUPPORTED_DOMAINS)))})
+        return self.async_show_form(step_id="reassign", data_schema=schema, description_placeholders={"device": self.paint})
+
+    async def async_step_take_over(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Give this watch another watch's setup (a watch paired again as a new one, or a new watch)."""
+        assert self.watch_id is not None
+        setups = self._watches.setups_for(self.watch_id)
+        if user_input is not None:
+            # here in Home Assistant, by its owner: not limited to just after pairing
+            await self._watches.async_take_over(self.watch_id, user_input["source"], any_time=True)
+            return self._done()
+
+        def label(s: dict[str, Any]) -> str:
+            what = f"{s['name']}: {s['paints']} painted, {s['rooms']} rooms"
+            return f"{what} (removed)" if s["removed"] else what
+
+        return self.async_show_form(
+            step_id="take_over",
+            data_schema=_schema({vol.Required("source"): _select([(s["id"], label(s)) for s in setups])}),
+            description_placeholders={"watch": self._watches.display_name(self.watch_id)},
+        )
+
+    # ------------------------------------------------------------ rooms
+    async def async_step_rooms(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Delete a room calibration (calibrate again on the watch)."""
+        assert self.watch_id is not None
+        rooms = self._watches.synced(self.watch_id)["rooms"]
+        if not rooms:
+            return self.async_abort(reason="no_rooms")
+        if user_input is not None:
+            await self._watches.async_remove_room(self.watch_id, user_input["room"])
+            return self._done()
+        options = [(area_id, f"{r['name']} ({len(r['fingerprint'])} devices heard)") for area_id, r in rooms.items()]
+        return self.async_show_form(step_id="rooms", data_schema=_schema({vol.Required("room"): _select(options)}))
+
+    # ------------------------------------------------------------ settings
+    async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Gesture trigger, instant toggle and room source."""
+        assert self.watch_id is not None
+        current = settings_of(self._watches.watches[self.watch_id])
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if user_input["room_source"] == "sensor" and not user_input.get("room_sensor"):
+                errors["room_sensor"] = "sensor_needed"
+            if not errors:
+                # the thresholds shown belong to the gesture chosen when the form opened
+                cals = dict(current["gesture"]["calibrations"])
+                edited = clean_thresholds(
+                    {"gyro": user_input.get("gesture_gyro"), "jolt": user_input.get("gesture_jolt")}
+                )
+                if edited:
+                    cals[current["gesture"]["kind"]] = edited
+                else:
+                    cals.pop(current["gesture"]["kind"], None)
+                settings = {
+                    "gesture": {
+                        "enabled": user_input["gesture_enabled"],
+                        "kind": user_input["gesture_kind"],
+                        "calibrations": cals,
+                    },
+                    "room": {"source": user_input["room_source"], "sensor": user_input.get("room_sensor")},
+                    "dwell": {"enabled": user_input["dwell_enabled"], "seconds": float(user_input["dwell_seconds"])},
+                    "start": {"point": user_input["open_on_point"]},
+                    "learn": {"enabled": user_input["learn"]},
+                    "volume": {"max": int(user_input["volume_max"]), "step": int(user_input["volume_step"])},
+                    "screen": {"seconds": int(user_input["screen_seconds"])},
+                    "diagnostics": current["diagnostics"],
+                }
+                await self._watches.async_save_settings(self.watch_id, settings)
+                if user_input["detailed_diagnostics"] != current["diagnostics"]["detailed"]:
+                    await self._watches.async_set_detailed_diagnostics(self.watch_id, user_input["detailed_diagnostics"])
+                return self._done()
+
+        g, room, dwell, volume = current["gesture"], current["room"], current["dwell"], current["volume"]
+        th = thresholds(g) or {"gyro": None, "jolt": None}
+        number = NumberSelector(NumberSelectorConfig(min=1, max=5000, step=1, mode=NumberSelectorMode.BOX))
+        fields: dict[Any, Any] = {
+            vol.Required("gesture_enabled", default=g["enabled"]): BooleanSelector(),
+            vol.Required("gesture_kind", default=g["kind"]): _select([(k, k) for k in GESTURE_KINDS], "gesture_kind"),
+            vol.Optional("gesture_gyro", description={"suggested_value": th["gyro"]}): number,
+            vol.Optional("gesture_jolt", description={"suggested_value": th["jolt"]}): number,
+            vol.Required("dwell_enabled", default=dwell["enabled"]): BooleanSelector(),
+            vol.Required("dwell_seconds", default=dwell["seconds"]): NumberSelector(
+                NumberSelectorConfig(
+                    min=DWELL_SECONDS[0], max=DWELL_SECONDS[1], step=0.5, unit_of_measurement="s", mode=NumberSelectorMode.SLIDER
+                )
+            ),
+            vol.Required("open_on_point", default=current["start"]["point"]): BooleanSelector(),
+            vol.Required("learn", default=current["learn"]["enabled"]): BooleanSelector(),
+            vol.Required("detailed_diagnostics", default=current["diagnostics"]["detailed"]): BooleanSelector(),
+            vol.Required("volume_max", default=volume["max"]): _percent(VOLUME_MAX),
+            vol.Required("volume_step", default=volume["step"]): _percent(VOLUME_STEP),
+            vol.Required("screen_seconds", default=current["screen"]["seconds"]): NumberSelector(
+                NumberSelectorConfig(
+                    min=SCREEN_SECONDS[0], max=SCREEN_SECONDS[1], step=1, unit_of_measurement="s", mode=NumberSelectorMode.BOX
+                )
+            ),
+            vol.Required("room_source", default=room["source"]): _select([(s, s) for s in ROOM_SOURCES], "room_source"),
+            vol.Optional("room_sensor", description={"suggested_value": room["sensor"]}): EntitySelector(
+                EntitySelectorConfig(domain="sensor")
+            ),
+        }
+        return self.async_show_form(
+            step_id="settings",
+            data_schema=_schema(fields),
+            errors=errors,
+            description_placeholders={"kind": g["kind"]},
+        )

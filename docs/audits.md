@@ -1,0 +1,189 @@
+# Audits
+
+Quality scale, performance and security reviews of every part of Kestrel: the
+watch app (`watch/page`, `watch/lib`), the phone side service (`watch/lib/side.js`,
+`watch/lib/ha-client.js`), the settings page (`watch/setting`), the Home
+Assistant integration (`custom_components/kestrel`) and CI. Repeat before each
+release, and whenever asked for a full review; record what changed below.
+
+## Checklist for a full review
+
+1. **Open pull requests**, Dependabot's especially (`gh api "repos/raetha/zepp-kestrel/pulls?state=open"`;
+   sessions have the REST API, not GraphQL, so `gh pr list` fails). For each: read the diff;
+   check its CI run passed (`gh api repos/raetha/zepp-kestrel/commits/<sha>/check-runs`);
+   for a GitHub Action, check the pinned commit is the tag it claims
+   (`git ls-remote https://github.com/<owner>/<action> refs/tags/<tag>`) or, for a branch pin,
+   what changed (`git log <old>..<new>` in a clone); for a Python or npm package, its release
+   notes. Squash-merge good ones into `dev` (`gh api -X PUT repos/raetha/zepp-kestrel/pulls/<n>/merge
+   -f merge_method=squash`); never into `main`. Record any held back, and why.
+2. **Security alerts.** Sessions can't read the repository's code scanning, Dependabot or secret
+   scanning alerts (403): ask the owner for their titles, and run the same checks here: CodeQL
+   (the bundle from `github/codeql-action` releases; `codeql database create --build-mode=none`
+   over a copy of the tracked files only, then `database analyze` with the
+   `<language>-security-and-quality` suites for actions, javascript and python), `npm audit`, and
+   `pip-audit -r tools/requirements.txt` (and `-r ha/requirements_test.txt`, whose pins inside
+   Home Assistant core are test-only).
+3. **Tests:** `npm test`; `cd ha && ../.venv/bin/pytest -q --cov=custom_components.kestrel`
+   (≥95%); `mypy --config-file ha/mypy.ini custom_components/kestrel`; `ruff check` (no new
+   findings); `zeus build`; the emulator (Home, Sync, More open with no new errors in the log).
+4. **Quality scale:** every rule in `quality_scale.yaml` still true of the code.
+5. **Security of the design:** home network only (`_from_home` on every endpoint), only offered
+   devices fire, every watch-sent value cleaned (`watchdata.py`), the relay's limits
+   (`relayable()`), diagnostics safe to post publicly (tokens, addresses, hardware ids redacted;
+   Bluetooth addresses pseudonymised), nothing secret in logs (CI masks the Zepp login; never
+   print the Zepp app's log, which holds the pairing token).
+6. **Workflows:** `contents: read` at the top, write only where a job needs it, actions pinned to
+   commits, no `${{ }}` expansions inside `run:` scripts, secrets only on pushes (never forks).
+7. **Leftovers:** finished experiments, compatibility with builds nobody runs any more (no
+   backward compatibility before the first release), unused code (CodeQL's "unused" findings),
+   stale comments and docs (`CLAUDE.md`, `docs/development.md`, README troubleshooting).
+8. **Record it:** a dated section below, and changelog lines for anything users notice.
+
+## 2026-11-01: review after the test-install experiments
+
+- **GitHub security alerts.** The repository's alerts aren't readable from a session,
+  so CodeQL 2.23.3 ran locally over the tracked files (actions, javascript, python;
+  security-and-quality suites). Fixed: an "incomplete URL substring sanitization" pair
+  in a test (`m1.test.mjs`, now an exact comparison) and an unused import. Left: the
+  emulator tool sends a local file to the local emulator (now `zepp-devkit emu`, by
+  design), and the settings page's `Text(...)` calls look like the DOM's `Text` to
+  CodeQL. `npm audit`: no vulnerabilities; `pip-audit` on `tools/requirements.txt`:
+  none. The HA test harness pins an older Pillow and uv inside Home Assistant core
+  (test-only, never shipped).
+- **Leftovers removed:** the watch's fallback to asking an old phone side by name
+  (every phone side since build 79 relays), Home Assistant's "older (not reported)"
+  phone version and the `s=` sync parameter, the bridge-install experiment (its first
+  run published the Zepp app's log, with the pairing token, in a public Actions log;
+  the logs were deleted and re-pairing replaces the token), and our own `.zpk` QR codes on the
+  test page whenever a Zepp preview exists.
+- **Relay:** the phone side's logic moved to `watch/lib/side.js` and is now tested in
+  Node (`watch/test/side.test.mjs`): status and build, relaying with the token and
+  `X-Kestrel-Side`, refusing other paths, methods and bodies over 100 kB (both
+  sides check: `relayable()`), unpairing on 401, the settings page's copies, and
+  storage that fails never failing a request.
+- **Tokens:** a watch not heard from in 30 days gets a Repairs notice whose fix removes
+  it and its token (`repairs.py`; `repair-issues` is now done).
+- **Workflows:** top-level `contents: read`, write only where a job needs it, every
+  action pinned to a commit, no `${{ }}` expansions inside `run:` scripts.
+- **Dependabot pull requests** (reviewed the next morning; missed in the first pass):
+  #2 `actions/setup-python` 7.0.0 → 7.1.0 (pin matches the v7.1.0 tag), #3 hassfest
+  pinned to a newer `home-assistant/actions` master commit (the only change there is in
+  `helpers/version-push`, which we don't use), #4 `pytest-homeassistant-custom-component`
+  0.13.373 → 0.13.375 (test harness). CI green on each; all three merged into `dev`.
+
+## 2026-10-31: the phone side became a relay
+
+The watch now builds its Home Assistant requests (`watch/lib/ha-api.js`) and the
+phone side relays them (`METHOD.RELAY` in `watch/lib/side.js`). Checked: the
+relay only sends to the paired Home Assistant's home-network addresses (unchanged
+`component()`), only paths under `/api/kestrel/` with GET or POST, and refuses `..`,
+encoded dots, slashes and backslashes, whitespace and `#` (`relayable()`, tested), so
+a watch can't use the phone's token, or the phone, to reach Home Assistant's own API
+or anything else. Every Home Assistant endpoint still checks the token, the home
+network and each value as before; repeated fires are still dropped (by `seq`, in
+Home Assistant). The `X-Kestrel-Side` header is a build string, cut to 40 characters.
+
+## 2026-10-24
+
+### Quality scale
+
+All 54 rules (developers.home-assistant.io → Integration quality scale → Rules)
+checked against the code; the result is in `custom_components/kestrel/quality_scale.yaml`.
+Every rule is done or exempt with a reason; none is left to do.
+
+Done in this audit:
+
+- Documentation (README → "The Home Assistant integration"): use cases, supported
+  devices and functions, events (triggers), automation examples, how data updates,
+  known limitations, troubleshooting, removal.
+- `action-exceptions`, `exception-translations`: entity actions on a watch that was
+  unpaired raise a translated `HomeAssistantError`.
+- `entity-device-class`: the instant-toggle delay is a duration.
+- `entity-disabled-by-default`: the gesture threshold numbers.
+- `strict-typing`: `mypy --strict` passes (`ha/mypy.ini`) and runs in CI. Home
+  Assistant 2026.10 types forms with probatio (voluptuous is aliased to it); config
+  flow schemas go through one loosely typed helper so 2026.1+ keeps working.
+- Every setting the watch syncs has an entity or (for lists of entities) a
+  Configure field.
+
+Exempt, with reasons in the file: service actions (none of its own), polling and
+`log-when-unavailable` (watches push), discovery (watches find Home Assistant),
+reauthentication and reconfiguration (nothing to re-enter), async dependency and
+web session (no library, no client).
+
+### Performance
+
+| Where | Finding | Outcome |
+| --- | --- | --- |
+| Watch storage | Every `get()` read the file from flash: a sync read the sync state a dozen times, and the device list (up to about 60 kB with 1000 entities) was re-read for every count shown. | Fixed: `page/kv.js` keeps each file's text in memory per page (pages don't overlap) and skips writes that change nothing. Checked on the emulator: data written on Home still reaches Rooms. |
+| Watch trail | Each button press wrote the trail file three times (press, release, click). | Fixed: clicks only. |
+| Watch, Point | Room check: a 3 s Bluetooth scan every 45 s while pointing. | Every 60 s. Only when rooms are calibrated on the watch (not with a Home Assistant room sensor). |
+| Watch, Point | Aim loop at 10 Hz, sensors at 25 Hz: scoring is a few Gaussians per painted spot; widgets change only when the state does; the screen-on renewal is throttled to every 5 s; dwell and gesture detection are constant time. | Fine as is. |
+| Watch ↔ phone | Sync sends only what changed (revisions and a device-list hash, about 60 bytes); the full device list moves only when it changes. | Fine as is. |
+| Phone | Requests try the last address that worked first; an address Home Assistant refuses as not home is skipped. | Fine as is. |
+| HA, triggering | Checking that a target is offered rebuilt the whole device list on every trigger. | Fixed: `is_offered()` checks the one entity and the labelled entries. A test compares it with the list in every label situation. |
+| HA, probes | Kept probe results are rewritten to disk as one file; 500 large traces could make it several MB. | Fixed: also capped at 2 million characters together (oldest dropped). |
+| HA, status | "Last seen" moves at most once a minute; status saves are delayed 30 s. | Fine as is. |
+
+### Security
+
+| Severity | Finding | Outcome |
+| --- | --- | --- |
+| High | Pairing worked from anywhere, including through Home Assistant Cloud. A stranger could keep starting pairings and guess codes (6 digits, 5 tries per pairing, 10 pairings per 10 minutes per address); a hit gives a watch token, which can trigger devices, locks included. | Fixed: pairing (start and confirm) only from the home network: not through Home Assistant Cloud, and only from private or loopback addresses. At most 5 pairings wait at once. |
+| Medium | A watch token could trigger any supported entity that exists, including ones left out of the list, hidden or disabled ones, and devices' configuration entities. | Fixed: only what the watch is offered. |
+| Low | The watch name (sent before pairing) went into the pairing notification as markdown, so it could carry links. | Fixed: letters, digits, spaces and `-_.'()` only, 40 characters. |
+| Low | Probe results had no size limit: a paired watch could fill the probe store. | Fixed: 100 kB per result, 2 million characters kept in all. |
+| Info | Watch tokens: 32 random bytes, stored only as SHA-256 hashes, compared in constant time; only valid on Kestrel's own endpoints; deleting the watch's device revokes it. | Fine. |
+| Info | Every watch request is checked (paints, rooms and settings are cleaned field by field and capped). | Fine. |
+| Info | `/api/kestrel/info` is unauthenticated (the phone needs it to find Home Assistant) and returns the location name and integration version. | Accepted. |
+| Info | Behind a reverse proxy without `trusted_proxies`, every request looks local, so the home-network check can't tell. | Documented here; set up `trusted_proxies` for your proxy. |
+| Info | On the phone, the watch token sits in the Zepp app's settings storage, like any Zepp app's settings. The settings page never shows a saved token. | Accepted (the platform offers nothing safer). |
+| Info | Typed local addresses use plain HTTP on the home network, so the token crosses the LAN unencrypted. | Accepted for local use. |
+| Info | Diagnostics contain Bluetooth MAC addresses of nearby devices (room calibration), the watch's address and person entity ids, but no tokens. | Accepted: needed to debug; diagnostics are only downloaded by the owner. |
+| Info | The watch holds no secrets: the token lives on the phone. | Fine. |
+| Info | CI: least-privilege `permissions`, actions pinned to commits (Dependabot proposes updates), no stored secrets (the Zepp preview tokens are gone), builds published over HTTPS. | Fine. |
+
+## 2026-10-24, later: home network only
+
+| Severity | Finding | Outcome |
+| --- | --- | --- |
+| High | A watch token worked from anywhere through Home Assistant Cloud: a lost phone or a copied token could switch things (locks included, with a confirm) from outside. | Fixed: every Kestrel endpoint (not just pairing) refuses requests through Home Assistant Cloud or from a public address. Pairing hands out only the home-network URL; the phone skips addresses Home Assistant refuses. Away mode, which existed for this, is gone. Use a VPN (WireGuard, Tailscale) to use Kestrel from outside. |
+| Info | Direct mode (store installs without the integration: a URL and a long-lived token in the Zepp app) talked to Home Assistant's own API, so Kestrel couldn't hold it to the home network. | Fixed: direct mode removed; the integration is required, and the phone never holds a long-lived token. |
+| Info | Which devices watches can use is now an explicit choice in Configure (devices and entities) rather than a label anyone with the label registry could change; `is_offered()` and `list_targets()` share one rule (`Offered`), tested against each other. | Fine. |
+
+## 2026-10-24, full review before a week of testing
+
+Everything changed since the audits above: colour screens, calibration dots, fewer buzzes, direct mode removed, close-device scoring, crowding and room hints, Open on Point, twist volume, virtual spots, the paint map, learning from use, square watches, per-watch packages and the emulator sweep.
+
+### Quality scale
+
+Still all 54 rules done or exempt. New entities (Open on Point, Learn from use, Volume limit, Volume change per twist, Paint map) have translations, icons and entity categories (configuration; the paint map is diagnostic); 70 component tests, 99% coverage, `mypy --strict` clean.
+
+### Security
+
+| Severity | Finding | Outcome |
+| --- | --- | --- |
+| Medium | A watch could send any action name; anything other than `dim` on a light was carried out as a toggle (a `dim` on a switch toggled it, and so would a made-up action). | Fixed: toggle anything offered, dim only lights, volume only media players; anything else is refused (400). Tested. |
+| Info | Twist volume: Home Assistant, not the watch, enforces the limits (per twist, the ceiling, one twist a second per watch), so a modified watch app can't get round them. | Fine. |
+| Info | The paint map is an SVG built from entity, area and room names: every name is escaped, and it holds no scripts or links. | Fine. |
+| Info | Paints sent by a watch keep only known spot fields (numbers, room, kind); learned spots count towards the 12-spot cap per device. | Fine. |
+| Info | Per-watch packages and the test page's watch list are static files built by CI from this repo; no secrets involved. | Fine. |
+
+### Performance
+
+| Where | Finding | Outcome |
+| --- | --- | --- |
+| Watch, Point | Learning: one vote per trigger after 5.5 s, a few dozen operations; room learning at most every 10 minutes per room. Scoring adds a division per device per tick. | Fine as is. |
+| Watch, Point | A pending vote was cancelled when another device was triggered within 5.5 s. | Fixed: one pending vote per device. |
+| Watch, aim without a gyroscope | Readings arriving in a burst made the tilt rate look huge, so the arm never counted as still. | Fixed: readings are treated as at least 20 ms apart. |
+| Watch, Point | Compass calibration lost again within a second of being regained left the dots green and stopped counting. | Fixed: they start counting again. |
+| HA, paint map | The picture's hash is recomputed on each update from the watch (a JSON dump of its paints, under 100 kB); the SVG is drawn only when asked for. | Fine as is. |
+
+## 2026-10-25: diagnostics and privacy
+
+| Severity | Finding | Outcome |
+| --- | --- | --- |
+| Medium | Diagnostics downloads (meant for public issues) held the Bluetooth addresses of every device the watch heard when calibrating rooms, neighbours' included, and the watch's and Home Assistant's network addresses. | Fixed: addresses redacted; Bluetooth addresses replaced by salted pseudonyms, consistent within one download and different in the next. Token hashes were already redacted; the token itself is never stored in Home Assistant. Tested. |
+| Low | The watch sent debug-level records all the time: an aim trace with every trigger, every run's screen and button trail, raw room scans. Each also became a `kestrel_probe` event, so Home Assistant's event history grew with every trigger. | Fixed: only with Detailed diagnostics on (per watch, off after a week); without it only probes run on purpose and trails with an error are kept. Automatic records never become events. Results older than 14 days are dropped. |
+| Info | The phone's settings storage kept a summary of every aim trace and trail. | Fixed: only of probes run on purpose. |
+| Info | Logging: one info line when a watch pairs (its name and id); nothing else. | Fine. |
