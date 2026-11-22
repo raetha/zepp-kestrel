@@ -41,3 +41,7 @@ Home Assistant integration. It works on your home network, or a VPN into it.
 - **Repairs:** a watch not heard from in 30 days gets a notice offering to remove it, so an old or duplicate watch doesn't keep a working key.
 - **Diagnostics** for the integration or one watch, safe to attach to a public issue: tokens, hardware ids and network addresses removed, Bluetooth addresses replaced by codes. Detailed diagnostics (a switch per watch, off again after a week) adds aim traces and room scans for tuning; results are kept for 14 days.
 - **Security:** Kestrel works only from your home network (never through Home Assistant Cloud or a public address), each watch has its own key, a watch can only trigger the devices it's offered, and every value from a watch is checked. See `docs/audits.md`.
+
+### Internal
+
+- The license names the copyright holder as Elias Hunt (raetha).
